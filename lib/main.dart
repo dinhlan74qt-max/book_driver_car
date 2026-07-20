@@ -1,3 +1,4 @@
+import 'package:book_drive_car/core/features/onboarding/presentation/view/onboarding_screen.dart';
 import 'package:book_drive_car/core/features/welcome/presentation/view/welcome_screen.dart';
 import 'package:book_drive_car/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -16,8 +17,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Book Drive Car',
       theme: AppTheme.light(),
-      home: const WelcomeScreen(),
+      home: OnboardingScreen(
+      ),
     );
   }
 }
- 
