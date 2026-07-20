@@ -15,10 +15,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Book Drive Car',
+      title: 'CarNow',
       theme: AppTheme.light(),
-      home: OnboardingScreen(
-      ),
+      home: OnboardingScreen(),
     );
   }
 }
