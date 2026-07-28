@@ -1,3 +1,6 @@
+import 'package:book_drive_car/core/di/injection_container.dart';
+import 'package:book_drive_car/core/features/auth/domain/repositories/auth_repository.dart';
+import 'package:book_drive_car/core/shared/widget/app_toast.dart';
 import 'package:book_drive_car/core/shared/widget/bottom_navigation_bar.dart';
 import 'package:book_drive_car/core/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
@@ -8,51 +11,106 @@ class OtpScreen extends StatefulWidget {
   final String email;
   final String phone;
 
-  const OtpScreen({
-    super.key,
-    required this.email,
-    required this.phone,
-  });
+  const OtpScreen({super.key, required this.email, required this.phone});
 
   @override
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final _otpController = TextEditingController();
-  bool _verified = false;
+  static const int _otpLength = 6;
+
+  final AuthRepository _authRepository = sl<AuthRepository>();
+  final List<TextEditingController> _controllers = List.generate(
+    _otpLength,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(
+    _otpLength,
+    (_) => FocusNode(),
+  );
+
+  bool _isVerifying = false;
+
+  String get _otpValue => _controllers.map((c) => c.text).join();
 
   @override
   void dispose() {
-    _otpController.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
-  void _verify() {
-    if (_otpController.text.trim() != '1234') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mã OTP chưa đúng, vui lòng thử lại')),
-      );
-      return;
+  void _onChanged(int index, String value) {
+    if (value.isNotEmpty) {
+      if (index < _otpLength - 1) {
+        _focusNodes[index + 1].requestFocus();
+      } else {
+        _focusNodes[index].unfocus();
+      }
+    } else if (index > 0) {
+      _focusNodes[index - 1].requestFocus();
     }
 
-    setState(() => _verified = true);
-    Future.delayed(const Duration(milliseconds: 700), () {
+    if (_otpValue.length == _otpLength) {
+      _verify();
+    }
+  }
+
+  Future<void> _verify() async {
+    if (_otpValue.length < _otpLength || _isVerifying) return;
+
+    setState(() => _isVerifying = true);
+
+    try {
+      final message = await _authRepository.verifyOtp(
+        email: widget.email,
+        otpCode: _otpValue,
+      );
+
       if (!mounted) return;
+
+      AppToast.show(
+        context,
+        message: message,
+        type: AppToastType.success,
+      );
+
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 450),
           pageBuilder: (_, animation, __) => const MainNavigation(),
           transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(
-              opacity: animation,
-              child: child,
-            );
+            return FadeTransition(opacity: animation, child: child);
           },
         ),
         (_) => false,
       );
-    });
+    } catch (e) {
+      if (!mounted) return;
+
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst("Exception: ", ""),
+        type: AppToastType.warning,
+      );
+
+      for (final c in _controllers) {
+        c.clear();
+      }
+      _focusNodes.first.requestFocus();
+    } finally {
+      if (mounted) {
+        setState(() => _isVerifying = false);
+      }
+    }
   }
 
   @override
@@ -82,7 +140,10 @@ class _OtpScreenState extends State<OtpScreen> {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: AppColors.border),
                     ),
-                    child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                    child: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -97,19 +158,31 @@ class _OtpScreenState extends State<OtpScreen> {
                       ],
                     ),
                   ),
-                  child: Column(
+                  child: const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Icon(Icons.sms_rounded, color: AppColors.primary, size: 30),
+                    children: [
+                      Icon(
+                        Icons.sms_rounded,
+                        color: AppColors.primary,
+                        size: 30,
+                      ),
                       SizedBox(height: 14),
                       Text(
                         'Nhập mã OTP',
-                        style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       SizedBox(height: 8),
                       Text(
-                        'Chúng tôi đã gửi mã xác nhận gồm 4 chữ số đến email và số điện thoại của bạn.',
-                        style: TextStyle(fontSize: 14.5, color: AppColors.textSecondary, height: 1.5),
+                        'Chúng tôi đã gửi mã xác nhận gồm 6 chữ số đến email của bạn.',
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
                       ),
                     ],
                   ),
@@ -118,36 +191,43 @@ class _OtpScreenState extends State<OtpScreen> {
                 _InfoRow(label: 'Email', value: widget.email),
                 _InfoRow(label: 'Số điện thoại', value: widget.phone),
                 const SizedBox(height: 12),
-                const Text('Mã OTP', style: TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _otpController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  maxLength: 4,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 10),
-                  decoration: const InputDecoration(
-                    counterText: '',
-                    hintText: '1234',
-                  ),
+                const Text(
+                  'Mã OTP',
+                  style: TextStyle(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(_otpLength, (index) {
+                    return _OtpBox(
+                      controller: _controllers[index],
+                      focusNode: _focusNodes[index],
+                      onChanged: (value) => _onChanged(index, value),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 22),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _verified ? null : _verify,
-                    child: Text(_verified ? 'Đang xác minh...' : 'Xác nhận OTP'),
+                    onPressed: _isVerifying ? null : _verify,
+                    child: Text(
+                      _isVerifying ? 'Đang xác minh...' : 'Xác nhận OTP',
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đã gửi lại mã OTP demo')),
-                      );
-                    },
+                    onPressed: _isVerifying
+                        ? null
+                        : () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Chức năng gửi lại OTP sẽ thêm sau'),
+                              ),
+                            );
+                          },
                     child: const Text('Gửi lại mã OTP'),
                   ),
                 ),
@@ -155,6 +235,58 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _OtpBox extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final ValueChanged<String> onChanged;
+
+  const _OtpBox({
+    required this.controller,
+    required this.focusNode,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 46,
+      height: 54,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        maxLength: 1,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        style: const TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          counterText: '',
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: EdgeInsets.zero,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.border),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+          ),
+        ),
+        onChanged: onChanged,
       ),
     );
   }
@@ -178,13 +310,22 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
           ),
           Flexible(
             child: Text(
               value,
               textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
