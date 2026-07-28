@@ -1,10 +1,12 @@
 import 'package:book_drive_car/core/features/onboarding/presentation/view/onboarding_screen.dart';
 import 'package:book_drive_car/core/features/welcome/presentation/view/welcome_screen.dart';
+import 'package:book_drive_car/core/shared/constants/app_keys.dart';
 import 'package:book_drive_car/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
-
-void main() {
+import 'core/di/injection_container.dart';
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+   await configureDependencies();
   runApp(const MyApp());
 }
 
@@ -14,6 +16,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: appScaffoldMessengerKey,
       debugShowCheckedModeBanner: false,
       title: 'CarNow',
       theme: AppTheme.light(),

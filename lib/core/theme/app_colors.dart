@@ -41,4 +41,30 @@ abstract class AppColors {
     Color(0xFF7BA6FF), // xanh dương — nhanh gọn, số hoá
     taillightCoral, // đỏ đèn hậu — an toàn, bảo vệ
   ];
+  // ── Error Toast ─────────────────────────────────────
+  static const Color toastErrorBackground = Color(0xFFFFEBEE);
+  static const Color toastErrorBorder = Color(0xFFEF9A9A);
+  static const Color toastErrorShadow = Color(0x14C62828);
+  static const Color toastErrorIconBg = Color(0xFFFFCDD2);
+  static const Color toastErrorContent = Color(0xFFC62828);
+  // -- Success Toast -------------------------------------------------------
+  static const Color toastSuccessBackground = Color(0xFFE8F5E9);
+  static const Color toastSuccessBorder = Color(0xFFA5D6A7);
+  static const Color toastSuccessShadow = Color(0x142E7D32);
+  static const Color toastSuccessIconBg = Color(0xFFC8E6C9);
+  static const Color toastSuccessContent = Color(0xFF2E7D32);
+  // -- Warning Toast -------------------------------------------------------
+  static const Color toastWarningBackground = Color(0xFFFFF3E0);
+  static const Color toastWarningBorder = Color(0xFFFFCC80);
+  static const Color toastWarningShadow = Color(0x14EF6C00);
+  static const Color toastWarningIconBg = Color(0xFFFFE0B2);
+  static const Color toastWarningContent = Color(0xFFEF6C00);
+  // -- Info Toast ----------------------------------------------------------
+  static const Color toastInfoBackground = Color(0xFFE3F2FD);
+  static const Color toastInfoBorder = Color(0xFF90CAF9);
+  static const Color toastInfoShadow = Color(0x141565C0);
+  static const Color toastInfoIconBg = Color(0xFFBBDEFB);
+  static const Color toastInfoContent = Color(0xFF1565C0);
+  // -- Toast shared -------------------------------------------------------
+  static const Color toastText = Color(0xFF322E28);
 }

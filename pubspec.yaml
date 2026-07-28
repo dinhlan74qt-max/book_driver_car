@@ -13,10 +13,20 @@ dependencies:
   intl: ^0.20.3
   geolocator: ^14.0.3
   google_fonts: ^8.2.0
+  get_it: ^9.2.1
+  equatable: ^2.1.0
+  flutter_bloc: ^9.1.1
+  http: ^1.6.0
+  injectable: ^3.0.0
+  flutter_svg: ^2.3.0
 
 dev_dependencies:
+  injectable_generator: 3.1.1
+  build_runner: ^2.4.9
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
