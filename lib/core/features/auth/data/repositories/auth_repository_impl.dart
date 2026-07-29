@@ -1,3 +1,4 @@
+import 'package:book_drive_car/core/features/auth/domain/entities/auth_result_entity.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/register_request_entity.dart';
@@ -29,5 +30,10 @@ class AuthRepositoryImpl implements AuthRepository {
     required String otpCode,
   }) {
     return remoteDataSource.verifyOtp(email: email, otpCode: otpCode);
+  }
+
+  @override
+  Future<AuthResultEntity> login(String email, String password)async {
+     return await remoteDataSource.login(email, password);
   }
 }

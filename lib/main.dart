@@ -1,5 +1,4 @@
-import 'package:book_drive_car/core/features/onboarding/presentation/view/onboarding_screen.dart';
-import 'package:book_drive_car/core/features/welcome/presentation/view/welcome_screen.dart';
+import 'package:book_drive_car/core/features/splash/presentation/view/splash_screen.dart';
 import 'package:book_drive_car/core/shared/constants/app_keys.dart';
 import 'package:book_drive_car/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +19,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'CarNow',
       theme: AppTheme.light(),
-      home: OnboardingScreen(),
+      home: const SplashScreen(),
     );
   }
 }
