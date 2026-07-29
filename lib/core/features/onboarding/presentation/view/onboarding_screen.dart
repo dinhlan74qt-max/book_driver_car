@@ -1,6 +1,8 @@
+import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/features/onboarding/data/onboarding_page_data.dart';
 import 'package:book_drive_car/core/features/onboarding/presentation/widget/road_progress_indicator.dart';
-import 'package:book_drive_car/core/features/welcome/presentation/view/welcome_screen.dart';
+import 'package:book_drive_car/core/features/auth/presentation/view/login_screen.dart';
+import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -40,9 +42,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  void _next() {
+  Future<void> _next() async {
     if (_page.round() == _lastIndex) {
-      _goToApp(context);
+      await _goToApp(context);
       return;
     }
     _controller.nextPage(
@@ -51,11 +53,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _goToApp(BuildContext context) {
+  Future<void> _goToApp(BuildContext context) async {
+    await sl<UserLocalStorage>().markWelcomeSeen();
+
+    if (!mounted) return;
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 450),
-        pageBuilder: (_, animation, __) => const WelcomeScreen(),
+        pageBuilder: (_, animation, __) => const LoginScreen(),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(
             opacity: animation,
@@ -125,9 +131,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     if (!isLastPage)
                       TextButton(
-                        onPressed: () {
-                          _goToApp(context);
-                        },
+                        onPressed: () => _goToApp(context),
                         style: TextButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
                         ),

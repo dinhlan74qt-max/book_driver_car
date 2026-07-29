@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:book_drive_car/core/features/auth/data/models/auth_result_model.dart';
 import 'package:book_drive_car/core/shared/constants/api_constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
@@ -10,6 +11,7 @@ abstract class AuthRemoteDataSource {
     required String email,
     required String otpCode,
   });
+   Future<AuthResultModel> login(String email, String password);
 }
 
 @LazySingleton(as: AuthRemoteDataSource)
@@ -54,6 +56,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return data["message"] as String;
     } else {
       throw Exception(data["message"] ?? "Xác thực OTP thất bại");
+    }
+  }
+  
+  @override
+  Future<AuthResultModel> login(String email, String password) async {
+    final response = await client.post(
+      Uri.parse(ApiConstants.login), 
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email, "password": password}),
+    );
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return AuthResultModel.fromJson(data["data"]);
+    } else {
+      throw Exception(data["message"] ?? "Đăng nhập thất bại");
     }
   }
 }

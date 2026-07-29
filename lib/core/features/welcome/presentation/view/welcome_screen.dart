@@ -15,16 +15,15 @@ class WelcomeScreen extends StatelessWidget {
         return FadeTransition(
           opacity: animation,
           child: SlideTransition(
-            position:
-                Tween<Offset>(
-                  begin: const Offset(0, 0.04),
-                  end: Offset.zero,
-                ).animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.04),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
             child: child,
           ),
         );
@@ -131,8 +130,7 @@ class WelcomeScreen extends StatelessWidget {
                             SizedBox(
                               height: 52,
                               child: ElevatedButton.icon(
-                                onPressed: () =>
-                                    _open(context, const LoginScreen()),
+                                onPressed: () => _open(context, const LoginScreen()),
                                 icon: const Icon(Icons.login_rounded, size: 20),
                                 label: const Text('Đăng nhập'),
                               ),
@@ -141,8 +139,7 @@ class WelcomeScreen extends StatelessWidget {
                             SizedBox(
                               height: 52,
                               child: OutlinedButton.icon(
-                                onPressed: () =>
-                                    _open(context, const RegisterScreen()),
+                                onPressed: () => _open(context, const RegisterScreen()),
                                 icon: const Icon(
                                   Icons.person_add_alt_rounded,
                                   size: 20,

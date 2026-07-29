@@ -19,6 +19,7 @@ dependencies:
   http: ^1.6.0
   injectable: ^3.0.0
   flutter_svg: ^2.3.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   injectable_generator: 3.1.1
