@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:book_drive_car/core/features/auth/domain/entities/user_entity.dart';
+import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
