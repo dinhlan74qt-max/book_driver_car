@@ -10,19 +10,19 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:book_drive_car/core/di/injectable_modules.dart' as _i172;
-import 'package:book_drive_car/core/features/auth/data/datasources/auth_remote_data_source.dart'
+import 'package:book_drive_car/features/auth/data/datasources/auth_remote_data_source.dart'
     as _i9;
-import 'package:book_drive_car/core/features/auth/data/repositories/auth_repository_impl.dart'
+import 'package:book_drive_car/features/auth/data/repositories/auth_repository_impl.dart'
     as _i405;
-import 'package:book_drive_car/core/features/auth/domain/repositories/auth_repository.dart'
+import 'package:book_drive_car/features/auth/domain/repositories/auth_repository.dart'
     as _i574;
-import 'package:book_drive_car/core/features/auth/domain/usecases/login.dart'
+import 'package:book_drive_car/features/auth/domain/usecases/login.dart'
     as _i124;
-import 'package:book_drive_car/core/features/auth/domain/usecases/send_otp.dart'
+import 'package:book_drive_car/features/auth/domain/usecases/send_otp.dart'
     as _i579;
-import 'package:book_drive_car/core/features/auth/presentation/bloc/login_bloc.dart'
+import 'package:book_drive_car/features/auth/presentation/bloc/login_bloc.dart'
     as _i570;
-import 'package:book_drive_car/core/features/auth/presentation/bloc/send_otp_bloc.dart'
+import 'package:book_drive_car/features/auth/presentation/bloc/send_otp_bloc.dart'
     as _i583;
 import 'package:book_drive_car/core/storage/user_local_storage.dart' as _i771;
 import 'package:get_it/get_it.dart' as _i174;

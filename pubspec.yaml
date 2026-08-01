@@ -20,6 +20,9 @@ dependencies:
   injectable: ^3.0.0
   flutter_svg: ^2.3.0
   shared_preferences: ^2.5.5
+  dio: ^5.11.0
+  image_picker: ^1.1.2
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   injectable_generator: 3.1.1
