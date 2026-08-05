@@ -1,3 +1,6 @@
+import 'package:book_drive_car/core/di/injection_container.dart';
+import 'package:book_drive_car/core/storage/user_local_storage.dart';
+import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/view/rental_management_screen.dart';
 import 'package:book_drive_car/features/welcome/presentation/view/welcome_screen.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
@@ -20,8 +23,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   ];
 
   int _avatarIndex = 0;
+  UserEntity? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final user = await sl<UserLocalStorage>().getUser();
+    if (mounted) setState(() => _user = user);
+  }
 
   Future<void> _showAccountDetail() async {
+    final user = _user;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -50,13 +66,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 18),
               const Text('Tài khoản của tôi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
               const SizedBox(height: 14),
-              _InfoRow(label: 'Email', value: 'sang.nguyen@email.com'),
-              _InfoRow(label: 'Số điện thoại', value: '0901 234 567'),
-              _InfoRow(label: 'Trạng thái', value: 'Đã xác thực', valueColor: AppColors.success),
+              if (user != null) ...[
+                _InfoRow(label: 'Họ tên', value: user.fullname ?? '—'),
+                _InfoRow(label: 'Email', value: user.email.isNotEmpty ? user.email : '—'),
+                _InfoRow(label: 'Số điện thoại', value: user.phone?.isNotEmpty == true ? user.phone! : '—'),
+                if (user.cccd?.isNotEmpty == true)
+                  _InfoRow(label: 'CCCD', value: user.cccd!),
+                _InfoRow(label: 'Vai trò', value: user.role ?? 'user'),
+                _InfoRow(label: 'Trạng thái', value: 'Đã xác thực', valueColor: AppColors.success),
+              ] else
+                const Text('Không thể tải thông tin tài khoản.', style: TextStyle(color: AppColors.textSecondary)),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Đóng'),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Đóng'),
+                ),
               ),
             ],
           ),
@@ -71,60 +97,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 46,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
               ),
-              const SizedBox(height: 18),
-              const Text('Cập nhật avatar', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              const Text(
-                'Chọn một avatar phù hợp để làm mới hồ sơ cá nhân của bạn.',
-                style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: List.generate(_avatarPresets.length, (index) {
-                  final preset = _avatarPresets[index];
-                  final active = index == _avatarIndex;
-                  return TapScale(
-                    onTap: () {
-                      setState(() => _avatarIndex = index);
-                      Navigator.of(context).pop();
-                    },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
                     child: Container(
-                      width: 78,
-                      height: 78,
+                      width: 46,
+                      height: 4,
                       decoration: BoxDecoration(
-                        color: preset.color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: active ? preset.color : AppColors.border, width: active ? 1.6 : 1),
+                        color: AppColors.border,
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                      child: Icon(preset.icon, color: preset.color, size: 34),
                     ),
-                  );
-                }),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text('Cập nhật avatar', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Chọn một avatar phù hợp để làm mới hồ sơ cá nhân của bạn.',
+                    style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: List.generate(_avatarPresets.length, (index) {
+                      final preset = _avatarPresets[index];
+                      final active = index == _avatarIndex;
+                      return TapScale(
+                        onTap: () {
+                          setState(() => _avatarIndex = index);
+                          setModalState(() {});
+                          Navigator.of(context).pop();
+                        },
+                        child: Container(
+                          width: 78,
+                          height: 78,
+                          decoration: BoxDecoration(
+                            color: preset.color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: active ? preset.color : AppColors.border, width: active ? 1.6 : 1),
+                          ),
+                          child: Icon(preset.icon, color: preset.color, size: 34),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -223,9 +254,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 10),
               Text(message, style: const TextStyle(color: AppColors.textSecondary, height: 1.5)),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Đóng'),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Đóng'),
+                ),
               ),
             ],
           ),
@@ -248,6 +282,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (confirm != true || !mounted) return;
 
+    await sl<UserLocalStorage>().clear();
+
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 450),
@@ -261,6 +298,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final preset = _avatarPresets[_avatarIndex];
+    final userName = _user?.fullname ?? '';
+    final userEmail = _user?.email ?? '';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
@@ -274,8 +313,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               gradient: LinearGradient(
                 colors: [
                   AppColors.primary,
-                  AppColors.primary.withBlue(100),
-                  AppColors.accent.withOpacity(0.92),
+                  AppColors.primary.withValues(alpha: 0.85, red: 30),
+                  AppColors.accent.withValues(alpha: 0.92),
                 ],
               ),
             ),
@@ -293,8 +332,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             height: 72,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(0.12),
-                              border: Border.all(color: Colors.white.withOpacity(0.35), width: 2),
+                              color: Colors.white.withValues(alpha: 0.12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 2),
                             ),
                             child: Icon(preset.icon, color: Colors.white, size: 36),
                           ),
@@ -307,7 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: preset.color.withOpacity(0.2)),
+                                border: Border.all(color: preset.color.withValues(alpha: 0.2)),
                               ),
                               child: Icon(Icons.edit_rounded, size: 14, color: preset.color),
                             ),
@@ -322,21 +361,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'Nguyễn Văn Sang',
-                                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                                    userName.isNotEmpty ? userName : 'Người dùng',
+                                    style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                                Icon(Icons.chevron_right_rounded, color: Colors.white),
+                                const Icon(Icons.chevron_right_rounded, color: Colors.white),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'sang.nguyen@email.com',
-                              style: TextStyle(color: Colors.white70, fontSize: 13.5),
+                            Text(
+                              userEmail.isNotEmpty ? userEmail : '—',
+                              style: const TextStyle(color: Colors.white70, fontSize: 13.5),
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 8),
                             Wrap(
@@ -392,7 +433,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(999),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.danger.withOpacity(0.22),
+                      color: AppColors.danger.withValues(alpha: 0.22),
                       blurRadius: 18,
                       offset: const Offset(0, 10),
                     ),
@@ -429,9 +470,9 @@ class _ProfileBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.12),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -482,7 +523,7 @@ class _ActionTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border.withOpacity(0.8)),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
           ),
           child: Row(
             children: [
@@ -490,7 +531,7 @@ class _ActionTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.08),
+                  color: color.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(icon, color: color),

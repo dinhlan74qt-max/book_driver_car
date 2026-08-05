@@ -1,10 +1,10 @@
-import 'package:book_drive_car/shared/data/models/car_model.dart';
+import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class CarCard extends StatelessWidget {
-  final Car car;
+  final CarEntity car;
   final VoidCallback? onTap;
   final double? width;
 
@@ -63,10 +63,10 @@ class _CardShell extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border.withOpacity(0.8)),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.05),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),
@@ -80,7 +80,7 @@ class _CardShell extends StatelessWidget {
 }
 
 class _ExpandedCard extends StatelessWidget {
-  final Car car;
+  final CarEntity car;
 
   const _ExpandedCard({required this.car});
 
@@ -124,9 +124,7 @@ class _ExpandedCard extends StatelessWidget {
                       const SizedBox(width: 3),
                       Expanded(
                         child: Text(
-                          car.location.isNotEmpty
-                              ? car.location
-                              : '${car.province} - ${car.distanceKm.toStringAsFixed(1)} km away',
+                          car.location.isNotEmpty ? car.location : car.province,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -141,7 +139,7 @@ class _ExpandedCard extends StatelessWidget {
                     children: [
                       _SpecChip(icon: Icons.apartment_outlined, label: car.brand),
                       _SpecChip(icon: Icons.directions_car_outlined, label: car.vehicleType),
-                      _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} cho'),
+                      _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ'),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -161,7 +159,7 @@ class _ExpandedCard extends StatelessWidget {
                               ),
                             ),
                             const TextSpan(
-                              text: ' /ngay',
+                              text: ' /ngày',
                               style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
                             ),
                           ],
@@ -170,7 +168,7 @@ class _ExpandedCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.08),
+                          color: AppColors.primary.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
@@ -192,7 +190,7 @@ class _ExpandedCard extends StatelessWidget {
 }
 
 class _CompactCard extends StatelessWidget {
-  final Car car;
+  final CarEntity car;
 
   const _CompactCard({required this.car});
 
@@ -243,7 +241,7 @@ class _CompactCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   _SpecChip(icon: Icons.apartment_outlined, label: car.brand),
-                  _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} cho'),
+                  _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ'),
                 ],
               ),
               const SizedBox(height: 10),
@@ -264,7 +262,7 @@ class _CompactCard extends StatelessWidget {
                             ),
                           ),
                           const TextSpan(
-                            text: ' /ngay',
+                            text: ' /ngày',
                             style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                           ),
                         ],
@@ -274,7 +272,7 @@ class _CompactCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
+                      color: AppColors.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -293,8 +291,8 @@ class _CompactCard extends StatelessWidget {
   }
 }
 
-class _CarImage extends StatelessWidget {
-  final Car car;
+class _CarImage extends StatefulWidget {
+  final CarEntity car;
   final double? width;
   final double? height;
 
@@ -305,10 +303,23 @@ class _CarImage extends StatelessWidget {
   });
 
   @override
+  State<_CarImage> createState() => _CarImageState();
+}
+
+class _CarImageState extends State<_CarImage> {
+  int _currentIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
+    final images = widget.car.imageUrls.where((url) => url.isNotEmpty).toList();
+    if (images.isEmpty && widget.car.imageIcon.isNotEmpty) {
+      images.add(widget.car.imageIcon);
+    }
+    final hasNetworkImages = images.any((e) => e.startsWith('http'));
+
     return SizedBox(
-      width: width,
-      height: height,
+      width: widget.width,
+      height: widget.height,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -318,12 +329,38 @@ class _CarImage extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.primary.withOpacity(0.12),
-                  AppColors.accent.withOpacity(0.18),
+                  AppColors.primary.withValues(alpha: 0.12),
+                  AppColors.accent.withValues(alpha: 0.18),
                 ],
               ),
             ),
-            child: Center(child: _carIconFor(car.imageIcon)),
+            child: hasNetworkImages
+                ? (images.length > 1
+                    ? PageView.builder(
+                        itemCount: images.length,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentIndex = index;
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          return Image.network(
+                            images[index],
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: _carIconFor(widget.car.imageIcon),
+                            ),
+                          );
+                        },
+                      )
+                    : Image.network(
+                        images.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Center(
+                          child: _carIconFor(widget.car.imageIcon),
+                        ),
+                      ))
+                : Center(child: _carIconFor(widget.car.imageIcon)),
           ),
           Positioned(
             left: 8,
@@ -331,11 +368,11 @@ class _CarImage extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.65),
+                color: Colors.black.withValues(alpha: 0.65),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                car.brand,
+                widget.car.brand,
                 style: const TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -344,6 +381,29 @@ class _CarImage extends StatelessWidget {
               ),
             ),
           ),
+          if (hasNetworkImages && images.length > 1)
+            Positioned(
+              bottom: 6,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(images.length, (index) {
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    width: _currentIndex == index ? 14 : 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: _currentIndex == index
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  );
+                }),
+              ),
+            ),
         ],
       ),
     );
@@ -373,7 +433,7 @@ class _RatingBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.14),
+        color: Colors.amber.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -402,7 +462,7 @@ class _SpecChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.border.withOpacity(0.35),
+        color: AppColors.border.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(

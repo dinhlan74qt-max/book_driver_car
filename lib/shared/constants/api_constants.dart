@@ -8,7 +8,8 @@ class ApiConstants {
   static const String _iosSimulator = "http://localhost:8080";
 
   // Thiết bị thật (đổi theo IP LAN máy tính của bạn, dùng ipconfig để xem)
-  static const String _devicePhysical = "http://192.168.1.23:8080";
+  // Đã trỏ thẳng lên server online: nsopro.site
+  static const String _devicePhysical = "http://nsopro.site:8080";
 
   // Endpoint cụ thể
   static const String sendOtp = "$baseUrl/api/auth/register/send-otp";

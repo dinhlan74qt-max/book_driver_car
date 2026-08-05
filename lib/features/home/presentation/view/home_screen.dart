@@ -1,14 +1,19 @@
+import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
+import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
 import 'package:book_drive_car/features/home/presentation/view/all_cars_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_search_sheet.dart';
-import 'package:book_drive_car/shared/data/mock_data/mock_data.dart';
-import 'package:book_drive_car/shared/data/models/car_model.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/di/injection_container.dart';
+import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   final bool nearbyIsHorizontal;
   final bool suggestedIsHorizontal;
 
@@ -19,68 +24,70 @@ class HomeScreen extends StatefulWidget {
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<HomeCubit>()..fetchCars(),
+      child: _HomeScreenContent(
+        nearbyIsHorizontal: nearbyIsHorizontal,
+        suggestedIsHorizontal: suggestedIsHorizontal,
+      ),
+    );
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenContent extends StatefulWidget {
+  final bool nearbyIsHorizontal;
+  final bool suggestedIsHorizontal;
+
+  const _HomeScreenContent({
+    required this.nearbyIsHorizontal,
+    required this.suggestedIsHorizontal,
+  });
+
+  @override
+  State<_HomeScreenContent> createState() => _HomeScreenContentState();
+}
+
+class _HomeScreenContentState extends State<_HomeScreenContent> {
   static const _defaultProvince = 'Đà Nẵng';
+
+  String _userName = '';
 
   CarSearchFilter _filter = const CarSearchFilter(
     locationMode: LocationSearchMode.province,
     locationLabel: _defaultProvince,
   );
 
-  List<Car> get _cars {
-    final label = _filter.locationLabel?.toLowerCase().trim();
-
-    final result = MockData.cars.where((car) {
-      final typeMatch =
-          _filter.vehicleType == null || car.vehicleType == _filter.vehicleType;
-      final brandMatch = _filter.brand == null || car.brand == _filter.brand;
-
-      bool locationMatch;
-      switch (_filter.locationMode) {
-        case LocationSearchMode.province:
-          // Lọc chính xác theo tỉnh/thành đã chọn
-          locationMatch = label == null || car.province.toLowerCase() == label;
-          break;
-        case LocationSearchMode.currentLocation:
-        case LocationSearchMode.address:
-          // Chưa có toạ độ chính xác của từng xe để lọc cứng theo bán kính,
-          // nên tạm không lọc theo tỉnh — sẽ sắp xếp theo khoảng cách bên dưới.
-          locationMatch = true;
-          break;
-        case LocationSearchMode.none:
-          locationMatch = true;
-          break;
-      }
-
-      return locationMatch && typeMatch && brandMatch;
-    }).toList();
-
-    return result;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
   }
 
-  List<Car> get _nearbyCars {
-    final result = List<Car>.from(_cars);
-    result.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
-    return result;
-  }
-
-  List<Car> get _suggestedCars {
-    final result = List<Car>.from(_cars);
-    result.sort((a, b) => b.rating.compareTo(a.rating));
-    return result;
+  Future<void> _loadUserName() async {
+    final user = await sl<UserLocalStorage>().getUser();
+    if (mounted && user != null) {
+      setState(() => _userName = user.fullname ?? '');
+    }
   }
 
   Future<void> _openSearch() async {
     final result = await CarSearchSheet.show(context, initialFilter: _filter);
     if (result != null) {
       setState(() => _filter = result);
+      if (!mounted) return;
+      context.read<HomeCubit>().searchCars(
+            locationMode: _filter.locationMode.toString(),
+            locationLabel: _filter.locationLabel,
+            latitude: _filter.latitude,
+            longitude: _filter.longitude,
+            vehicleType: _filter.vehicleType,
+            brand: _filter.brand,
+          );
     }
   }
 
-  void _openAllCars(List<Car> cars, String title) {
+  void _openAllCars(List<CarEntity> cars, String title) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AllCarsScreen(cars: cars, title: title),
@@ -95,6 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
         locationLabel: _defaultProvince,
       );
     });
+    context.read<HomeCubit>().fetchCars();
   }
 
   String get _locationLabel => _filter.locationLabel ?? _defaultProvince;
@@ -113,69 +121,106 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cars = _cars;
-    final nearbyCars = _nearbyCars.take(5).toList();
-    final suggestedCars = _suggestedCars.take(5).toList();
+    return BlocBuilder<HomeCubit, HomeState>(
+      builder: (context, state) {
+        if (state is HomeLoading || state is HomeInitial) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (state is HomeError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger),
+                  const SizedBox(height: 12),
+                  Text(
+                    state.message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.read<HomeCubit>().fetchCars(),
+                    child: const Text('Thử lại'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        if (state is HomeLoaded) {
+          final nearbyCars = state.nearbyCars.take(5).toList();
+          final suggestedCars = state.suggestedCars.take(5).toList();
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-      children: [
-        StaggeredFadeIn(
-          index: 0,
-          child: _HeroCard(
-            subtitle: _heroSubtitle,
-            searchPlaceholder: _filter.locationMode == LocationSearchMode.none
-                ? 'Nhập tên tỉnh hoặc địa chỉ cụ thể'
-                : _locationLabel,
-            onSearchTap: _openSearch,
-          ),
-        ),
-        const SizedBox(height: 16),
-        StaggeredFadeIn(
-          index: 1,
-          child: Row(
-            children: [
-              _InfoPill(label: '${cars.length}', caption: 'xe phù hợp'),
-              const SizedBox(width: 10),
-              const _InfoPill(label: '4.8+', caption: 'đánh giá'),
-              const SizedBox(width: 10),
-              const _InfoPill(label: '24h', caption: 'hỗ trợ'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _CarSection(
-          index: 2,
-          title: 'Xe gần đây',
-          cars: nearbyCars,
-          isHorizontal: widget.nearbyIsHorizontal,
-          emptyTitle: 'Chưa có xe phù hợp',
-          emptyDescription:
-              'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem thêm xe.',
-          onReset: _resetFilter,
-          onSeeAll: () => _openAllCars(_nearbyCars, 'Xe gần đây'),
-        ),
-        const SizedBox(height: 20),
-        _CarSection(
-          index: 3,
-          title: 'Gợi ý cho bạn',
-          cars: suggestedCars,
-          isHorizontal: widget.suggestedIsHorizontal,
-          emptyTitle: 'Chưa có gợi ý phù hợp',
-          emptyDescription:
-              'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem gợi ý khác.',
-          onReset: _resetFilter,
-          onSeeAll: () => _openAllCars(_suggestedCars, 'Gợi ý cho bạn'),
-        ),
-      ],
+          return RefreshIndicator(
+            onRefresh: () async => context.read<HomeCubit>().fetchCars(),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+              children: [
+                StaggeredFadeIn(
+                  index: 0,
+                  child: _HeroCard(
+                    userName: _userName,
+                    subtitle: _heroSubtitle,
+                    searchPlaceholder: _filter.locationMode == LocationSearchMode.none
+                        ? 'Nhập tên tỉnh hoặc địa chỉ cụ thể'
+                        : _locationLabel,
+                    onSearchTap: _openSearch,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                StaggeredFadeIn(
+                  index: 1,
+                  child: Row(
+                    children: [
+                      _InfoPill(label: '${state.cars.length}', caption: 'xe phù hợp'),
+                      const SizedBox(width: 10),
+                      const _InfoPill(label: '4.8+', caption: 'đánh giá'),
+                      const SizedBox(width: 10),
+                      const _InfoPill(label: '24h', caption: 'hỗ trợ'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _CarSection(
+                  index: 2,
+                  title: 'Xe gần đây',
+                  cars: nearbyCars,
+                  isHorizontal: widget.nearbyIsHorizontal,
+                  emptyTitle: 'Chưa có xe phù hợp',
+                  emptyDescription: 'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem thêm xe.',
+                  onReset: _resetFilter,
+                  onSeeAll: () => _openAllCars(state.nearbyCars, 'Xe gần đây'),
+                ),
+                const SizedBox(height: 20),
+                _CarSection(
+                  index: 3,
+                  title: 'Gợi ý cho bạn',
+                  cars: suggestedCars,
+                  isHorizontal: widget.suggestedIsHorizontal,
+                  emptyTitle: 'Chưa có gợi ý phù hợp',
+                  emptyDescription: 'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem gợi ý khác.',
+                  onReset: _resetFilter,
+                  onSeeAll: () => _openAllCars(state.suggestedCars, 'Gợi ý cho bạn'),
+                ),
+              ],
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 }
 
+// ── Section tiêu đề + danh sách ──────────────────────────────────────────────
+
 class _CarSection extends StatelessWidget {
   final int index;
   final String title;
-  final List<Car> cars;
+  final List<CarEntity> cars;
   final bool isHorizontal;
   final String emptyTitle;
   final String emptyDescription;
@@ -215,7 +260,7 @@ class _CarSection extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: AppColors.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
@@ -229,30 +274,25 @@ class _CarSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 12),
-        if (cars.isEmpty)
-          StaggeredFadeIn(
-            index: index + 1,
-            child: _EmptyState(
-              title: emptyTitle,
-              description: emptyDescription,
-              onReset: onReset,
-            ),
-          )
-        else
-          StaggeredFadeIn(
-            index: index + 1,
-            child: isHorizontal
-                ? _HorizontalCars(cars: cars)
-                : _VerticalCars(cars: cars),
-          ),
+        StaggeredFadeIn(
+          index: index + 1,
+          child: cars.isEmpty
+              ? _EmptyState(
+                  title: emptyTitle,
+                  description: emptyDescription,
+                  onReset: onReset,
+                )
+              : isHorizontal
+                  ? _HorizontalCars(cars: cars)
+                  : _VerticalCars(cars: cars),
+        ),
       ],
     );
   }
 }
 
 class _HorizontalCars extends StatelessWidget {
-  final List<Car> cars;
-
+  final List<CarEntity> cars;
   const _HorizontalCars({required this.cars});
 
   @override
@@ -264,15 +304,14 @@ class _HorizontalCars extends StatelessWidget {
         itemCount: cars.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final car = cars[index];
           return CarCard(
-            car: car,
+            car: cars[index],
             width: 260,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Mở chi tiết ${car.name}')),
-              );
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CarDetailScreen(car: cars[index]),
+              ),
+            ),
           );
         },
       ),
@@ -281,8 +320,7 @@ class _HorizontalCars extends StatelessWidget {
 }
 
 class _VerticalCars extends StatelessWidget {
-  final List<Car> cars;
-
+  final List<CarEntity> cars;
   const _VerticalCars({required this.cars});
 
   @override
@@ -292,11 +330,11 @@ class _VerticalCars extends StatelessWidget {
         for (int i = 0; i < cars.length; i++) ...[
           CarCard(
             car: cars[i],
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Mở chi tiết ${cars[i].name}')),
-              );
-            },
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CarDetailScreen(car: cars[i]),
+              ),
+            ),
           ),
           if (i != cars.length - 1) const SizedBox(height: 12),
         ],
@@ -305,12 +343,16 @@ class _VerticalCars extends StatelessWidget {
   }
 }
 
+// ── Hero card (search bar + greeting) ────────────────────────────────────────
+
 class _HeroCard extends StatelessWidget {
+  final String userName;
   final String subtitle;
   final String searchPlaceholder;
   final VoidCallback onSearchTap;
 
   const _HeroCard({
+    required this.userName,
     required this.subtitle,
     required this.searchPlaceholder,
     required this.onSearchTap,
@@ -318,6 +360,7 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final greeting = userName.isNotEmpty ? 'Xin chào, $userName' : 'Xin chào!';
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -325,13 +368,13 @@ class _HeroCard extends StatelessWidget {
         gradient: LinearGradient(
           colors: [
             AppColors.primary,
-            AppColors.primary.withBlue(100),
-            AppColors.accent.withOpacity(0.94),
+            AppColors.primary.withValues(alpha: 0.85, red: 30),
+            AppColors.accent.withValues(alpha: 0.94),
           ],
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.22),
+            color: AppColors.primary.withValues(alpha: 0.22),
             blurRadius: 24,
             offset: const Offset(0, 14),
           ),
@@ -340,9 +383,9 @@ class _HeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Xin chào, Nguyễn Văn Sang',
-            style: TextStyle(
+          Text(
+            greeting,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 24,
               fontWeight: FontWeight.w800,
@@ -351,10 +394,7 @@ class _HeroCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.78),
-              height: 1.5,
-            ),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.78), height: 1.5),
           ),
           const SizedBox(height: 16),
           TapScale(
@@ -379,10 +419,7 @@ class _HeroCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.primary,
-                  ),
+                  const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
                 ],
               ),
             ),
@@ -392,6 +429,8 @@ class _HeroCard extends StatelessWidget {
     );
   }
 }
+
+// ── Info pills (4 xe / 4.8+ / 24h) ──────────────────────────────────────────
 
 class _InfoPill extends StatelessWidget {
   final String label;
@@ -407,10 +446,10 @@ class _InfoPill extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border.withOpacity(0.75)),
+          border: Border.all(color: AppColors.border.withValues(alpha: 0.75)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.04),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.04),
               blurRadius: 14,
               offset: const Offset(0, 8),
             ),
@@ -426,10 +465,7 @@ class _InfoPill extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               caption,
-              style: const TextStyle(
-                fontSize: 11.5,
-                color: AppColors.textSecondary,
-              ),
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -437,6 +473,8 @@ class _InfoPill extends StatelessWidget {
     );
   }
 }
+
+// ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   final String title;
@@ -462,21 +500,11 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.search_off_rounded,
-            color: AppColors.textMuted,
-            size: 30,
-          ),
+          const Icon(Icons.search_off_rounded, color: AppColors.textMuted, size: 30),
           const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
+          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
-          Text(
-            description,
-            style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
-          ),
+          Text(description, style: const TextStyle(color: AppColors.textSecondary, height: 1.5)),
           const SizedBox(height: 12),
           OutlinedButton(onPressed: onReset, child: const Text('Xoá bộ lọc')),
         ],
