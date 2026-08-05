@@ -134,12 +134,12 @@ class _ExpandedCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 8,
+                    spacing: 6,
                     runSpacing: 4,
                     children: [
-                      _SpecChip(icon: Icons.apartment_outlined, label: car.brand),
-                      _SpecChip(icon: Icons.directions_car_outlined, label: car.vehicleType),
-                      _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ'),
+                      _SpecChip(icon: Icons.apartment_outlined, label: car.brand, color: const Color(0xFF1B4F72)),
+                      _SpecChip(icon: Icons.directions_car_outlined, label: car.vehicleType, color: const Color(0xFF1E8E5A)),
+                      _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ', color: const Color(0xFFFF7A00)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -205,7 +205,7 @@ class _CompactCard extends StatelessWidget {
           child: _CarImage(car: car, height: 112),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -228,23 +228,23 @@ class _CompactCard extends StatelessWidget {
                   _RatingBadge(rating: car.rating),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 car.location.isNotEmpty ? car.location : car.province,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _SpecChip(icon: Icons.apartment_outlined, label: car.brand),
-                  _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ'),
+                  _SpecChip(icon: Icons.apartment_outlined, label: car.brand, color: const Color(0xFF1B4F72)),
+                  _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ', color: const Color(0xFFFF7A00)),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -454,27 +454,45 @@ class _RatingBadge extends StatelessWidget {
 class _SpecChip extends StatelessWidget {
   final IconData icon;
   final String label;
+  final Color? color;
 
-  const _SpecChip({required this.icon, required this.label});
+  const _SpecChip({
+    required this.icon,
+    required this.label,
+    this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final chipColor = color ?? AppColors.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.border.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(999),
+        color: chipColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: chipColor.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: AppColors.textSecondary),
-          const SizedBox(width: 3),
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: chipColor.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, size: 11, color: chipColor),
+          ),
+          const SizedBox(width: 5),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),

@@ -13,6 +13,7 @@ abstract class AppColors {
 
   /// Nền chính — nhựa đường lúc nửa đêm.
   static const Color asphalt = Color(0xFF12141C);
+  static const Color backgroundDark = Color(0xFF0F1115);
 
   /// Nền bề mặt (bottom sheet, card) — xanh navy đậm.
   static const Color surfaceNavy = Color(0xFF1B2030);
