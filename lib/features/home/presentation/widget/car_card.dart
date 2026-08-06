@@ -86,7 +86,8 @@ class _ExpandedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IntrinsicHeight(
+    return SizedBox(
+      height: 140,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
