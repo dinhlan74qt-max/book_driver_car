@@ -63,18 +63,12 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   void initState() {
     super.initState();
     _loadUserName();
-    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (mounted) setState(() {});
   }
 
   Future<void> _loadUserName() async {
@@ -134,26 +128,42 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF0E1118),
-            Color(0xFF151A24),
-            Color(0xFFF5F6F8),
-          ],
-          stops: [0.0, 0.45, 1.0],
-        ),
-      ),
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            Positioned(
-              top: -80,
-              right: -55,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Stack(
+        children: [
+          // ── Nền chuyển màu tối ưu với ListenableBuilder (Chỉ re-build duy nhất phần nền) ──
+          ListenableBuilder(
+            listenable: _scrollController,
+            builder: (context, _) {
+              final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+              final double progress = (offset / 200.0).clamp(0.0, 1.0);
+
+              final topColor = Color.lerp(const Color(0xFF0E1118), const Color(0xFF1B4F72), progress * 0.4)!;
+              final midColor = Color.lerp(const Color(0xFF151A24), const Color(0xFF2C3E50), progress * 0.3)!;
+
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      topColor,
+                      midColor,
+                      AppColors.background,
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Hiệu ứng Glow tĩnh
+          Positioned(
+            top: -80,
+            right: -55,
+            child: RepaintBoundary(
               child: _LuxuryGlow(
                 size: 220,
                 colors: [
@@ -162,9 +172,11 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                 ],
               ),
             ),
-            Positioned(
-              top: 150,
-              left: -70,
+          ),
+          Positioned(
+            top: 150,
+            left: -70,
+            child: RepaintBoundary(
               child: _LuxuryGlow(
                 size: 180,
                 colors: [
@@ -173,59 +185,63 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                 ],
               ),
             ),
-            BlocBuilder<HomeCubit, HomeState>(
-              builder: (context, state) {
-                if (state is HomeLoading || state is HomeInitial) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: AppColors.headlightAmber),
-                  );
-                }
-                if (state is HomeError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger),
-                          const SizedBox(height: 12),
-                          Text(
-                            state.message,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: AppColors.textSecondary),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => context.read<HomeCubit>().fetchCars(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.headlightAmber,
-                              foregroundColor: Colors.black,
-                            ),
-                            child: const Text('Thử lại'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-                if (state is HomeLoaded) {
-                  final nearbyCars = state.nearbyCars.take(5).toList();
-                  final suggestedCars = state.suggestedCars.take(5).toList();
+          ),
 
-                  final totalCars = state.cars.length;
-                  final avgRating = state.cars.isNotEmpty
-                      ? (state.cars.map((e) => e.rating).reduce((a, b) => a + b) / state.cars.length)
-                      : 4.8;
-                  final brandCount = state.cars.map((e) => e.brand).where((b) => b.isNotEmpty).toSet().length;
-
-                  return RefreshIndicator(
-                    onRefresh: () async => context.read<HomeCubit>().fetchCars(),
-                    color: AppColors.headlightAmber,
-                    child: ListView(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 44, 16, 24),
+          // ── Danh sách nội dung tĩnh không bị re-build khi cuộn ──
+          BlocBuilder<HomeCubit, HomeState>(
+            builder: (context, state) {
+              if (state is HomeLoading || state is HomeInitial) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.headlightAmber),
+                );
+              }
+              if (state is HomeError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        StaggeredFadeIn(
+                        const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger),
+                        const SizedBox(height: 12),
+                        Text(
+                          state.message,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => context.read<HomeCubit>().fetchCars(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.headlightAmber,
+                            foregroundColor: Colors.black,
+                          ),
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              if (state is HomeLoaded) {
+                final nearbyCars = state.nearbyCars.take(5).toList();
+                final suggestedCars = state.suggestedCars.take(5).toList();
+
+                final totalCars = state.cars.length;
+                final avgRating = state.cars.isNotEmpty
+                    ? (state.cars.map((e) => e.rating).reduce((a, b) => a + b) / state.cars.length)
+                    : 4.8;
+                final brandCount = state.cars.map((e) => e.brand).where((b) => b.isNotEmpty).toSet().length;
+
+                return RefreshIndicator(
+                  onRefresh: () async => context.read<HomeCubit>().fetchCars(),
+                  color: AppColors.headlightAmber,
+                  child: ListView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 44, 16, 24),
+                    children: [
+                      RepaintBoundary(
+                        child: StaggeredFadeIn(
                           index: 0,
                           child: HomeHeroCard(
                             userName: _userName,
@@ -236,8 +252,10 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                             onSearchTap: _openSearch,
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        StaggeredFadeIn(
+                      ),
+                      const SizedBox(height: 16),
+                      RepaintBoundary(
+                        child: StaggeredFadeIn(
                           index: 1,
                           child: Row(
                             children: [
@@ -252,8 +270,10 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 24),
-                        HomeCarSection(
+                      ),
+                      const SizedBox(height: 24),
+                      RepaintBoundary(
+                        child: HomeCarSection(
                           index: 2,
                           title: 'Xe gần đây',
                           cars: nearbyCars,
@@ -263,8 +283,10 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                           onReset: _resetFilter,
                           onSeeAll: () => _openAllCars(state.nearbyCars, 'Xe gần đây'),
                         ),
-                        const SizedBox(height: 24),
-                        HomeCarSection(
+                      ),
+                      const SizedBox(height: 24),
+                      RepaintBoundary(
+                        child: HomeCarSection(
                           index: 3,
                           title: 'Gợi ý cho bạn',
                           cars: suggestedCars,
@@ -274,15 +296,15 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                           onReset: _resetFilter,
                           onSeeAll: () => _openAllCars(state.suggestedCars, 'Gợi ý cho bạn'),
                         ),
-                      ],
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }

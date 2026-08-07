@@ -49,7 +49,7 @@ class _HomeCarSectionState extends State<HomeCarSection> {
     final darkBoundary = screenHeight * 0.45;
 
     final bool isDarkBackground = dy <= darkBoundary;
-    final titleColor = isDarkBackground ? AppColors.laneWhite : AppColors.textPrimary;
+    final titleColor = AppColors.headlightAmber;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
