@@ -1,14 +1,19 @@
-import 'package:book_drive_car/features/home/presentation/view/all_cars_screen.dart';
-import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
-import 'package:book_drive_car/features/home/presentation/widget/car_search_sheet.dart';
-import 'package:book_drive_car/shared/data/mock_data/mock_data.dart';
-import 'package:book_drive_car/shared/data/models/car_model.dart';
-import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
-import 'package:book_drive_car/shared/widget/tap_scale.dart';
+import 'package:book_drive_car/core/di/injection_container.dart';
+import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
+import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
+import 'package:book_drive_car/features/home/presentation/view/all_cars_screen.dart';
+import 'package:book_drive_car/features/home/presentation/widget/car_search_sheet.dart';
+import 'package:book_drive_car/features/home/presentation/widget/home_car_section.dart';
+import 'package:book_drive_car/features/home/presentation/widget/home_hero_card.dart';
+import 'package:book_drive_car/features/home/presentation/widget/home_info_pill.dart';
+import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   final bool nearbyIsHorizontal;
   final bool suggestedIsHorizontal;
 
@@ -19,68 +24,77 @@ class HomeScreen extends StatefulWidget {
   });
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<HomeCubit>()..fetchCars(),
+      child: _HomeScreenContent(
+        nearbyIsHorizontal: nearbyIsHorizontal,
+        suggestedIsHorizontal: suggestedIsHorizontal,
+      ),
+    );
+  }
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenContent extends StatefulWidget {
+  final bool nearbyIsHorizontal;
+  final bool suggestedIsHorizontal;
+
+  const _HomeScreenContent({
+    required this.nearbyIsHorizontal,
+    required this.suggestedIsHorizontal,
+  });
+
+  @override
+  State<_HomeScreenContent> createState() => _HomeScreenContentState();
+}
+
+class _HomeScreenContentState extends State<_HomeScreenContent> {
   static const _defaultProvince = 'Đà Nẵng';
+
+  String _userName = '';
+  final ScrollController _scrollController = ScrollController();
 
   CarSearchFilter _filter = const CarSearchFilter(
     locationMode: LocationSearchMode.province,
     locationLabel: _defaultProvince,
   );
 
-  List<Car> get _cars {
-    final label = _filter.locationLabel?.toLowerCase().trim();
-
-    final result = MockData.cars.where((car) {
-      final typeMatch =
-          _filter.vehicleType == null || car.vehicleType == _filter.vehicleType;
-      final brandMatch = _filter.brand == null || car.brand == _filter.brand;
-
-      bool locationMatch;
-      switch (_filter.locationMode) {
-        case LocationSearchMode.province:
-          // Lọc chính xác theo tỉnh/thành đã chọn
-          locationMatch = label == null || car.province.toLowerCase() == label;
-          break;
-        case LocationSearchMode.currentLocation:
-        case LocationSearchMode.address:
-          // Chưa có toạ độ chính xác của từng xe để lọc cứng theo bán kính,
-          // nên tạm không lọc theo tỉnh — sẽ sắp xếp theo khoảng cách bên dưới.
-          locationMatch = true;
-          break;
-        case LocationSearchMode.none:
-          locationMatch = true;
-          break;
-      }
-
-      return locationMatch && typeMatch && brandMatch;
-    }).toList();
-
-    return result;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
   }
 
-  List<Car> get _nearbyCars {
-    final result = List<Car>.from(_cars);
-    result.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
-    return result;
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
-  List<Car> get _suggestedCars {
-    final result = List<Car>.from(_cars);
-    result.sort((a, b) => b.rating.compareTo(a.rating));
-    return result;
+  Future<void> _loadUserName() async {
+    final user = await sl<UserLocalStorage>().getUser();
+    if (mounted && user != null) {
+      setState(() => _userName = user.fullname ?? '');
+    }
   }
 
   Future<void> _openSearch() async {
     final result = await CarSearchSheet.show(context, initialFilter: _filter);
     if (result != null) {
       setState(() => _filter = result);
+      if (!mounted) return;
+      context.read<HomeCubit>().searchCars(
+            locationMode: _filter.locationMode.toString(),
+            locationLabel: _filter.locationLabel,
+            latitude: _filter.latitude,
+            longitude: _filter.longitude,
+            vehicleType: _filter.vehicleType,
+            brand: _filter.brand,
+          );
     }
   }
 
-  void _openAllCars(List<Car> cars, String title) {
+  void _openAllCars(List<CarEntity> cars, String title) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AllCarsScreen(cars: cars, title: title),
@@ -95,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
         locationLabel: _defaultProvince,
       );
     });
+    context.read<HomeCubit>().fetchCars();
   }
 
   String get _locationLabel => _filter.locationLabel ?? _defaultProvince;
@@ -113,373 +128,205 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cars = _cars;
-    final nearbyCars = _nearbyCars.take(5).toList();
-    final suggestedCars = _suggestedCars.take(5).toList();
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-      children: [
-        StaggeredFadeIn(
-          index: 0,
-          child: _HeroCard(
-            subtitle: _heroSubtitle,
-            searchPlaceholder: _filter.locationMode == LocationSearchMode.none
-                ? 'Nhập tên tỉnh hoặc địa chỉ cụ thể'
-                : _locationLabel,
-            onSearchTap: _openSearch,
-          ),
-        ),
-        const SizedBox(height: 16),
-        StaggeredFadeIn(
-          index: 1,
-          child: Row(
-            children: [
-              _InfoPill(label: '${cars.length}', caption: 'xe phù hợp'),
-              const SizedBox(width: 10),
-              const _InfoPill(label: '4.8+', caption: 'đánh giá'),
-              const SizedBox(width: 10),
-              const _InfoPill(label: '24h', caption: 'hỗ trợ'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 20),
-        _CarSection(
-          index: 2,
-          title: 'Xe gần đây',
-          cars: nearbyCars,
-          isHorizontal: widget.nearbyIsHorizontal,
-          emptyTitle: 'Chưa có xe phù hợp',
-          emptyDescription:
-              'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem thêm xe.',
-          onReset: _resetFilter,
-          onSeeAll: () => _openAllCars(_nearbyCars, 'Xe gần đây'),
-        ),
-        const SizedBox(height: 20),
-        _CarSection(
-          index: 3,
-          title: 'Gợi ý cho bạn',
-          cars: suggestedCars,
-          isHorizontal: widget.suggestedIsHorizontal,
-          emptyTitle: 'Chưa có gợi ý phù hợp',
-          emptyDescription:
-              'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem gợi ý khác.',
-          onReset: _resetFilter,
-          onSeeAll: () => _openAllCars(_suggestedCars, 'Gợi ý cho bạn'),
-        ),
-      ],
-    );
-  }
-}
-
-class _CarSection extends StatelessWidget {
-  final int index;
-  final String title;
-  final List<Car> cars;
-  final bool isHorizontal;
-  final String emptyTitle;
-  final String emptyDescription;
-  final VoidCallback onReset;
-  final VoidCallback onSeeAll;
-
-  const _CarSection({
-    required this.index,
-    required this.title,
-    required this.cars,
-    required this.isHorizontal,
-    required this.emptyTitle,
-    required this.emptyDescription,
-    required this.onReset,
-    required this.onSeeAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        StaggeredFadeIn(
-          index: index,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              TapScale(
-                onTap: cars.isEmpty ? null : onSeeAll,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 18,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (cars.isEmpty)
-          StaggeredFadeIn(
-            index: index + 1,
-            child: _EmptyState(
-              title: emptyTitle,
-              description: emptyDescription,
-              onReset: onReset,
-            ),
-          )
-        else
-          StaggeredFadeIn(
-            index: index + 1,
-            child: isHorizontal
-                ? _HorizontalCars(cars: cars)
-                : _VerticalCars(cars: cars),
-          ),
-      ],
-    );
-  }
-}
-
-class _HorizontalCars extends StatelessWidget {
-  final List<Car> cars;
-
-  const _HorizontalCars({required this.cars});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 250,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cars.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final car = cars[index];
-          return CarCard(
-            car: car,
-            width: 260,
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Mở chi tiết ${car.name}')),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _VerticalCars extends StatelessWidget {
-  final List<Car> cars;
-
-  const _VerticalCars({required this.cars});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (int i = 0; i < cars.length; i++) ...[
-          CarCard(
-            car: cars[i],
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Mở chi tiết ${cars[i].name}')),
-              );
-            },
-          ),
-          if (i != cars.length - 1) const SizedBox(height: 12),
-        ],
-      ],
-    );
-  }
-}
-
-class _HeroCard extends StatelessWidget {
-  final String subtitle;
-  final String searchPlaceholder;
-  final VoidCallback onSearchTap;
-
-  const _HeroCard({
-    required this.subtitle,
-    required this.searchPlaceholder,
-    required this.onSearchTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withBlue(100),
-            AppColors.accent.withOpacity(0.94),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.22),
-            blurRadius: 24,
-            offset: const Offset(0, 14),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Stack(
         children: [
-          const Text(
-            'Xin chào, Nguyễn Văn Sang',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.78),
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TapScale(
-            onTap: onSearchTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.search_rounded, color: AppColors.textMuted),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      searchPlaceholder,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 13.5,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+          // ── Nền chuyển màu tối ưu với ListenableBuilder (Chỉ re-build duy nhất phần nền) ──
+          ListenableBuilder(
+            listenable: _scrollController,
+            builder: (context, _) {
+              final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+              final double progress = (offset / 200.0).clamp(0.0, 1.0);
+
+              final topColor = Color.lerp(const Color(0xFF0E1118), const Color(0xFF1B4F72), progress * 0.4)!;
+              final midColor = Color.lerp(const Color(0xFF151A24), const Color(0xFF2C3E50), progress * 0.3)!;
+
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      topColor,
+                      midColor,
+                      AppColors.background,
+                    ],
+                    stops: const [0.0, 0.45, 1.0],
                   ),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.primary,
-                  ),
+                ),
+              );
+            },
+          ),
+
+          // Hiệu ứng Glow tĩnh
+          Positioned(
+            top: -80,
+            right: -55,
+            child: RepaintBoundary(
+              child: _LuxuryGlow(
+                size: 220,
+                colors: [
+                  AppColors.headlightAmber.withValues(alpha: 0.22),
+                  AppColors.accent.withValues(alpha: 0.0),
                 ],
               ),
             ),
           ),
+          Positioned(
+            top: 150,
+            left: -70,
+            child: RepaintBoundary(
+              child: _LuxuryGlow(
+                size: 180,
+                colors: [
+                  AppColors.pageAccents[2].withValues(alpha: 0.15),
+                  AppColors.pageAccents[2].withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Danh sách nội dung tĩnh không bị re-build khi cuộn ──
+          BlocBuilder<HomeCubit, HomeState>(
+            builder: (context, state) {
+              if (state is HomeLoading || state is HomeInitial) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.headlightAmber),
+                );
+              }
+              if (state is HomeError) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.danger),
+                        const SizedBox(height: 12),
+                        Text(
+                          state.message,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () => context.read<HomeCubit>().fetchCars(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.headlightAmber,
+                            foregroundColor: Colors.black,
+                          ),
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              if (state is HomeLoaded) {
+                final nearbyCars = state.nearbyCars.take(5).toList();
+                final suggestedCars = state.suggestedCars.take(5).toList();
+
+                final totalCars = state.cars.length;
+                final avgRating = state.cars.isNotEmpty
+                    ? (state.cars.map((e) => e.rating).reduce((a, b) => a + b) / state.cars.length)
+                    : 4.8;
+                final brandCount = state.cars.map((e) => e.brand).where((b) => b.isNotEmpty).toSet().length;
+
+                return RefreshIndicator(
+                  onRefresh: () async => context.read<HomeCubit>().fetchCars(),
+                  color: AppColors.headlightAmber,
+                  child: ListView(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.fromLTRB(16, 44, 16, 24),
+                    children: [
+                      RepaintBoundary(
+                        child: StaggeredFadeIn(
+                          index: 0,
+                          child: HomeHeroCard(
+                            userName: _userName,
+                            subtitle: _heroSubtitle,
+                            searchPlaceholder: _filter.locationMode == LocationSearchMode.none
+                                ? 'Nhập tên tỉnh hoặc địa chỉ cụ thể'
+                                : _locationLabel,
+                            onSearchTap: _openSearch,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      RepaintBoundary(
+                        child: StaggeredFadeIn(
+                          index: 1,
+                          child: Row(
+                            children: [
+                              HomeInfoPill(label: '$totalCars', caption: 'xe phù hợp'),
+                              const SizedBox(width: 10),
+                              HomeInfoPill(label: '${avgRating.toStringAsFixed(1)}+', caption: 'đánh giá'),
+                              const SizedBox(width: 10),
+                              HomeInfoPill(
+                                label: brandCount > 0 ? '$brandCount+' : '24h',
+                                caption: brandCount > 0 ? 'hãng xe' : 'hỗ trợ',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      RepaintBoundary(
+                        child: HomeCarSection(
+                          index: 2,
+                          title: 'Xe gần đây',
+                          cars: nearbyCars,
+                          isHorizontal: widget.nearbyIsHorizontal,
+                          emptyTitle: 'Chưa có xe phù hợp',
+                          emptyDescription: 'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem thêm xe.',
+                          onReset: _resetFilter,
+                          onSeeAll: () => _openAllCars(state.nearbyCars, 'Xe gần đây'),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      RepaintBoundary(
+                        child: HomeCarSection(
+                          index: 3,
+                          title: 'Gợi ý cho bạn',
+                          cars: suggestedCars,
+                          isHorizontal: widget.suggestedIsHorizontal,
+                          emptyTitle: 'Chưa có gợi ý phù hợp',
+                          emptyDescription: 'Bạn hãy đổi vị trí hoặc xoá bộ lọc để xem gợi ý khác.',
+                          onReset: _resetFilter,
+                          onSeeAll: () => _openAllCars(state.suggestedCars, 'Gợi ý cho bạn'),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
     );
   }
 }
 
-class _InfoPill extends StatelessWidget {
-  final String label;
-  final String caption;
+class _LuxuryGlow extends StatelessWidget {
+  final double size;
+  final List<Color> colors;
 
-  const _InfoPill({required this.label, required this.caption});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: AppColors.border.withOpacity(0.75)),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withOpacity(0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              caption,
-              style: const TextStyle(
-                fontSize: 11.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  final String title;
-  final String description;
-  final VoidCallback onReset;
-
-  const _EmptyState({
-    required this.title,
-    required this.description,
-    required this.onReset,
+  const _LuxuryGlow({
+    required this.size,
+    required this.colors,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      width: size,
+      height: size,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(
-            Icons.search_off_rounded,
-            color: AppColors.textMuted,
-            size: 30,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            description,
-            style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton(onPressed: onReset, child: const Text('Xoá bộ lọc')),
-        ],
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: colors),
       ),
     );
   }

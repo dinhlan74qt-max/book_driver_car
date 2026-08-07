@@ -1,9 +1,11 @@
+import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:book_drive_car/features/home/presentation/view/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
-import 'package:book_drive_car/shared/data/models/car_model.dart';
 import 'package:flutter/material.dart';
 
+
 class AllCarsScreen extends StatelessWidget {
-  final List<Car> cars;
+  final List<CarEntity> cars;
   final String title;
 
   const AllCarsScreen({
@@ -28,11 +30,11 @@ class AllCarsScreen extends StatelessWidget {
                 final car = cars[index];
                 return CarCard(
                   car: car,
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Mở chi tiết ${car.name}')),
-                    );
-                  },
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => CarDetailScreen(car: car),
+                    ),
+                  ),
                 );
               },
             ),

@@ -1,4 +1,8 @@
 // lib/injection_container.dart
+import 'package:book_drive_car/features/home/data/datasources/home_remote_data_source.dart';
+import 'package:book_drive_car/features/home/data/repositories/home_repository_impl.dart';
+import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart';
+import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
 import 'package:book_drive_car/features/profile/data/datasources/vehicle_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/repositories/vehicle_repository_impl.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/vehicle_repository.dart';
@@ -60,11 +64,15 @@ Future<void> configureDependencies() async {
   }
 
   if (!sl.isRegistered<GetMyVehicles>()) {
-    sl.registerFactory<GetMyVehicles>(() => GetMyVehicles(sl<VehicleRepository>()));
+    sl.registerFactory<GetMyVehicles>(
+      () => GetMyVehicles(sl<VehicleRepository>()),
+    );
   }
 
   if (!sl.isRegistered<MyVehiclesBloc>()) {
-    sl.registerFactory<MyVehiclesBloc>(() => MyVehiclesBloc(sl<GetMyVehicles>()));
+    sl.registerFactory<MyVehiclesBloc>(
+      () => MyVehiclesBloc(sl<GetMyVehicles>()),
+    );
   }
 
   if (!sl.isRegistered<WalletRemoteDataSource>()) {
@@ -93,5 +101,21 @@ Future<void> configureDependencies() async {
 
   if (!sl.isRegistered<DepositBloc>()) {
     sl.registerFactory<DepositBloc>(() => DepositBloc(sl<Deposit>()));
+    // Home feature
+    if (!sl.isRegistered<HomeRemoteDataSource>()) {
+      sl.registerLazySingleton<HomeRemoteDataSource>(
+        () => HomeRemoteDataSourceImpl(sl<Dio>(), sl()),
+      );
+    }
+
+    if (!sl.isRegistered<HomeRepository>()) {
+      sl.registerLazySingleton<HomeRepository>(
+        () => HomeRepositoryImpl(sl<HomeRemoteDataSource>()),
+      );
+    }
+
+    if (!sl.isRegistered<HomeCubit>()) {
+      sl.registerFactory<HomeCubit>(() => HomeCubit(sl<HomeRepository>()));
+    }
   }
 }
