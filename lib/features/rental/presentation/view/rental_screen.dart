@@ -6,11 +6,11 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class BookingsScreen extends StatefulWidget {
-  const BookingsScreen({super.key});
+class RentalScreen extends StatefulWidget {
+  const RentalScreen({super.key});
 
   @override
-  State<BookingsScreen> createState() => _BookingsScreenState();
+  State<RentalScreen> createState() => _RentalScreenState();
 }
 
 class _FilterOption {
@@ -20,7 +20,7 @@ class _FilterOption {
   const _FilterOption(this.label, this.status);
 }
 
-class _BookingsScreenState extends State<BookingsScreen> {
+class _RentalScreenState extends State<RentalScreen> {
   BookingStatus? _selectedFilter;
 
   static const _filters = <_FilterOption>[

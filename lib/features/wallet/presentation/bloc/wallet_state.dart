@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../domain/entities/wallet_entity.dart';
+import '../../domain/entities/wallet_transaction_entity.dart';
 
 abstract class WalletState extends Equatable {
   const WalletState();
@@ -13,10 +14,12 @@ class WalletLoading extends WalletState {}
 
 class WalletLoaded extends WalletState {
   final WalletEntity wallet;
-  const WalletLoaded(this.wallet);
+  final List<WalletTransactionEntity> history;
+
+  const WalletLoaded(this.wallet, this.history);
 
   @override
-  List<Object?> get props => [wallet];
+  List<Object?> get props => [wallet, history];
 }
 
 class WalletFailure extends WalletState {

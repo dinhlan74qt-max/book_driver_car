@@ -10,8 +10,7 @@ import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dar
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_event.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_state.dart';
 import 'package:book_drive_car/features/wallet/presentation/view/wallet_deposit_qr_screen.dart';
-import 'package:book_drive_car/shared/data/mock_data/mock_data.dart';
-import 'package:book_drive_car/shared/data/models/wallet_transaction_model.dart';
+import 'package:book_drive_car/features/wallet/domain/entities/wallet_transaction_entity.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
@@ -30,7 +29,7 @@ class _WalletScreenState extends State<WalletScreen>
     with TickerProviderStateMixin {
   late final WalletBloc _walletBloc;
   late final DepositBloc _depositBloc;
-  late final List<WalletTransaction> _transactions;
+  List<WalletTransactionEntity> _transactions = const [];
 
   final TextEditingController _customAmountController = TextEditingController();
   final List<int> _quickAmounts = const [100000, 200000, 500000, 1000000];
@@ -50,7 +49,6 @@ class _WalletScreenState extends State<WalletScreen>
     super.initState();
     _walletBloc = sl<WalletBloc>();
     _depositBloc = sl<DepositBloc>();
-    _transactions = List.of(MockData.transactions.reversed);
     _panelController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -478,6 +476,7 @@ class _WalletScreenState extends State<WalletScreen>
             listener: (context, state) {
               if (state is WalletLoaded) {
                 _currentBalance = state.wallet.balance;
+                _transactions = state.history.reversed.toList();
                 _walletError = null;
                 if (_refreshCompleter != null &&
                     !(_refreshCompleter?.isCompleted ?? true)) {
@@ -643,27 +642,36 @@ class _WalletScreenState extends State<WalletScreen>
                         ),
                       ),
                       const SizedBox(height: 12),
-                      ..._transactions.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final tx = entry.value;
-                        final isPositive = tx.amount > 0;
+                      if (_transactions.isEmpty)
+                        const StaggeredFadeIn(
+                          index: 3,
+                          child: _EmptyTransactionState(),
+                        )
+                      else
+                        ..._transactions.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final tx = entry.value;
+                          final isPositive = tx.isCredit;
+                          final createdAtText = tx.createdAt == null
+                              ? 'Chưa có thời gian'
+                              : DateFormat(
+                                  'dd/MM/yyyy',
+                                ).format(tx.createdAt!);
 
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: StaggeredFadeIn(
-                            index: 3 + index,
-                            child: _TransactionCard(
-                              title: tx.title,
-                              dateText: DateFormat(
-                                'dd/MM/yyyy',
-                              ).format(tx.createdAt),
-                              amountText:
-                                  '${isPositive ? '+' : ''}${priceFormat.format(tx.amount)}đ',
-                              isPositive: isPositive,
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: StaggeredFadeIn(
+                              index: 3 + index,
+                              child: _TransactionCard(
+                                title: tx.description,
+                                dateText: createdAtText,
+                                amountText:
+                                    '${isPositive ? '+' : '-'}${priceFormat.format(tx.amount.abs())}đ',
+                                isPositive: isPositive,
+                              ),
                             ),
-                          ),
-                        );
-                      }),
+                          );
+                        }),
                     ],
                   );
                 },
@@ -1106,6 +1114,51 @@ class _TransactionCard extends StatelessWidget {
   }
 }
 
+class _EmptyTransactionState extends StatelessWidget {
+  const _EmptyTransactionState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border.withOpacity(0.75)),
+      ),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.receipt_long_rounded,
+            color: AppColors.textSecondary,
+            size: 30,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Chưa có lịch sử giao dịch',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Khi có nạp tiền hoặc thanh toán, dữ liệu sẽ hiển thị ở đây.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12.5,
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TopupPanel extends StatelessWidget {
   final List<int> quickAmounts;
   final int? selectedAmount;
@@ -1224,3 +1277,5 @@ class _TopupPanel extends StatelessWidget {
     );
   }
 }
+
+

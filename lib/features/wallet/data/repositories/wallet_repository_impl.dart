@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import '../../domain/entities/wallet_entity.dart';
 import '../../domain/entities/deposit_result_entity.dart';
+import '../../domain/entities/wallet_transaction_entity.dart';
 import '../../domain/repositories/wallet_repository.dart';
 import '../datasources/wallet_remote_data_source.dart';
 
@@ -17,5 +18,10 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<DepositResultEntity> deposit(int amount) async {
     return await remoteDataSource.deposit(amount);
+  }
+
+  @override
+  Future<List<WalletTransactionEntity>> getMyWalletHistory() async {
+    return await remoteDataSource.getMyWalletHistory();
   }
 }

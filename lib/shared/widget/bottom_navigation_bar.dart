@@ -1,4 +1,4 @@
-import 'package:book_drive_car/features/booking/presentation/view/booking_screen.dart';
+import 'package:book_drive_car/features/rental/presentation/view/rental_screen.dart';
 import 'package:book_drive_car/features/home/presentation/view/home_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/profile_screen.dart';
 import 'package:book_drive_car/features/wallet/presentation/view/wallet_screen.dart';
@@ -17,7 +17,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   final List<Widget> _screens = const [
     HomeScreen(),
-    BookingsScreen(),
+    RentalScreen(),
     WalletScreen(),
     ProfileScreen(),
   ];
@@ -38,10 +38,7 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
+        child: IndexedStack(index: _currentIndex, children: _screens),
       ),
       bottomNavigationBar: _ModernBottomBar(
         tabs: _tabs,
@@ -76,7 +73,9 @@ class _ModernBottomBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.95),
-        border: const Border(top: BorderSide(color: AppColors.border, width: 0.6)),
+        border: const Border(
+          top: BorderSide(color: AppColors.border, width: 0.6),
+        ),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF0F172A).withOpacity(0.06),
