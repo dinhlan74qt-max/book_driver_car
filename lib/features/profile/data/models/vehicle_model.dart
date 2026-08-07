@@ -25,26 +25,26 @@ class VehicleModel extends VehicleEntity {
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
     return VehicleModel(
-      id: json['id'],
-      vehicleName: json['vehicleName'],
-      vehicleType: json['vehicleType'],
-      brand: json['brand'],
-      model: json['model'],
-      year: json['year'],
-      color: json['color'],
-      licensePlate: json['licensePlate'],
-      vehicleRegistration: json['vehicleRegistration'] ?? '', // thêm mới
-      seatCount: json['seatCount'],
-      fuelType: json['fuelType'],
-      transmission: json['transmission'] ?? '',
-      pricePerDay: (json['pricePerDay'] as num).toDouble(),
-      status: json['status'],
-      description: json['description'],
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      vehicleName: json['vehicleName'] ?? '',
+      vehicleType: json['vehicleType'] ?? '',
+      brand: json['brand'] ?? '',
+      model: json['model'] ?? '',
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      color: json['color'] ?? '',
+      licensePlate: json['licensePlate'] ?? '',
+      vehicleRegistration: json['vehicleRegistration'] ?? '',
+      seatCount: (json['seatCount'] as num?)?.toInt() ?? 0,
+      fuelType: json['fuelType'] ?? '',
+      transmission: json['transmission'] ?? 'Tự động',
+      pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
+      status: json['status'] ?? 'AVAILABLE',
+      description: json['description'] ?? '',
       imageUrls: (json['imageUrls'] as List<dynamic>? ?? [])
-          .map((e) => e as String)
+          .map((e) => e.toString())
           .toList(),
       address: json['address'] != null
-          ? AddressModel.fromJson(json['address'])
+          ? AddressModel.fromJson(json['address'] as Map<String, dynamic>)
           : AddressModel(addressDetail: '', ward: '', district: '', city: ''),
     );
   }

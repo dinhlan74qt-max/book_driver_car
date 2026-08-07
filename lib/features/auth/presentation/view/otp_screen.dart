@@ -1,5 +1,6 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/features/auth/domain/repositories/auth_repository.dart';
+import 'package:book_drive_car/features/auth/presentation/view/login_screen.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/bottom_navigation_bar.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
@@ -74,11 +75,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
       if (!mounted) return;
 
-      AppToast.show(
-        context,
-        message: message,
-        type: AppToastType.success,
-      );
+      AppToast.show(context, message: message, type: AppToastType.success);
 
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
@@ -86,7 +83,7 @@ class _OtpScreenState extends State<OtpScreen> {
       Navigator.of(context).pushAndRemoveUntil(
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 450),
-          pageBuilder: (_, animation, __) => const MainNavigation(),
+          pageBuilder: (_, animation, __) => const LoginScreen(),
           transitionsBuilder: (_, animation, __, child) {
             return FadeTransition(opacity: animation, child: child);
           },
@@ -224,7 +221,9 @@ class _OtpScreenState extends State<OtpScreen> {
                         : () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Chức năng gửi lại OTP sẽ thêm sau'),
+                                content: Text(
+                                  'Chức năng gửi lại OTP sẽ thêm sau',
+                                ),
                               ),
                             );
                           },

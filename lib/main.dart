@@ -3,9 +3,10 @@ import 'package:book_drive_car/shared/constants/app_keys.dart';
 import 'package:book_drive_car/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'core/di/injection_container.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-   await configureDependencies();
+  await configureDependencies();
   runApp(const MyApp());
 }
 

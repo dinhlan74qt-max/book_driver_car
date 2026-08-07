@@ -38,24 +38,9 @@ class _MainNavigationState extends State<MainNavigation> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          transitionBuilder: (child, animation) {
-            final slideIn = Tween<Offset>(
-              begin: const Offset(0.04, 0),
-              end: Offset.zero,
-            ).animate(animation);
-            return FadeTransition(
-              opacity: animation,
-              child: SlideTransition(position: slideIn, child: child),
-            );
-          },
-          child: KeyedSubtree(
-            key: ValueKey<int>(_currentIndex),
-            child: _screens[_currentIndex],
-          ),
+        child: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
         ),
       ),
       bottomNavigationBar: _ModernBottomBar(

@@ -468,7 +468,9 @@ class VehicleRegistrationSubmittingOverlay extends StatelessWidget {
           const ModalBarrier(dismissible: false, color: Colors.black26),
           Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              width: 72,
+              height: 72,
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
@@ -480,29 +482,7 @@ class VehicleRegistrationSubmittingOverlay extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 28,
-                    height: 28,
-                    child: CircularProgressIndicator(strokeWidth: 2.6),
-                  ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Đang gửi dữ liệu lên server...',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Vui lòng chờ trong giây lát',
-                    style: TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 12.5,
-                    ),
-                  ),
-                ],
-              ),
+              child: const CircularProgressIndicator(strokeWidth: 2.6),
             ),
           ),
         ],
