@@ -5,11 +5,13 @@ import 'package:injectable/injectable.dart';
 
 import '../../../../core/storage/user_local_storage.dart';
 import '../models/deposit_result_model.dart';
+import '../models/wallet_history_model.dart';
 import '../models/wallet_model.dart';
 
 abstract class WalletRemoteDataSource {
   Future<WalletModel> getMyWallet();
   Future<DepositResultModel> deposit(int amount);
+  Future<List<WalletHistoryModel>> getMyWalletHistory();
 }
 
 @LazySingleton(as: WalletRemoteDataSource)
@@ -126,6 +128,58 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
       rethrow;
     } catch (e) {
       debugPrint('[WalletRemoteDataSource][deposit] Error: $e');
+      rethrow;
+    }
+  }
+
+  @override
+  Future<List<WalletHistoryModel>> getMyWalletHistory() async {
+    try {
+      final response = await dio.get(
+        '${ApiConstants.myWallet}/history',
+        options: await _authOptions(),
+      );
+
+      final data = response.data;
+      if (response.statusCode == 200) {
+        final rawList = data is Map<String, dynamic> ? data['data'] : null;
+        if (rawList is List) {
+          return rawList
+              .whereType<Map>()
+              .map(
+                (item) => WalletHistoryModel.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
+              )
+              .toList();
+        }
+        return [];
+      }
+
+      final message = _extractErrorMessage(
+        data,
+        fallback: 'Không thể tải lịch sử giao dịch',
+      );
+      debugPrint(
+        '[WalletRemoteDataSource][getMyWalletHistory] HTTP ${response.statusCode}: $message',
+      );
+      debugPrint(
+        '[WalletRemoteDataSource][getMyWalletHistory] response.data = $data',
+      );
+      throw Exception(message);
+    } on DioException catch (e) {
+      debugPrint(
+        '[WalletRemoteDataSource][getMyWalletHistory] DioException: ${e.message}',
+      );
+      debugPrint(
+        '[WalletRemoteDataSource][getMyWalletHistory] statusCode = ${e.response?.statusCode}',
+      );
+      debugPrint(
+        '[WalletRemoteDataSource][getMyWalletHistory] response.data = ${e.response?.data}',
+      );
+      rethrow;
+    } catch (e) {
+      debugPrint('[WalletRemoteDataSource][getMyWalletHistory] Error: $e');
       rethrow;
     }
   }

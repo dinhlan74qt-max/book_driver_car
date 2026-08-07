@@ -1,5 +1,6 @@
 // lib/injection_container.dart
 import 'package:book_drive_car/features/home/data/datasources/home_remote_data_source.dart';
+import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/data/repositories/home_repository_impl.dart';
 import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
@@ -21,7 +22,6 @@ import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dar
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
-import 'injectable_modules.dart';
 
 import 'injection_container.config.dart';
 
@@ -29,7 +29,7 @@ final sl = GetIt.instance;
 
 @InjectableInit()
 Future<void> configureDependencies() async {
-  await sl.init();
+  sl.init();
   if (!sl.isRegistered<Dio>()) {
     sl.registerLazySingleton<Dio>(
       () => Dio(
@@ -46,6 +46,12 @@ Future<void> configureDependencies() async {
   if (!sl.isRegistered<VehicleRemoteDataSource>()) {
     sl.registerLazySingleton<VehicleRemoteDataSource>(
       () => VehicleRemoteDataSourceImpl(sl<Dio>(), sl()),
+    );
+  }
+
+  if (!sl.isRegistered<BookingRemoteDataSource>()) {
+    sl.registerLazySingleton<BookingRemoteDataSource>(
+      () => BookingRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
     );
   }
 
@@ -96,7 +102,7 @@ Future<void> configureDependencies() async {
   }
 
   if (!sl.isRegistered<WalletBloc>()) {
-    sl.registerFactory<WalletBloc>(() => WalletBloc(sl<GetMyWallet>()));
+    sl.registerFactory<WalletBloc>(() => WalletBloc(sl<WalletRepository>()));
   }
 
   if (!sl.isRegistered<DepositBloc>()) {

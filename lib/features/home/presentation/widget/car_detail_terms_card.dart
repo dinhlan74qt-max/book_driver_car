@@ -18,13 +18,13 @@ class CarDetailTermsCard extends StatelessWidget {
           _TermRow(
             icon: Icons.badge_outlined,
             title: 'Giấy tờ bắt buộc',
-            desc: 'GPLX (hạng B2 trở lên) + CCCD gắn chip đối chiếu khi nhận xe.',
+            desc: 'GPLX + CCCD gắn chip đối chiếu khi nhận xe.',
           ),
           Divider(height: 20, color: AppColors.border),
           _TermRow(
             icon: Icons.account_balance_wallet_outlined,
-            title: 'Tài sản thế chấp',
-            desc: '15.000.000đ tiền mặt hoặc Xe máy chính chủ kèm cavet xe.',
+            title: 'Thanh toán tiền tại app',
+            desc: 'Vui lòng nạp tiền và thanh toán chuyến đi ngay tại app.',
           ),
           Divider(height: 20, color: AppColors.border),
           _TermRow(
@@ -43,11 +43,7 @@ class _TermRow extends StatelessWidget {
   final String title;
   final String desc;
 
-  const _TermRow({
-    required this.icon,
-    required this.title,
-    required this.desc,
-  });
+  const _TermRow({required this.icon, required this.title, required this.desc});
 
   @override
   Widget build(BuildContext context) {
