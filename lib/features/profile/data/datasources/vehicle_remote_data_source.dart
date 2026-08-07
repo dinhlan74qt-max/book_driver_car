@@ -6,10 +6,13 @@ import 'package:book_drive_car/features/profile/data/models/vehicle_model.dart';
 import 'package:book_drive_car/features/profile/domain/entities/add_vehicle_request_entity.dart';
 import 'package:book_drive_car/shared/constants/api_constants.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:injectable/injectable.dart';
 
 abstract class VehicleRemoteDataSource {
   Future<VehicleModel> addVehicle(AddVehicleRequestEntity request);
+  Future<List<VehicleModel>> getMyVehicles();
 }
 
 @LazySingleton(as: VehicleRemoteDataSource)
@@ -23,17 +26,86 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
     return path.split(RegExp(r'[\\/]+')).last;
   }
 
-  String _extractErrorMessage(dynamic data, {String fallback = 'Thêm xe thất bại'}) {
-    if (data is Map<String, dynamic>) {
-      final message = data['message'] ?? data['error'] ?? data['detail'];
-      if (message is String && message.trim().isNotEmpty) {
-        return message;
+  MediaType _contentTypeOf(String path) {
+    final lowerPath = path.toLowerCase();
+    if (lowerPath.endsWith('.png')) {
+      return MediaType('image', 'png');
+    }
+    if (lowerPath.endsWith('.webp')) {
+      return MediaType('image', 'webp');
+    }
+    if (lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) {
+      return MediaType('image', 'jpeg');
+    }
+    if (lowerPath.endsWith('.pdf')) {
+      return MediaType('application', 'pdf');
+    }
+    return MediaType('application', 'octet-stream');
+  }
+
+  String _extractErrorMessage(
+    dynamic data, {
+    String fallback = 'Thêm xe thất bại',
+  }) {
+    if (data == null) {
+      return fallback;
+    }
+
+    if (data is String) {
+      return data.trim().isNotEmpty ? data.trim() : fallback;
+    }
+
+    if (data is List) {
+      final messages = data
+          .map((item) => _extractErrorMessage(item, fallback: ''))
+          .where((message) => message.trim().isNotEmpty)
+          .toList();
+      return messages.isNotEmpty ? messages.join('\n') : fallback;
+    }
+
+    if (data is Map) {
+      final map = data.map((key, value) => MapEntry(key.toString(), value));
+
+      for (final key in const [
+        'message',
+        'mesaage',
+        'error',
+        'errors',
+        'detail',
+        'description',
+      ]) {
+        final message = _extractErrorMessage(map[key], fallback: '');
+        if (message.trim().isNotEmpty) {
+          return message;
+        }
       }
-    } else if (data is String && data.trim().isNotEmpty) {
-      return data;
+
+      final nestedData = map['data'];
+      final nestedMessage = _extractErrorMessage(nestedData, fallback: '');
+      if (nestedMessage.trim().isNotEmpty) {
+        return nestedMessage;
+      }
+
+      for (final value in map.values) {
+        if (value is Map || value is List) {
+          final message = _extractErrorMessage(value, fallback: '');
+          if (message.trim().isNotEmpty) {
+            return message;
+          }
+        }
+      }
     }
 
     return fallback;
+  }
+
+  Future<Options> _authOptions() async {
+    final authHeader = await userLocalStorage.getAuthHeader();
+    print(authHeader);
+    return Options(
+      headers: {if (authHeader != null) 'Authorization': authHeader},
+      validateStatus: (_) => true,
+    );
   }
 
   @override
@@ -62,13 +134,22 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
     };
 
     final formData = FormData();
-    formData.fields.add(MapEntry('vehicle', jsonEncode(vehicleJson)));
+    formData.files.add(
+      MapEntry(
+        'vehicle',
+        MultipartFile.fromString(
+          jsonEncode(vehicleJson),
+          contentType: MediaType('application', 'json'),
+        ),
+      ),
+    );
     formData.files.add(
       MapEntry(
         'vehicleRegistration',
         await MultipartFile.fromFile(
           request.vehicleRegistration.path,
           filename: _fileNameOf(request.vehicleRegistration.path),
+          contentType: _contentTypeOf(request.vehicleRegistration.path),
         ),
       ),
     );
@@ -80,27 +161,27 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
           await MultipartFile.fromFile(
             file.path,
             filename: _fileNameOf(file.path),
+            contentType: _contentTypeOf(file.path),
           ),
         ),
       );
     }
 
-    final authHeader = await userLocalStorage.getAuthHeader();
-
     try {
       final response = await dio.post(
         ApiConstants.vehicles,
         data: formData,
-        options: Options(
-          headers: {
-            if (authHeader != null) 'Authorization': authHeader,
-          },
-          validateStatus: (_) => true,
-        ),
+        options: await _authOptions(),
       );
 
       final data = response.data;
-      final responseMessage = _extractErrorMessage(data);
+      final bodyStatus = data is Map<String, dynamic> ? data['status'] : null;
+      final bodyMessage = data is Map<String, dynamic> ? data['message'] : null;
+      final bodyData = data is Map<String, dynamic> ? data['data'] : null;
+
+      debugPrint(
+        '[VehicleRemoteDataSource][addVehicle] HTTP ${response.statusCode} body.status=$bodyStatus body.message=$bodyMessage body.data=$bodyData',
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         if (data is Map<String, dynamic>) {
@@ -112,7 +193,58 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
         throw Exception('Dữ liệu xe từ server không hợp lệ');
       }
 
-      throw Exception(responseMessage);
+      throw Exception(_extractErrorMessage(data));
+    } on DioException catch (error) {
+      final responseData = error.response?.data;
+      final bodyStatus = responseData is Map<String, dynamic>
+          ? responseData['status']
+          : null;
+      final bodyMessage = responseData is Map<String, dynamic>
+          ? responseData['message']
+          : null;
+      final bodyData = responseData is Map<String, dynamic>
+          ? responseData['data']
+          : null;
+
+      debugPrint(
+        '[VehicleRemoteDataSource][addVehicle] DioException HTTP ${error.response?.statusCode} body.status=$bodyStatus body.message=$bodyMessage body.data=$bodyData',
+      );
+
+      throw Exception(
+        _extractErrorMessage(
+          responseData,
+          fallback: error.message ?? 'Không thể kết nối đến server',
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<List<VehicleModel>> getMyVehicles() async {
+    try {
+      final response = await dio.get(
+        ApiConstants.myVehicles,
+        options: await _authOptions(),
+      );
+
+      final data = response.data;
+      if (response.statusCode == 200) {
+        final rawVehicles = data is Map<String, dynamic> ? data['data'] : null;
+        if (rawVehicles is List) {
+          return rawVehicles
+              .whereType<Map<String, dynamic>>()
+              .map(VehicleModel.fromJson)
+              .toList();
+        }
+        if (rawVehicles is Map<String, dynamic>) {
+          return [VehicleModel.fromJson(rawVehicles)];
+        }
+        return [];
+      }
+
+      throw Exception(
+        _extractErrorMessage(data, fallback: 'Lấy danh sách xe thất bại'),
+      );
     } on DioException catch (error) {
       final responseData = error.response?.data;
       throw Exception(

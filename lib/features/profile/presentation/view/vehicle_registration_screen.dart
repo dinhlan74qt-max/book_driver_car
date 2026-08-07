@@ -800,6 +800,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
       final request = await _buildAddVehicleRequest();
       _addVehicleBloc.add(AddVehicleSubmitted(request));
     } catch (e) {
+      debugPrint('VehicleRegistrationScreen _submitVehicle error: $e');
       if (!mounted) return;
       AppToast.show(context, message: e.toString(), type: AppToastType.error);
     }
@@ -1099,6 +1100,9 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
               Navigator.of(context).pop(state.vehicle);
             }
           } else if (state is AddVehicleFailure) {
+            debugPrint(
+              'VehicleRegistrationScreen AddVehicleFailure: ${state.error}',
+            );
             AppToast.show(
               context,
               message: state.error,

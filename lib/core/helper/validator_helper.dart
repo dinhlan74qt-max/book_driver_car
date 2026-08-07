@@ -8,6 +8,8 @@ class ValidatorHelper {
   }
 
   static bool validateLicensePlate(String value) {
-    return RegExp(r'^\d{2}[A-Z]{1,2}-?\d{3}\.?\d{2}$').hasMatch(value);
+    return RegExp(
+      r'^\d{2}[A-Z]{1,2}\d?[- ]?(\d{3}\.?\d{2}|\d{5})$',
+    ).hasMatch(value.toUpperCase());
   }
 }

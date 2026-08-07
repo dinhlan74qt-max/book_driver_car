@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../domain/usecases/add_vehicle.dart';
@@ -21,7 +22,9 @@ class AddVehicleBloc extends Bloc<AddVehicleEvent, AddVehicleState> {
       final vehicle = await addVehicleUseCase(event.request);
       emit(AddVehicleSuccess(vehicle));
     } catch (e) {
-      emit(AddVehicleFailure(e.toString().replaceFirst("Exception: ", "")));
+      final errorMessage = e.toString().replaceFirst("Exception: ", "");
+      debugPrint('AddVehicleBloc error: $errorMessage');
+      emit(AddVehicleFailure(errorMessage));
     }
   }
 }

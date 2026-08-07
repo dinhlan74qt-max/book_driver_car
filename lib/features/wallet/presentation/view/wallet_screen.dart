@@ -1,11 +1,23 @@
+import 'dart:async';
+
+import 'package:book_drive_car/core/di/injection_container.dart';
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/features/wallet/domain/entities/deposit_result_entity.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_bloc.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_event.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_state.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_event.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_state.dart';
+import 'package:book_drive_car/features/wallet/presentation/view/wallet_deposit_qr_screen.dart';
 import 'package:book_drive_car/shared/data/mock_data/mock_data.dart';
 import 'package:book_drive_car/shared/data/models/wallet_transaction_model.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
-import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
@@ -14,44 +26,54 @@ class WalletScreen extends StatefulWidget {
   State<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _WalletScreenState extends State<WalletScreen> with TickerProviderStateMixin {
-  int _balance = MockData.initialWalletBalance;
-  late List<WalletTransaction> _transactions;
+class _WalletScreenState extends State<WalletScreen>
+    with TickerProviderStateMixin {
+  late final WalletBloc _walletBloc;
+  late final DepositBloc _depositBloc;
+  late final List<WalletTransaction> _transactions;
 
-  bool _panelOpen = false;
-  int? _selectedAmount;
   final TextEditingController _customAmountController = TextEditingController();
+  final List<int> _quickAmounts = const [100000, 200000, 500000, 1000000];
 
   late final AnimationController _panelController;
-  late final AnimationController _successController;
-  bool _showSuccess = false;
-  int _lastTopupAmount = 0;
 
-  final List<int> _quickAmounts = const [100000, 200000, 500000, 1000000];
+  bool _panelOpen = false;
+  bool _isFormattingDepositAmount = false;
+  int? _selectedAmount;
+  int? _lastSubmittedAmount;
+  int? _currentBalance;
+  String? _walletError;
+  Completer<void>? _refreshCompleter;
 
   @override
   void initState() {
     super.initState();
+    _walletBloc = sl<WalletBloc>();
+    _depositBloc = sl<DepositBloc>();
     _transactions = List.of(MockData.transactions.reversed);
     _panelController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    _successController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 380),
-    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _walletBloc.add(const WalletRequested());
+      }
+    });
   }
 
   @override
   void dispose() {
     _panelController.dispose();
-    _successController.dispose();
     _customAmountController.dispose();
+    _walletBloc.close();
+    _depositBloc.close();
     super.dispose();
   }
 
   void _togglePanel() {
+    if (_depositBloc.state is DepositLoading) return;
     setState(() => _panelOpen = !_panelOpen);
     if (_panelOpen) {
       _panelController.forward();
@@ -61,70 +83,272 @@ class _WalletScreenState extends State<WalletScreen> with TickerProviderStateMix
   }
 
   void _selectQuickAmount(int amount) {
+    final formatted = NumberFormat.decimalPattern('vi_VN').format(amount);
     setState(() {
       _selectedAmount = amount;
-      _customAmountController.clear();
     });
+    _isFormattingDepositAmount = true;
+    _customAmountController.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+    _isFormattingDepositAmount = false;
   }
 
-  Future<void> _confirmTopup() async {
-    final amount = _selectedAmount ?? int.tryParse(_customAmountController.text) ?? 0;
-    if (amount <= 0) return;
+  void _onCustomAmountChanged(String value) {
+    if (_isFormattingDepositAmount) return;
 
-    setState(() {
-      _showSuccess = true;
-      _lastTopupAmount = amount;
-    });
-    _successController.forward(from: 0);
+    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) {
+      if (_selectedAmount != null) {
+        setState(() => _selectedAmount = null);
+      }
+      return;
+    }
 
-    await Future.delayed(const Duration(milliseconds: 1100));
-    if (!mounted) return;
+    final parsedAmount = int.tryParse(digitsOnly);
+    final formatted = NumberFormat.decimalPattern(
+      'vi_VN',
+    ).format(parsedAmount ?? 0);
 
-    setState(() {
-      _balance += amount;
-      _transactions.insert(
-        0,
-        WalletTransaction(
-          id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
-          title: 'Nạp tiền qua VNPay',
-          amount: amount,
-          type: TxType.topup,
-          createdAt: DateTime.now(),
-        ),
+    if (formatted != value) {
+      _isFormattingDepositAmount = true;
+      _customAmountController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
       );
-      _showSuccess = false;
-      _panelOpen = false;
-      _selectedAmount = null;
-      _customAmountController.clear();
-    });
-    _panelController.reverse();
+      _isFormattingDepositAmount = false;
+    }
+
+    final matchedQuickAmount = _quickAmounts.contains(parsedAmount)
+        ? parsedAmount
+        : null;
+    if (_selectedAmount != matchedQuickAmount) {
+      setState(() => _selectedAmount = matchedQuickAmount);
+    }
   }
 
-  Future<void> _openWithdrawSheet() async {
-    final amountController = TextEditingController();
+  void _refreshWallet() {
+    _walletBloc.add(const WalletRequested());
+  }
+
+  Future<void> _showWithdrawSheetV2() async {
+    final rootContext = context;
     final bankController = TextEditingController();
-    final accountController = TextEditingController();
+    final accountNumberController = TextEditingController();
+    final accountNameController = TextEditingController();
+    final amountController = TextEditingController();
+    bool isFormattingAmount = false;
+
+    void formatAmountField() {
+      if (isFormattingAmount) return;
+
+      final digitsOnly = amountController.text.replaceAll(
+        RegExp(r'[^0-9]'),
+        '',
+      );
+      if (digitsOnly.isEmpty) return;
+
+      final formatted = NumberFormat.decimalPattern(
+        'vi_VN',
+      ).format(int.parse(digitsOnly));
+      if (formatted == amountController.text) return;
+
+      isFormattingAmount = true;
+      amountController.value = TextEditingValue(
+        text: formatted,
+        selection: TextSelection.collapsed(offset: formatted.length),
+      );
+      isFormattingAmount = false;
+    }
+
+    amountController.addListener(formatAmountField);
+
+    await showModalBottomSheet<void>(
+      context: rootContext,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: false,
+      requestFocus: false,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            ),
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+              child: FractionallySizedBox(
+                heightFactor: 0.84,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                  ),
+                  child: ListView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 46,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const Text(
+                        'Rút tiền',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Điền thông tin ngân hàng và số tiền muốn rút.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: bankController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Tên ngân hàng',
+                          hintText: 'Ví dụ: Vietcombank',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: accountNumberController,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Số tài khoản',
+                          hintText: 'Nhập số tài khoản',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: accountNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Tên chủ tài khoản',
+                          hintText: 'Nhập họ và tên',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: amountController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Số tiền muốn rút',
+                          hintText: 'Ví dụ: 500.000',
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            final bankName = bankController.text.trim();
+                            final accountNumber = accountNumberController.text
+                                .trim();
+                            final accountName = accountNameController.text
+                                .trim();
+                            final amount =
+                                int.tryParse(
+                                  amountController.text.replaceAll(
+                                    RegExp(r'[^0-9]'),
+                                    '',
+                                  ),
+                                ) ??
+                                0;
+
+                            if (bankName.isEmpty ||
+                                accountNumber.isEmpty ||
+                                accountName.isEmpty ||
+                                amount <= 0) {
+                              ScaffoldMessenger.of(rootContext).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Vui lòng nhập đầy đủ thông tin rút tiền.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
+
+                            Navigator.of(sheetContext).pop();
+                            ScaffoldMessenger.of(rootContext).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Đã gửi yêu cầu rút ${NumberFormat.decimalPattern('vi_VN').format(amount)} đ đến $bankName.',
+                                ),
+                              ),
+                            );
+                          },
+                          child: const Text('Xác nhận rút tiền'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    amountController.removeListener(formatAmountField);
+    bankController.dispose();
+    accountNumberController.dispose();
+    accountNameController.dispose();
+    amountController.dispose();
+  }
+
+  Future<void> _showWithdrawSheet() async {
+    final amountController = TextEditingController();
 
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
-          child: DraggableScrollableSheet(
-            initialChildSize: 0.72,
-            minChildSize: 0.5,
-            maxChildSize: 0.9,
-            builder: (context, controller) {
-              return Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        return DraggableScrollableSheet(
+          initialChildSize: 0.42,
+          minChildSize: 0.34,
+          maxChildSize: 0.7,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  14,
+                  20,
+                  20 + MediaQuery.of(context).viewInsets.bottom,
                 ),
-                child: ListView(
-                  controller: controller,
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Center(
                       child: Container(
@@ -137,226 +361,317 @@ class _WalletScreenState extends State<WalletScreen> with TickerProviderStateMix
                       ),
                     ),
                     const SizedBox(height: 18),
-                    const Text('Rút tiền', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
                     const Text(
-                      'Nhập số tiền và thông tin ngân hàng để tạo yêu cầu rút tiền.',
-                      style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+                      'Rút tiền',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Nhập số tiền muốn rút từ ví. Màn hình này đang ở dạng giao diện, bạn có thể nối API rút tiền sau.',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
                     ),
                     const SizedBox(height: 18),
-                    const Text('Số tiền', style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
                     TextField(
                       controller: amountController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: 'Nhập số tiền muốn rút'),
+                      decoration: const InputDecoration(
+                        labelText: 'Số tiền muốn rút',
+                        hintText: 'Ví dụ: 500000',
+                      ),
                     ),
-                    const SizedBox(height: 14),
-                    const Text('Tên ngân hàng', style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: bankController,
-                      decoration: const InputDecoration(hintText: 'Ví dụ: Vietcombank'),
-                    ),
-                    const SizedBox(height: 14),
-                    const Text('Số tài khoản', style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: accountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(hintText: 'Nhập số tài khoản'),
-                    ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () {
-                          final amount = int.tryParse(amountController.text.trim()) ?? 0;
-                          if (amount <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
-                            );
-                            return;
-                          }
-                          if (amount > _balance) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Số dư không đủ để rút')),
-                            );
-                            return;
-                          }
-
                           Navigator.of(context).pop();
-                          setState(() {
-                            _balance -= amount;
-                            _transactions.insert(
-                              0,
-                              WalletTransaction(
-                                id: 'wd_${DateTime.now().millisecondsSinceEpoch}',
-                                title: 'Rút tiền về ${bankController.text.trim().isEmpty ? 'ngân hàng' : bankController.text.trim()}',
-                                amount: -amount,
-                                type: TxType.payment,
-                                createdAt: DateTime.now(),
-                              ),
-                            );
-                          });
                           ScaffoldMessenger.of(this.context).showSnackBar(
-                            const SnackBar(content: Text('Đã tạo yêu cầu rút tiền')),
+                            const SnackBar(
+                              content: Text(
+                                'Tính năng rút tiền sẽ được kết nối sau.',
+                              ),
+                            ),
                           );
                         },
-                        child: const Text('Tạo yêu cầu rút tiền'),
+                        child: const Text('Xác nhận rút tiền'),
                       ),
                     ),
                   ],
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         );
       },
     );
 
     amountController.dispose();
-    bankController.dispose();
-    accountController.dispose();
+  }
+
+  Future<void> _handlePullToRefresh() {
+    final completer = Completer<void>();
+    _refreshCompleter = completer;
+    _refreshWallet();
+    return completer.future;
+  }
+
+  void _confirmTopup() {
+    if (_depositBloc.state is DepositLoading) return;
+
+    final rawAmountText = _customAmountController.text.trim();
+    final parsedCustomAmount = int.tryParse(
+      rawAmountText.replaceAll(RegExp(r'[^0-9]'), ''),
+    );
+    final amount = _selectedAmount ?? parsedCustomAmount ?? 0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập số tiền hợp lệ')),
+      );
+      return;
+    }
+
+    _lastSubmittedAmount = amount;
+    _depositBloc.add(DepositSubmitted(amount));
+  }
+
+  Future<void> _openDepositQr(DepositResultEntity result) async {
+    final amount = _lastSubmittedAmount ?? 0;
+    setState(() {
+      _panelOpen = false;
+      _selectedAmount = null;
+      _customAmountController.clear();
+    });
+    _panelController.reverse();
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WalletDepositQrScreen(
+          amount: amount,
+          qrCodeUrl: result.qrCodeUrl,
+          transactionCode: result.transactionCode,
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    _refreshWallet();
   }
 
   @override
   Widget build(BuildContext context) {
     final priceFormat = NumberFormat.decimalPattern('vi_VN');
-    return Stack(
-      children: [
-        Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0E1118),
-                Color(0xFF151A24),
-                Color(0xFFF5F6F8),
-              ],
-              stops: [0.0, 0.34, 1.0],
-            ),
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _walletBloc),
+        BlocProvider.value(value: _depositBloc),
+      ],
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<WalletBloc, WalletState>(
+            listener: (context, state) {
+              if (state is WalletLoaded) {
+                _currentBalance = state.wallet.balance;
+                _walletError = null;
+                if (_refreshCompleter != null &&
+                    !(_refreshCompleter?.isCompleted ?? true)) {
+                  _refreshCompleter?.complete();
+                }
+              }
+
+              if (state is WalletFailure) {
+                _walletError = state.error;
+                if (_refreshCompleter != null &&
+                    !(_refreshCompleter?.isCompleted ?? true)) {
+                  _refreshCompleter?.complete();
+                }
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.error)));
+              }
+            },
           ),
-        ),
-        Positioned(
-          top: -80,
-          right: -55,
-          child: _LuxuryGlow(
-            size: 220,
-            colors: [
-              AppColors.headlightAmber.withOpacity(0.22),
-              AppColors.accent.withOpacity(0.0),
-            ],
+          BlocListener<DepositBloc, DepositState>(
+            listener: (context, state) async {
+              if (state is DepositSuccess) {
+                await _openDepositQr(state.result);
+              }
+
+              if (state is DepositFailure) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text(state.error)));
+              }
+            },
           ),
-        ),
-        Positioned(
-          top: 150,
-          left: -70,
-          child: _LuxuryGlow(
-            size: 180,
-            colors: [
-              AppColors.pageAccents[2].withOpacity(0.15),
-              AppColors.pageAccents[2].withOpacity(0.0),
-            ],
-          ),
-        ),
-        ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+        ],
+        child: Stack(
           children: [
-            StaggeredFadeIn(
-              index: 0,
-              child: _WalletHeroCard(
-                balance: _balance,
-                transactionCount: _transactions.length,
-                priceFormat: priceFormat,
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0E1118),
+                    Color(0xFF151A24),
+                    Color(0xFFF5F6F8),
+                  ],
+                  stops: [0.0, 0.34, 1.0],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            StaggeredFadeIn(
-              index: 1,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _WalletActionTile(
-                      title: 'Nạp tiền',
-                      subtitle: 'Chọn mệnh giá nhanh hoặc nhập số tiền.',
-                      icon: Icons.add_card_rounded,
-                      accent: AppColors.headlightAmber,
-                      onTap: _togglePanel,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _WalletActionTile(
-                      title: 'Rút tiền',
-                      subtitle: 'Tạo yêu cầu rút về tài khoản ngân hàng.',
-                      icon: Icons.payments_rounded,
-                      accent: AppColors.pageAccents[2],
-                      onTap: _openWithdrawSheet,
-                    ),
-                  ),
+            Positioned(
+              top: -80,
+              right: -55,
+              child: _LuxuryGlow(
+                size: 220,
+                colors: [
+                  AppColors.headlightAmber.withOpacity(0.22),
+                  AppColors.accent.withOpacity(0.0),
                 ],
               ),
             ),
-            SizeTransition(
-              sizeFactor: CurvedAnimation(
-                parent: _panelController,
-                curve: Curves.easeInOutCubic,
-              ),
-              axisAlignment: -1,
-              child: FadeTransition(
-                opacity: _panelController,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: _TopupPanel(
-                    quickAmounts: _quickAmounts,
-                    selectedAmount: _selectedAmount,
-                    controller: _customAmountController,
-                    onSelectAmount: _selectQuickAmount,
-                    onCustomChanged: (val) => setState(() {
-                      _selectedAmount = null;
-                    }),
-                    onConfirm: _confirmTopup,
-                  ),
-                ),
+            Positioned(
+              top: 150,
+              left: -70,
+              child: _LuxuryGlow(
+                size: 180,
+                colors: [
+                  AppColors.pageAccents[2].withOpacity(0.15),
+                  AppColors.pageAccents[2].withOpacity(0.0),
+                ],
               ),
             ),
-            const SizedBox(height: 18),
-            StaggeredFadeIn(
-              index: 2,
-              child: _SectionHeader(
-                title: 'Lịch sử giao dịch',
-                action: 'Mới nhất',
+            RefreshIndicator(
+              color: AppColors.headlightAmber,
+              onRefresh: _handlePullToRefresh,
+              child: BlocBuilder<WalletBloc, WalletState>(
+                builder: (context, state) {
+                  final bool isInitialLoading =
+                      state is WalletLoading && _currentBalance == null;
+                  final bool isRefreshing =
+                      state is WalletLoading && _currentBalance != null;
+                  final int displayBalance = _currentBalance ?? 0;
+
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                    children: [
+                      if (isRefreshing) ...[
+                        const SizedBox(height: 2),
+                        const ClipRRect(
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          child: LinearProgressIndicator(minHeight: 2.5),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      StaggeredFadeIn(
+                        index: 0,
+                        child: _WalletHeroCard(
+                          balance: displayBalance,
+                          isLoading: isInitialLoading,
+                          hasError:
+                              _walletError != null && _currentBalance == null,
+                          errorText: _walletError,
+                          priceFormat: priceFormat,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      StaggeredFadeIn(
+                        index: 1,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _WalletActionTile(
+                                title: 'Nạp tiền',
+                                subtitle:
+                                    'Chọn số tiền rồi mở mã QR từ server.',
+                                icon: Icons.qr_code_2_rounded,
+                                accent: AppColors.headlightAmber,
+                                onTap: _togglePanel,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _WalletActionTile(
+                                title: 'Rút tiền',
+                                subtitle:
+                                    'Rút tiền từ số dư khả dụng trong ví.',
+                                icon: Icons.payments_outlined,
+                                accent: AppColors.pageAccents[2],
+                                onTap: _showWithdrawSheetV2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizeTransition(
+                        sizeFactor: CurvedAnimation(
+                          parent: _panelController,
+                          curve: Curves.easeInOutCubic,
+                        ),
+                        axisAlignment: -1,
+                        child: FadeTransition(
+                          opacity: _panelController,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: _TopupPanel(
+                              quickAmounts: _quickAmounts,
+                              selectedAmount: _selectedAmount,
+                              controller: _customAmountController,
+                              isLoading: _depositBloc.state is DepositLoading,
+                              onSelectAmount: _selectQuickAmount,
+                              onCustomChanged: _onCustomAmountChanged,
+                              onConfirm: _confirmTopup,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      StaggeredFadeIn(
+                        index: 2,
+                        child: const _SectionHeader(
+                          title: 'Lịch sử giao dịch',
+                          action: 'Mới nhất',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ..._transactions.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final tx = entry.value;
+                        final isPositive = tx.amount > 0;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: StaggeredFadeIn(
+                            index: 3 + index,
+                            child: _TransactionCard(
+                              title: tx.title,
+                              dateText: DateFormat(
+                                'dd/MM/yyyy',
+                              ).format(tx.createdAt),
+                              amountText:
+                                  '${isPositive ? '+' : ''}${priceFormat.format(tx.amount)}đ',
+                              isPositive: isPositive,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  );
+                },
               ),
             ),
-            const SizedBox(height: 12),
-            ..._transactions.asMap().entries.map((entry) {
-              final index = entry.key;
-              final tx = entry.value;
-              final isPositive = tx.amount > 0;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: StaggeredFadeIn(
-                  index: 3 + index,
-                  child: _TransactionCard(
-                    title: tx.title,
-                    dateText: DateFormat('dd/MM/yyyy').format(tx.createdAt),
-                    amountText:
-                        '${isPositive ? '+' : ''}${priceFormat.format(tx.amount)}đ',
-                    isPositive: isPositive,
-                  ),
-                ),
-              );
-            }),
           ],
         ),
-        if (_showSuccess)
-          _SuccessOverlay(
-            controller: _successController,
-            amount: _lastTopupAmount,
-          ),
-      ],
+      ),
     );
   }
 }
@@ -365,10 +680,7 @@ class _LuxuryGlow extends StatelessWidget {
   final double size;
   final List<Color> colors;
 
-  const _LuxuryGlow({
-    required this.size,
-    required this.colors,
-  });
+  const _LuxuryGlow({required this.size, required this.colors});
 
   @override
   Widget build(BuildContext context) {
@@ -385,12 +697,16 @@ class _LuxuryGlow extends StatelessWidget {
 
 class _WalletHeroCard extends StatelessWidget {
   final int balance;
-  final int transactionCount;
+  final bool isLoading;
+  final bool hasError;
+  final String? errorText;
   final NumberFormat priceFormat;
 
   const _WalletHeroCard({
     required this.balance,
-    required this.transactionCount,
+    required this.isLoading,
+    required this.hasError,
+    required this.errorText,
     required this.priceFormat,
   });
 
@@ -403,11 +719,7 @@ class _WalletHeroCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF11161F),
-            Color(0xFF1A2230),
-            Color(0xFF0F1722),
-          ],
+          colors: [Color(0xFF11161F), Color(0xFF1A2230), Color(0xFF0F1722)],
         ),
         border: Border.all(color: Colors.white.withOpacity(0.08)),
         boxShadow: [
@@ -460,7 +772,7 @@ class _WalletHeroCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  _HeroBadge(
+                  const _HeroBadge(
                     icon: Icons.workspace_premium_rounded,
                     label: 'Premium Wallet',
                   ),
@@ -478,7 +790,7 @@ class _WalletHeroCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Quản lý số dư, nạp tiền và giao dịch theo một giao diện sang hơn, rõ ràng hơn.',
+                'Số dư được tải từ server khi mở ví. Kéo xuống để refresh nhanh ngay trên đầu trang.',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.72),
                   height: 1.5,
@@ -489,15 +801,21 @@ class _WalletHeroCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _HeroStat(
-                      label: 'Số dư hiện tại',
-                      value: '${priceFormat.format(balance)}đ',
+                      label: hasError
+                          ? 'Không tải được số dư'
+                          : 'Số dư hiện tại',
+                      value: isLoading
+                          ? 'Đang tải...'
+                          : hasError
+                          ? (errorText ?? 'Vui lòng thử lại')
+                          : '${priceFormat.format(balance)}đ',
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _HeroStat(
-                      label: 'Giao dịch',
-                      value: transactionCount.toString(),
+                      label: 'Trạng thái',
+                      value: isLoading ? 'Đang đồng bộ' : 'Sẵn sàng',
                     ),
                   ),
                 ],
@@ -514,10 +832,7 @@ class _HeroBadge extends StatelessWidget {
   final IconData icon;
   final String label;
 
-  const _HeroBadge({
-    required this.icon,
-    required this.label,
-  });
+  const _HeroBadge({required this.icon, required this.label});
 
   @override
   Widget build(BuildContext context) {
@@ -551,10 +866,7 @@ class _HeroStat extends StatelessWidget {
   final String label;
   final String value;
 
-  const _HeroStat({
-    required this.label,
-    required this.value,
-  });
+  const _HeroStat({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -578,11 +890,11 @@ class _HeroStat extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 17,
+              fontSize: 16,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
             ),
@@ -635,10 +947,7 @@ class _WalletActionTile extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
                 gradient: LinearGradient(
-                  colors: [
-                    accent.withOpacity(0.16),
-                    accent.withOpacity(0.06),
-                  ],
+                  colors: [accent.withOpacity(0.16), accent.withOpacity(0.06)],
                 ),
               ),
               child: Icon(icon, color: accent),
@@ -672,10 +981,7 @@ class _SectionHeader extends StatelessWidget {
   final String title;
   final String action;
 
-  const _SectionHeader({
-    required this.title,
-    required this.action,
-  });
+  const _SectionHeader({required this.title, required this.action});
 
   @override
   Widget build(BuildContext context) {
@@ -804,6 +1110,7 @@ class _TopupPanel extends StatelessWidget {
   final List<int> quickAmounts;
   final int? selectedAmount;
   final TextEditingController controller;
+  final bool isLoading;
   final ValueChanged<int> onSelectAmount;
   final ValueChanged<String> onCustomChanged;
   final VoidCallback onConfirm;
@@ -812,6 +1119,7 @@ class _TopupPanel extends StatelessWidget {
     required this.quickAmounts,
     required this.selectedAmount,
     required this.controller,
+    required this.isLoading,
     required this.onSelectAmount,
     required this.onCustomChanged,
     required this.onConfirm,
@@ -853,7 +1161,7 @@ class _TopupPanel extends StatelessWidget {
             children: quickAmounts.map((amount) {
               final isSelected = selectedAmount == amount;
               return TapScale(
-                onTap: () => onSelectAmount(amount),
+                onTap: isLoading ? null : () => onSelectAmount(amount),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 180),
                   decoration: BoxDecoration(
@@ -871,7 +1179,9 @@ class _TopupPanel extends StatelessWidget {
                     '${priceFormat.format(amount)}đ',
                     style: TextStyle(
                       fontSize: 13.5,
-                      color: isSelected ? AppColors.accent : AppColors.textPrimary,
+                      color: isSelected
+                          ? AppColors.accent
+                          : AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -887,70 +1197,29 @@ class _TopupPanel extends StatelessWidget {
           const SizedBox(height: 8),
           TextField(
             controller: controller,
+            enabled: !isLoading,
             keyboardType: TextInputType.number,
             onChanged: onCustomChanged,
-            decoration: const InputDecoration(
-              hintText: 'Nhập số tiền',
-            ),
+            decoration: const InputDecoration(hintText: 'Nhập số tiền'),
           ),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: onConfirm,
-              child: const Text('Xác nhận nạp tiền'),
+              onPressed: isLoading ? null : onConfirm,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Xác nhận nạp tiền'),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SuccessOverlay extends StatelessWidget {
-  final AnimationController controller;
-  final int amount;
-
-  const _SuccessOverlay({required this.controller, required this.amount});
-
-  @override
-  Widget build(BuildContext context) {
-    final priceFormat = NumberFormat.decimalPattern('vi_VN');
-    return Positioned.fill(
-      child: FadeTransition(
-        opacity: controller,
-        child: Container(
-          color: Colors.white.withOpacity(0.94),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ScaleTransition(
-                  scale: CurvedAnimation(parent: controller, curve: Curves.elasticOut),
-                  child: Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_rounded, color: AppColors.success, size: 36),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  'Nạp tiền thành công',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '+${priceFormat.format(amount)}đ vào ví',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
