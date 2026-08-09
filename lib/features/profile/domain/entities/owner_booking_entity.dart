@@ -1,4 +1,4 @@
-import 'booking_status.dart';
+import 'owner_booking_status.dart';
 
 class OwnerBookingEntity {
   final String id;

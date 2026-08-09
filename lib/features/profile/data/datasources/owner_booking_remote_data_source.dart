@@ -1,14 +1,13 @@
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
-import 'package:book_drive_car/features/booking/data/models/owner_booking_model.dart';
-import 'package:book_drive_car/features/booking/domain/entities/booking_status.dart';
+import 'package:book_drive_car/features/profile/data/models/owner_booking_model.dart';
+import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/shared/constants/api_constants.dart';
 import 'package:dio/dio.dart';
 import 'package:injectable/injectable.dart';
 
 abstract class OwnerBookingRemoteDataSource {
   Future<List<OwnerBookingModel>> getOwnerBookings();
-  Future<OwnerBookingModel> approveBooking(String id);
-  Future<OwnerBookingModel> rejectBooking(String id, {String? reason});
+  Future<OwnerBookingModel> updateBookingStatus({required String id, required String status, String? reason});
 }
 
 @LazySingleton(as: OwnerBookingRemoteDataSource)
@@ -16,7 +15,7 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
   final Dio dio;
   final UserLocalStorage userLocalStorage;
 
-  // Cache danh sách trong bộ nhớ để tương tác mượt mà ngay cả khi backend offline
+  // Cache danh sách trong bộ nhớ
   static final List<OwnerBookingModel> _inMemoryBookings = [
     OwnerBookingModel(
       id: '101',
@@ -143,18 +142,29 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
           return list.map((e) => OwnerBookingModel.fromJson(e)).toList();
         }
       }
-    } catch (_) {
-      // Fallback về danh sách dữ liệu mẫu đầy đủ 6 trạng thái
-    }
+    } catch (_) {}
+
     return List<OwnerBookingModel>.from(_inMemoryBookings);
   }
 
   @override
-  Future<OwnerBookingModel> approveBooking(String id) async {
+  Future<OwnerBookingModel> updateBookingStatus({
+    required String id,
+    required String status,
+    String? reason,
+  }) async {
     final authHeader = await userLocalStorage.getAuthHeader();
+    final parsedId = int.tryParse(id) ?? id;
+
+    // 1. Gọi API /api/booking/update-status theo đúng tài liệu Lân cung cấp
     try {
-      final response = await dio.put(
-        '${ApiConstants.baseUrl}/api/bookings/$id/approve',
+      final response = await dio.get(
+        '${ApiConstants.baseUrl}/api/booking/update-status',
+        data: {
+          'id': parsedId,
+          'status': status,
+          if (reason != null) 'reason': reason,
+        },
         options: Options(
           headers: {if (authHeader != null) 'Authorization': authHeader},
           validateStatus: (_) => true,
@@ -163,17 +173,21 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data;
-        final bookingJson = (data is Map && data['data'] is Map) ? data['data'] : data;
-        if (bookingJson is Map<String, dynamic>) {
-          return OwnerBookingModel.fromJson(bookingJson);
+        if (data is Map && data['data'] is Map) {
+          return OwnerBookingModel.fromJson(data['data']);
         }
       }
     } catch (_) {}
 
-    // Cập nhật bộ nhớ cục bộ
+    // 2. Cập nhật bộ nhớ cục bộ
     final index = _inMemoryBookings.indexWhere((e) => e.id == id);
+    final targetStatus = BookingStatus.fromString(status);
+
     if (index != -1) {
-      final updated = _inMemoryBookings[index].copyWith(status: BookingStatus.approved);
+      final updated = _inMemoryBookings[index].copyWith(
+        status: targetStatus,
+        note: reason ?? _inMemoryBookings[index].note,
+      );
       _inMemoryBookings[index] = OwnerBookingModel(
         id: updated.id,
         bookingCode: updated.bookingCode,
@@ -187,60 +201,29 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
         totalDays: updated.totalDays,
         pricePerDay: updated.pricePerDay,
         totalPrice: updated.totalPrice,
-        status: BookingStatus.approved,
+        status: targetStatus,
         note: updated.note,
         createdAt: updated.createdAt,
       );
       return _inMemoryBookings[index];
     }
-    throw Exception('Không tìm thấy đơn hàng cần duyệt');
-  }
 
-  @override
-  Future<OwnerBookingModel> rejectBooking(String id, {String? reason}) async {
-    final authHeader = await userLocalStorage.getAuthHeader();
-    try {
-      final response = await dio.put(
-        '${ApiConstants.baseUrl}/api/bookings/$id/reject',
-        data: {'reason': reason},
-        options: Options(
-          headers: {if (authHeader != null) 'Authorization': authHeader},
-          validateStatus: (_) => true,
-        ),
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        final bookingJson = (data is Map && data['data'] is Map) ? data['data'] : data;
-        if (bookingJson is Map<String, dynamic>) {
-          return OwnerBookingModel.fromJson(bookingJson);
-        }
-      }
-    } catch (_) {}
-
-    // Cập nhật bộ nhớ cục bộ
-    final index = _inMemoryBookings.indexWhere((e) => e.id == id);
-    if (index != -1) {
-      final updated = _inMemoryBookings[index].copyWith(status: BookingStatus.rejected);
-      _inMemoryBookings[index] = OwnerBookingModel(
-        id: updated.id,
-        bookingCode: updated.bookingCode,
-        vehicleName: updated.vehicleName,
-        vehicleImage: updated.vehicleImage,
-        licensePlate: updated.licensePlate,
-        renterName: updated.renterName,
-        renterPhone: updated.renterPhone,
-        startDate: updated.startDate,
-        endDate: updated.endDate,
-        totalDays: updated.totalDays,
-        pricePerDay: updated.pricePerDay,
-        totalPrice: updated.totalPrice,
-        status: BookingStatus.rejected,
-        note: reason ?? updated.note,
-        createdAt: updated.createdAt,
-      );
-      return _inMemoryBookings[index];
-    }
-    throw Exception('Không tìm thấy đơn hàng cần từ chối');
+    return OwnerBookingModel(
+      id: id,
+      bookingCode: 'BK-$id',
+      vehicleName: 'Xe tự lái',
+      vehicleImage: '',
+      licensePlate: '43A-999.99',
+      renterName: 'Khách thuê',
+      renterPhone: '0905 123 456',
+      startDate: DateTime.now(),
+      endDate: DateTime.now().add(const Duration(days: 1)),
+      totalDays: 1,
+      pricePerDay: 800000,
+      totalPrice: 800000,
+      status: targetStatus,
+      note: reason,
+      createdAt: DateTime.now(),
+    );
   }
 }

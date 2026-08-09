@@ -1,7 +1,6 @@
-import 'package:book_drive_car/features/booking/domain/entities/booking_status.dart';
-import 'package:book_drive_car/features/booking/domain/entities/owner_booking_entity.dart';
-import 'package:book_drive_car/features/booking/domain/repositories/owner_booking_repository.dart';
-import 'package:book_drive_car/features/booking/presentation/bloc/owner_booking_state.dart';
+import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart';
+import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
@@ -30,7 +29,7 @@ class OwnerBookingCubit extends Cubit<OwnerBookingState> {
 
   Future<bool> approveBooking(String id) async {
     try {
-      final updated = await repository.approveBooking(id);
+      final updated = await repository.updateBookingStatus(id: id, status: 'APPROVED');
       if (state is OwnerBookingLoaded) {
         final current = state as OwnerBookingLoaded;
         final updatedList = current.allBookings.map((e) => e.id == id ? updated : e).toList();
@@ -44,7 +43,7 @@ class OwnerBookingCubit extends Cubit<OwnerBookingState> {
 
   Future<bool> rejectBooking(String id, {String? reason}) async {
     try {
-      final updated = await repository.rejectBooking(id, reason: reason);
+      final updated = await repository.updateBookingStatus(id: id, status: 'REJECTED', reason: reason);
       if (state is OwnerBookingLoaded) {
         final current = state as OwnerBookingLoaded;
         final updatedList = current.allBookings.map((e) => e.id == id ? updated : e).toList();

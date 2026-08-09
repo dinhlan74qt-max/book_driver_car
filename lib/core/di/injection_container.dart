@@ -1,8 +1,8 @@
 // lib/injection_container.dart
-import 'package:book_drive_car/features/booking/data/datasources/owner_booking_remote_data_source.dart';
-import 'package:book_drive_car/features/booking/data/repositories/owner_booking_repository_impl.dart';
-import 'package:book_drive_car/features/booking/domain/repositories/owner_booking_repository.dart';
-import 'package:book_drive_car/features/booking/presentation/bloc/owner_booking_cubit.dart';
+import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart';
+import 'package:book_drive_car/features/profile/data/repositories/owner_booking_repository_impl.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart';
+import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
 import 'package:book_drive_car/features/home/data/datasources/home_remote_data_source.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/data/repositories/home_repository_impl.dart';

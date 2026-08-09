@@ -1,5 +1,5 @@
-import 'package:book_drive_car/features/booking/domain/entities/booking_status.dart';
-import 'package:book_drive_car/features/booking/domain/entities/owner_booking_entity.dart';
+import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
+import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:equatable/equatable.dart';
 
 abstract class OwnerBookingState extends Equatable {
@@ -15,7 +15,7 @@ class OwnerBookingLoading extends OwnerBookingState {}
 
 class OwnerBookingLoaded extends OwnerBookingState {
   final List<OwnerBookingEntity> allBookings;
-  final BookingStatus? filterStatus; // null = Tất cả
+  final BookingStatus? filterStatus;
 
   const OwnerBookingLoaded({
     required this.allBookings,

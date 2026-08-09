@@ -1,10 +1,10 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
-import 'package:book_drive_car/features/booking/domain/entities/booking_status.dart';
-import 'package:book_drive_car/features/booking/domain/entities/owner_booking_entity.dart';
-import 'package:book_drive_car/features/booking/presentation/bloc/owner_booking_cubit.dart';
-import 'package:book_drive_car/features/booking/presentation/bloc/owner_booking_state.dart';
+import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
+import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
+import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
+import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_state.dart';
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking_detail_screen.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
