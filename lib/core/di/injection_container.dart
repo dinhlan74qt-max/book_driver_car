@@ -8,6 +8,10 @@ import 'package:book_drive_car/features/home/data/datasources/booking_remote_dat
 import 'package:book_drive_car/features/home/data/repositories/home_repository_impl.dart';
 import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
+import 'package:book_drive_car/features/rental/data/datasources/rental_remote_data_source.dart';
+import 'package:book_drive_car/features/rental/data/repositories/rental_repository_impl.dart';
+import 'package:book_drive_car/features/rental/domain/repositories/rental_repository.dart';
+import 'package:book_drive_car/features/rental/domain/usecases/get_renter_bookings.dart';
 import 'package:book_drive_car/features/profile/data/datasources/vehicle_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/repositories/vehicle_repository_impl.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/vehicle_repository.dart';
@@ -111,22 +115,42 @@ Future<void> configureDependencies() async {
 
   if (!sl.isRegistered<DepositBloc>()) {
     sl.registerFactory<DepositBloc>(() => DepositBloc(sl<Deposit>()));
-    // Home feature
-    if (!sl.isRegistered<HomeRemoteDataSource>()) {
-      sl.registerLazySingleton<HomeRemoteDataSource>(
-        () => HomeRemoteDataSourceImpl(sl<Dio>(), sl()),
-      );
-    }
+  }
 
-    if (!sl.isRegistered<HomeRepository>()) {
-      sl.registerLazySingleton<HomeRepository>(
-        () => HomeRepositoryImpl(sl<HomeRemoteDataSource>()),
-      );
-    }
+  // Home feature
+  if (!sl.isRegistered<HomeRemoteDataSource>()) {
+    sl.registerLazySingleton<HomeRemoteDataSource>(
+      () => HomeRemoteDataSourceImpl(sl<Dio>(), sl()),
+    );
+  }
 
-    if (!sl.isRegistered<HomeCubit>()) {
-      sl.registerFactory<HomeCubit>(() => HomeCubit(sl<HomeRepository>()));
-    }
+  if (!sl.isRegistered<HomeRepository>()) {
+    sl.registerLazySingleton<HomeRepository>(
+      () => HomeRepositoryImpl(sl<HomeRemoteDataSource>()),
+    );
+  }
+
+  if (!sl.isRegistered<HomeCubit>()) {
+    sl.registerFactory<HomeCubit>(() => HomeCubit(sl<HomeRepository>()));
+  }
+
+  // Rental feature
+  if (!sl.isRegistered<RentalRemoteDataSource>()) {
+    sl.registerLazySingleton<RentalRemoteDataSource>(
+      () => RentalRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
+    );
+  }
+
+  if (!sl.isRegistered<RentalRepository>()) {
+    sl.registerLazySingleton<RentalRepository>(
+      () => RentalRepositoryImpl(sl<RentalRemoteDataSource>()),
+    );
+  }
+
+  if (!sl.isRegistered<GetRenterBookings>()) {
+    sl.registerFactory<GetRenterBookings>(
+      () => GetRenterBookings(sl<RentalRepository>()),
+    );
   }
 
   // Owner Booking Management feature
