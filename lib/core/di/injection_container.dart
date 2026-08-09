@@ -1,4 +1,8 @@
 // lib/injection_container.dart
+import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart';
+import 'package:book_drive_car/features/profile/data/repositories/owner_booking_repository_impl.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart';
+import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
 import 'package:book_drive_car/features/home/data/datasources/home_remote_data_source.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/data/repositories/home_repository_impl.dart';
@@ -123,5 +127,24 @@ Future<void> configureDependencies() async {
     if (!sl.isRegistered<HomeCubit>()) {
       sl.registerFactory<HomeCubit>(() => HomeCubit(sl<HomeRepository>()));
     }
+  }
+
+  // Owner Booking Management feature
+  if (!sl.isRegistered<OwnerBookingRemoteDataSource>()) {
+    sl.registerLazySingleton<OwnerBookingRemoteDataSource>(
+      () => OwnerBookingRemoteDataSourceImpl(sl<Dio>(), sl()),
+    );
+  }
+
+  if (!sl.isRegistered<OwnerBookingRepository>()) {
+    sl.registerLazySingleton<OwnerBookingRepository>(
+      () => OwnerBookingRepositoryImpl(sl<OwnerBookingRemoteDataSource>()),
+    );
+  }
+
+  if (!sl.isRegistered<OwnerBookingCubit>()) {
+    sl.registerFactory<OwnerBookingCubit>(
+      () => OwnerBookingCubit(sl<OwnerBookingRepository>()),
+    );
   }
 }

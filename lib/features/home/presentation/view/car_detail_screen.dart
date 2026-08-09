@@ -3,11 +3,12 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
-import 'package:book_drive_car/features/home/presentation/widget/car_detail_owner_card.dart';
+
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_spec_grid.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_terms_card.dart';
 import 'package:flutter/material.dart';
+import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:intl/intl.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 
@@ -174,7 +175,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
         slivers: [
           // ── App Bar + Gallery Carousel ──────────────────────────────
           SliverAppBar(
-            expandedHeight: 310,
+            expandedHeight: context.isTablet ? 420 : 310,
             pinned: true,
             elevation: 0,
             backgroundColor: AppColors.primary,
@@ -658,11 +659,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // 6. Thông tin chủ xe
-                  const _SectionTitle(title: 'Thông tin chủ xe'),
-                  const SizedBox(height: 12),
-                  const CarDetailOwnerCard(),
-                  const SizedBox(height: 24),
+
 
                   // 7. Giấy tờ & Điều khoản thuê xe
                   const _SectionTitle(title: 'Giấy tờ & Điều khoản thuê xe'),

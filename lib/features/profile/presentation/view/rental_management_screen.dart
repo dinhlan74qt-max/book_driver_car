@@ -6,6 +6,7 @@ import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.d
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_bloc.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_event.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_state.dart';
+import 'package:book_drive_car/features/profile/presentation/view/owner_booking_list_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/vehicle_detail_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/vehicle_registration_screen.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
@@ -54,8 +55,8 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Xe đã được tạo, đang cập nhật danh sách...')),
       );
-      _myVehiclesBloc.add(const MyVehiclesRequested());
     }
+    _myVehiclesBloc.add(const MyVehiclesRequested());
   }
 
   Future<void> _openVehicleDetail(VehicleEntity vehicle) async {
@@ -71,6 +72,14 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
     _refreshCompleter = completer;
     _myVehiclesBloc.add(const MyVehiclesRequested());
     return completer.future;
+  }
+
+  void _openBookingHistory({String? vehicleName}) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => OwnerBookingListScreen(initialVehicleName: vehicleName),
+      ),
+    );
   }
 
   String _formatPrice(num price) {
@@ -141,19 +150,28 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
           appBar: AppBar(
             title: const Text(
               'Đăng ký cho thuê xe',
-              style: TextStyle(fontWeight: FontWeight.w800),
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             actions: [
+              // Nút Quản lý đơn trên AppBar
+              TextButton.icon(
+                onPressed: () => _openBookingHistory(),
+                icon: const Icon(Icons.receipt_long_rounded, size: 18, color: AppColors.primary),
+                label: const Text(
+                  'Quản lý đơn',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                ),
+              ),
               Padding(
-                padding: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.only(right: 12, left: 4),
                 child: TapScale(
                   onTap: _openRegistration,
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(14),
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.add_rounded, color: AppColors.primary),
                   ),
@@ -198,7 +216,7 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF0F172A).withOpacity(0.18),
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.18),
                               blurRadius: 24,
                               offset: const Offset(0, 14),
                             ),
@@ -223,16 +241,16 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Danh sách xe được lấy trực tiếp từ server. Kéo xuống để tải lại hoặc bấm dấu cộng để đăng ký xe mới.',
+                              'Theo dõi xe bạn đã đăng ký và thêm xe mới để bắt đầu cho thuê.',
                               style: TextStyle(color: Colors.white70, height: 1.5),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 18),
-                      if (initialLoading)
+                      if (initialLoading) ...[
                         Container(
-                          padding: const EdgeInsets.all(22),
+                          padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(26),
@@ -240,55 +258,19 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                           ),
                           child: const Column(
                             children: [
-                              SizedBox(
-                                width: 44,
-                                height: 44,
-                                child: CircularProgressIndicator(strokeWidth: 3),
-                              ),
+                              CircularProgressIndicator(),
                               SizedBox(height: 14),
                               Text(
                                 'Đang tải danh sách xe của bạn...',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (_errorMessage != null && vehicles.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.all(22),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(26),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: AppColors.danger,
-                                size: 36,
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _errorMessage!,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: _refreshVehicles,
-                                  child: const Text('Thử lại'),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      else if (vehicles.isEmpty)
+                        ),
+                      ] else if (vehicles.isEmpty) ...[
                         Container(
                           padding: const EdgeInsets.all(22),
                           decoration: BoxDecoration(
@@ -299,32 +281,33 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                           child: Column(
                             children: [
                               Container(
-                                width: 76,
-                                height: 76,
+                                width: 68,
+                                height: 68,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.08),
+                                  color: AppColors.primary.withValues(alpha: 0.08),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
-                                  Icons.directions_car_filled_rounded,
-                                  size: 36,
+                                  Icons.no_crash_outlined,
+                                  size: 34,
                                   color: AppColors.primary,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
                               const Text(
-                                'Chưa có xe nào được đăng ký',
-                                textAlign: TextAlign.center,
+                                'Bạn chưa có xe nào',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
-                                'Hãy bấm nút dấu cộng để thêm xe đầu tiên của bạn. Khi server trả về dữ liệu, xe sẽ xuất hiện ở đây.',
+                              Text(
+                                _errorMessage ??
+                                    'Hãy đăng ký xe đầu tiên để bắt đầu kiếm thêm thu nhập từ xe nhàn rỗi.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   color: AppColors.textSecondary,
                                   height: 1.5,
                                 ),
@@ -332,34 +315,19 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                               const SizedBox(height: 18),
                               SizedBox(
                                 width: double.infinity,
-                                child: ElevatedButton(
+                                child: ElevatedButton.icon(
                                   onPressed: _openRegistration,
-                                  child: const Text('Đăng ký cho thuê xe'),
+                                  icon: const Icon(Icons.add_rounded),
+                                  label: const Text('Đăng ký xe ngay'),
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      else ...[
-                        Row(
-                          children: [
-                            Text(
-                              'Danh sách xe của bạn',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '${vehicles.length} xe',
-                              style: const TextStyle(color: AppColors.textSecondary),
-                            ),
-                          ],
                         ),
-                        const SizedBox(height: 12),
-                        ...vehicles.map(
-                          (vehicle) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                      ] else ...[
+                        for (final vehicle in vehicles)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 16),
                             child: TapScale(
                               onTap: () => _openVehicleDetail(vehicle),
                               child: Container(
@@ -367,10 +335,10 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(color: AppColors.border.withOpacity(0.8)),
+                                  border: Border.all(color: AppColors.border),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF0F172A).withOpacity(0.04),
+                                      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
                                       blurRadius: 16,
                                       offset: const Offset(0, 10),
                                     ),
@@ -391,8 +359,8 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                                               begin: Alignment.topLeft,
                                               end: Alignment.bottomRight,
                                               colors: [
-                                                AppColors.primary.withOpacity(0.12),
-                                                AppColors.accent.withOpacity(0.12),
+                                                AppColors.primary.withValues(alpha: 0.12),
+                                                AppColors.accent.withValues(alpha: 0.12),
                                               ],
                                             ),
                                           ),
@@ -440,7 +408,7 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                                             vertical: 6,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: _statusColor(vehicle.status).withOpacity(0.12),
+                                            color: _statusColor(vehicle.status).withValues(alpha: 0.12),
                                             borderRadius: BorderRadius.circular(999),
                                           ),
                                           child: Text(
@@ -505,15 +473,21 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                                           ),
                                         ],
                                       ),
-                                    const SizedBox(height: 6),
-                                    const Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Text(
-                                        'Chạm để xem chi tiết',
-                                        style: TextStyle(
-                                          color: AppColors.textMuted,
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
+                                    const SizedBox(height: 12),
+                                    const Divider(height: 1, color: AppColors.border),
+                                    const SizedBox(height: 10),
+
+                                    // Nút xem lịch sử thuê của xe này
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _openBookingHistory(vehicleName: vehicle.vehicleName),
+                                        icon: const Icon(Icons.history_rounded, size: 16),
+                                        label: const Text('Xem lịch sử đơn của xe này'),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: AppColors.primary,
+                                          side: const BorderSide(color: AppColors.primary),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                         ),
                                       ),
                                     ),
@@ -522,7 +496,6 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ],
                   );
@@ -547,13 +520,14 @@ class _InfoChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.background,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontSize: 11.5,
+          color: AppColors.textSecondary,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
         ),
       ),

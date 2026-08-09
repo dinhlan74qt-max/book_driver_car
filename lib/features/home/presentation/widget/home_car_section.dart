@@ -7,6 +7,8 @@ import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:book_drive_car/core/utils/responsive_utils.dart';
+
 
 class HomeCarSection extends StatefulWidget {
   final int index;
@@ -126,11 +128,14 @@ class _HomeCarSectionState extends State<HomeCarSection> {
 class _HorizontalCars extends StatelessWidget {
   final List<CarEntity> cars;
   const _HorizontalCars({required this.cars});
-
   @override
   Widget build(BuildContext context) {
+    final cardWidth = context.isTablet
+        ? 340.0
+        : (context.screenWidth * 0.72).clamp(240.0, 320.0);
+    final listHeight = context.isTablet ? 300.0 : 260.0;
     return SizedBox(
-      height: 260,
+      height: listHeight,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cars.length,
@@ -138,7 +143,7 @@ class _HorizontalCars extends StatelessWidget {
         itemBuilder: (context, index) {
           return CarCard(
             car: cars[index],
-            width: 260,
+            width: cardWidth,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => CarDetailScreen(car: cars[index]),
