@@ -14,4 +14,5 @@ class ApiConstants {
   static const String deposits = "$baseUrl/api/my-wallet/deposit";
   static const String bookings = "$baseUrl/api/booking";
   static const String bookingStatus = "$baseUrl/api/booking/status";
+  static const String renterBookings = "$baseUrl/api/booking/renter/list";
 }
