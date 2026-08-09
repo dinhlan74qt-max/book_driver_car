@@ -2,6 +2,8 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:book_drive_car/core/utils/responsive_utils.dart';
+
 
 class HomeHeroCard extends StatelessWidget {
   final String userName;
@@ -20,8 +22,9 @@ class HomeHeroCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final greeting = userName.isNotEmpty ? 'Xin chào, $userName' : 'Xin chào!';
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(context.isSmallPhone ? 16 : 20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
@@ -106,9 +109,8 @@ class HomeHeroCard extends StatelessWidget {
                 greeting,
                 style: GoogleFonts.playfairDisplay(
                   color: Colors.white,
-                  fontSize: 26,
+                  fontSize: context.isSmallPhone ? 22 : 26,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: -0.3,
                 ),
               ),
               const SizedBox(height: 6),

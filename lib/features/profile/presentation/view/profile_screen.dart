@@ -1,6 +1,7 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
+import 'package:book_drive_car/features/profile/presentation/view/owner_booking_list_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/rental_management_screen.dart';
 import 'package:book_drive_car/features/welcome/presentation/view/welcome_screen.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
@@ -407,6 +408,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 MaterialPageRoute(builder: (_) => const RentalManagementScreen()),
               );
             },
+          ),_ActionTile(
+            icon: Icons.receipt_long_rounded,
+            title: 'Quản lý đơn đặt xe',
+            subtitle: 'Duyệt yêu cầu thuê & theo dõi các chuyến đi',
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerBookingListScreen())),
           ),
           _ActionTile(
             icon: Icons.lock_reset_rounded,
