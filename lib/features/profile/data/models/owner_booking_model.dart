@@ -22,6 +22,7 @@ class OwnerBookingModel extends OwnerBookingEntity {
   });
 
   factory OwnerBookingModel.fromJson(Map<String, dynamic> json) {
+    // 1. Parse Dates
     DateTime start = DateTime.now();
     DateTime end = DateTime.now().add(const Duration(days: 1));
     DateTime created = DateTime.now();
@@ -44,32 +45,34 @@ class OwnerBookingModel extends OwnerBookingEntity {
       created = DateTime.tryParse(json['created_at'].toString()) ?? created;
     }
 
-    final vehicle = json['vehicle'] is Map ? json['vehicle'] as Map<String, dynamic> : null;
+    // 2. Parse User & Vehicle object from API response
     final user = json['user'] is Map ? json['user'] as Map<String, dynamic> : null;
+    final vehicle = json['vehicle'] is Map ? json['vehicle'] as Map<String, dynamic> : null;
 
     final vehicleName = vehicle?['vehicleName']?.toString() ??
         json['vehicleName']?.toString() ??
         json['vehicle_name']?.toString() ??
         'Xe tự lái';
 
-    final vehicleImage = vehicle?['imageUrls'] is List && (vehicle!['imageUrls'] as List).isNotEmpty
-        ? (vehicle['imageUrls'] as List).first.toString()
-        : json['vehicleImage']?.toString() ?? json['image']?.toString() ?? '';
+    String vehicleImage = '';
+    if (vehicle?['imageUrls'] is List && (vehicle!['imageUrls'] as List).isNotEmpty) {
+      vehicleImage = (vehicle['imageUrls'] as List).first.toString();
+    } else {
+      vehicleImage = json['vehicleImage']?.toString() ?? json['image']?.toString() ?? '';
+    }
 
     final licensePlate = vehicle?['licensePlate']?.toString() ??
         json['licensePlate']?.toString() ??
         json['license_plate']?.toString() ??
-        '43A-999.99';
+        'Chưa có biển số';
 
     final renterName = user?['fullname']?.toString() ??
         json['renterName']?.toString() ??
-        json['renter_name']?.toString() ??
         json['customerName']?.toString() ??
         'Khách thuê';
 
     final renterPhone = user?['phone']?.toString() ??
         json['renterPhone']?.toString() ??
-        json['renter_phone']?.toString() ??
         json['phone']?.toString() ??
         '0905 123 456';
 
@@ -77,11 +80,12 @@ class OwnerBookingModel extends OwnerBookingEntity {
         (json['days'] as num?)?.toInt() ??
         (end.difference(start).inDays < 1 ? 1 : end.difference(start).inDays);
 
-    final pricePerDay = (json['pricePerDay'] as num?)?.toInt() ??
-        (vehicle?['pricePerDay'] as num?)?.toInt() ??
-        800000;
+    final pricePerDay = (vehicle?['pricePerDay'] as num?)?.toInt() ??
+        (json['pricePerDay'] as num?)?.toInt() ??
+        1200000;
 
-    final totalPrice = (json['totalPrice'] as num?)?.toInt() ??
+    final totalPrice = (json['totalAmount'] as num?)?.toInt() ??
+        (json['totalPrice'] as num?)?.toInt() ??
         (json['amount'] as num?)?.toInt() ??
         (pricePerDay * totalDays);
 
@@ -120,7 +124,7 @@ class OwnerBookingModel extends OwnerBookingEntity {
       'endDate': endDate.toIso8601String(),
       'totalDays': totalDays,
       'pricePerDay': pricePerDay,
-      'totalPrice': totalPrice,
+      'totalAmount': totalPrice,
       'status': status.code,
       'note': note,
       'createdAt': createdAt.toIso8601String(),

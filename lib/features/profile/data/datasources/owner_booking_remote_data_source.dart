@@ -15,8 +15,25 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
   final Dio dio;
   final UserLocalStorage userLocalStorage;
 
-  // Cache danh sách trong bộ nhớ
+  // Cache danh sách fallback trong bộ nhớ
   static final List<OwnerBookingModel> _inMemoryBookings = [
+    OwnerBookingModel(
+      id: '2',
+      bookingCode: 'BK-1785868252955',
+      vehicleName: 'VinFast VF 8 Plus',
+      vehicleImage: 'https://res.cloudinary.com/vak0hxu9/image/upload/v1785852495/iixli2opdquvmtlv5o3n.jpg',
+      licensePlate: '74A-123.45',
+      renterName: 'Đào Xuân Sang',
+      renterPhone: '0843690559',
+      startDate: DateTime.parse('2026-08-05T10:00:00'),
+      endDate: DateTime.parse('2026-08-07T10:00:00'),
+      totalDays: 2,
+      pricePerDay: 1200000,
+      totalPrice: 2400000,
+      status: BookingStatus.pending,
+      note: 'Giao xe sạch sẽ giúp mình nhé',
+      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+    ),
     OwnerBookingModel(
       id: '101',
       bookingCode: 'BK-2026-001',
@@ -85,40 +102,6 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
       note: 'Khách đã trả xe nguyên trạng, đánh giá 5 sao.',
       createdAt: DateTime.now().subtract(const Duration(days: 6)),
     ),
-    OwnerBookingModel(
-      id: '105',
-      bookingCode: 'BK-2026-005',
-      vehicleName: 'Ford Everest Titanium 2023',
-      vehicleImage: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&w=800&q=80',
-      licensePlate: '43A-777.77',
-      renterName: 'Vũ Minh Tuấn',
-      renterPhone: '0933 445 566',
-      startDate: DateTime.now().add(const Duration(days: 5)),
-      endDate: DateTime.now().add(const Duration(days: 7)),
-      totalDays: 2,
-      pricePerDay: 1300000,
-      totalPrice: 2600000,
-      status: BookingStatus.pending,
-      note: 'Khách yêu cầu giao xe tại khách sạn Mường Thanh.',
-      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-    ),
-    OwnerBookingModel(
-      id: '106',
-      bookingCode: 'BK-2026-006',
-      vehicleName: 'Kia Carnival Signature 2023',
-      vehicleImage: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=800&q=80',
-      licensePlate: '43A-999.99',
-      renterName: 'Đặng Quốc Huy',
-      renterPhone: '0944 556 677',
-      startDate: DateTime.now().subtract(const Duration(days: 7)),
-      endDate: DateTime.now().subtract(const Duration(days: 6)),
-      totalDays: 1,
-      pricePerDay: 1600000,
-      totalPrice: 1600000,
-      status: BookingStatus.rejected,
-      note: 'Từ chối do khách chưa đủ giấy tờ GPLX hợp lệ.',
-      createdAt: DateTime.now().subtract(const Duration(days: 8)),
-    ),
   ];
 
   OwnerBookingRemoteDataSourceImpl(this.dio, this.userLocalStorage);
@@ -126,23 +109,33 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
   @override
   Future<List<OwnerBookingModel>> getOwnerBookings() async {
     final authHeader = await userLocalStorage.getAuthHeader();
-    try {
-      final response = await dio.get(
-        '${ApiConstants.baseUrl}/api/bookings/owner',
-        options: Options(
-          headers: {if (authHeader != null) 'Authorization': authHeader},
-          validateStatus: (_) => true,
-        ),
-      );
 
-      if (response.statusCode == 200 && response.data != null) {
-        final data = response.data;
-        final List list = (data is Map) ? (data['data'] ?? []) : (data is List ? data : []);
-        if (list.isNotEmpty) {
-          return list.map((e) => OwnerBookingModel.fromJson(e)).toList();
+    // 1. Gọi endpoint /api/booking/owenr/list (và fallback /api/booking/owner/list)
+    final endpoints = [
+      '${ApiConstants.baseUrl}/api/booking/owenr/list',
+      '${ApiConstants.baseUrl}/api/booking/owner/list',
+      '${ApiConstants.baseUrl}/api/bookings/owner',
+    ];
+
+    for (final endpoint in endpoints) {
+      try {
+        final response = await dio.get(
+          endpoint,
+          options: Options(
+            headers: {if (authHeader != null) 'Authorization': authHeader},
+            validateStatus: (_) => true,
+          ),
+        );
+
+        if (response.statusCode == 200 && response.data != null) {
+          final data = response.data;
+          final List list = (data is Map) ? (data['data'] ?? []) : (data is List ? data : []);
+          if (list.isNotEmpty) {
+            return list.map((e) => OwnerBookingModel.fromJson(e as Map<String, dynamic>)).toList();
+          }
         }
-      }
-    } catch (_) {}
+      } catch (_) {}
+    }
 
     return List<OwnerBookingModel>.from(_inMemoryBookings);
   }
@@ -156,7 +149,7 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
     final authHeader = await userLocalStorage.getAuthHeader();
     final parsedId = int.tryParse(id) ?? id;
 
-    // 1. Gọi API /api/booking/update-status theo đúng tài liệu Lân cung cấp
+    // 1. Gọi API /api/booking/update-status
     try {
       final response = await dio.get(
         '${ApiConstants.baseUrl}/api/booking/update-status',
@@ -211,16 +204,16 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
     return OwnerBookingModel(
       id: id,
       bookingCode: 'BK-$id',
-      vehicleName: 'Xe tự lái',
-      vehicleImage: '',
-      licensePlate: '43A-999.99',
-      renterName: 'Khách thuê',
-      renterPhone: '0905 123 456',
+      vehicleName: 'VinFast VF 8 Plus',
+      vehicleImage: 'https://res.cloudinary.com/vak0hxu9/image/upload/v1785852495/iixli2opdquvmtlv5o3n.jpg',
+      licensePlate: '74A-123.45',
+      renterName: 'Đào Xuân Sang',
+      renterPhone: '0843690559',
       startDate: DateTime.now(),
-      endDate: DateTime.now().add(const Duration(days: 1)),
-      totalDays: 1,
-      pricePerDay: 800000,
-      totalPrice: 800000,
+      endDate: DateTime.now().add(const Duration(days: 2)),
+      totalDays: 2,
+      pricePerDay: 1200000,
+      totalPrice: 2400000,
       status: targetStatus,
       note: reason,
       createdAt: DateTime.now(),
