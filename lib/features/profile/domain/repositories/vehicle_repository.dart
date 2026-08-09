@@ -3,4 +3,5 @@ import '../entities/vehicle_entity.dart';
 
 abstract class VehicleRepository {
   Future<VehicleEntity> addVehicle(AddVehicleRequestEntity request);
+  Future<List<VehicleEntity>> getMyVehicles();
 }

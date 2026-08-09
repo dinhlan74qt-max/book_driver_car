@@ -48,7 +48,8 @@ class UserLocalStorage {
     final token = await getToken();
     final tokenType = await getTokenType();
     if (token == null || tokenType == null) return null;
-    return "$tokenType $token"; // ví dụ: "Bearer eyJhbGciOi..."
+    final normalizedType = tokenType.trim().isEmpty ? 'Bearer' : tokenType.trim();
+    return "$normalizedType $token"; // ví dụ: "Bearer eyJhbGciOi..."
   }
 
   /// Lấy toàn bộ thông tin user đã lưu (null nếu chưa đăng nhập)

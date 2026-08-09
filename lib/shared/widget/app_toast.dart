@@ -2,6 +2,7 @@ import 'package:book_drive_car/core/theme/app_assets.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'dart:async';
 import 'package:book_drive_car/shared/constants/app_keys.dart';
 
 /// Variants for [AppToast], matching the Figma toast component.
@@ -47,13 +48,73 @@ class AppToast extends StatelessWidget {
     AppToastType type = AppToastType.success,
     Duration duration = const Duration(seconds: 3),
   }) {
-    final messenger = appScaffoldMessengerKey.currentState ??
-        (context != null ? ScaffoldMessenger.maybeOf(context) : null);
+    final overlay = appNavigatorKey.currentState?.overlay;
 
-    if (messenger == null) {
+    if (overlay == null) {
+      final messenger =
+          appScaffoldMessengerKey.currentState ??
+          (context != null ? ScaffoldMessenger.maybeOf(context) : null);
+      if (messenger == null) {
+        return;
+      }
+
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: AppToast(
+              message: message,
+              type: type,
+              onClose: messenger.hideCurrentSnackBar,
+            ),
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            padding: EdgeInsets.zero,
+            behavior: SnackBarBehavior.floating,
+            duration: duration,
+          ),
+        );
       return;
     }
 
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (overlayContext) {
+        final topInset = MediaQuery.of(overlayContext).padding.top;
+        return Positioned(
+          top: topInset + 16,
+          left: 16,
+          right: 16,
+          child: SafeArea(
+            bottom: false,
+            child: Material(
+              color: Colors.transparent,
+              child: AppToast(
+                message: message,
+                type: type,
+                onClose: () => entry.remove(),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+
+    overlay.insert(entry);
+    Timer(duration, () {
+      if (entry.mounted) {
+        entry.remove();
+      }
+    });
+  }
+
+  // Preserve old snackbar behavior for the fallback path only.
+  static void _showSnackBarFallback(
+    ScaffoldMessengerState messenger, {
+    required String message,
+    required AppToastType type,
+    required Duration duration,
+  }) {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
