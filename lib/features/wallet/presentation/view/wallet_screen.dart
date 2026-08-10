@@ -3,14 +3,19 @@ import 'dart:async';
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/wallet/domain/entities/deposit_result_entity.dart';
+import 'package:book_drive_car/features/wallet/domain/entities/withdraw_request_entity.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_bloc.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_event.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_state.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_event.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_state.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_bloc.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_event.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_state.dart';
 import 'package:book_drive_car/features/wallet/presentation/view/wallet_deposit_qr_screen.dart';
 import 'package:book_drive_car/features/wallet/domain/entities/wallet_transaction_entity.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +34,7 @@ class _WalletScreenState extends State<WalletScreen>
     with TickerProviderStateMixin {
   late final WalletBloc _walletBloc;
   late final DepositBloc _depositBloc;
+  late final WithdrawBloc _withdrawBloc;
   List<WalletTransactionEntity> _transactions = const [];
 
   final TextEditingController _customAmountController = TextEditingController();
@@ -49,6 +55,7 @@ class _WalletScreenState extends State<WalletScreen>
     super.initState();
     _walletBloc = sl<WalletBloc>();
     _depositBloc = sl<DepositBloc>();
+    _withdrawBloc = sl<WithdrawBloc>();
     _panelController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -67,6 +74,7 @@ class _WalletScreenState extends State<WalletScreen>
     _customAmountController.dispose();
     _walletBloc.close();
     _depositBloc.close();
+    _withdrawBloc.close();
     super.dispose();
   }
 
@@ -140,16 +148,10 @@ class _WalletScreenState extends State<WalletScreen>
 
     void formatAmountField() {
       if (isFormattingAmount) return;
-
-      final digitsOnly = amountController.text.replaceAll(
-        RegExp(r'[^0-9]'),
-        '',
-      );
+      final digitsOnly = amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
       if (digitsOnly.isEmpty) return;
 
-      final formatted = NumberFormat.decimalPattern(
-        'vi_VN',
-      ).format(int.parse(digitsOnly));
+      final formatted = NumberFormat.decimalPattern('vi_VN').format(int.parse(digitsOnly));
       if (formatted == amountController.text) return;
 
       isFormattingAmount = true;
@@ -171,141 +173,189 @@ class _WalletScreenState extends State<WalletScreen>
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            ),
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-              child: FractionallySizedBox(
-                heightFactor: 0.84,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
+        return BlocProvider.value(
+          value: _withdrawBloc,
+          child: BlocConsumer<WithdrawBloc, WithdrawState>(
+            listener: (context, state) {
+              if (state is WithdrawSuccess) {
+                Navigator.of(sheetContext).pop();
+                AppToast.show(
+                  rootContext,
+                  message: state.message,
+                  type: AppToastType.success,
+                );
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _refreshWallet();
+                  }
+                });
+              }
+
+              if (state is WithdrawFailure) {
+                AppToast.show(
+                  rootContext,
+                  message: state.error,
+                  type: AppToastType.error,
+                );
+              }
+            },
+            builder: (context, state) {
+              final isSubmitting = state is WithdrawLoading;
+
+              return SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
                   ),
-                  child: ListView(
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 46,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: AppColors.border,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                    child: FractionallySizedBox(
+                      heightFactor: 0.84,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                         ),
-                      ),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Rút tiền',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Điền thông tin ngân hàng và số tiền muốn rút.',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      TextField(
-                        controller: bankController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Tên ngân hàng',
-                          hintText: 'Ví dụ: Vietcombank',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: accountNumberController,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Số tài khoản',
-                          hintText: 'Nhập số tài khoản',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: accountNameController,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Tên chủ tài khoản',
-                          hintText: 'Nhập họ và tên',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: amountController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Số tiền muốn rút',
-                          hintText: 'Ví dụ: 500.000',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final bankName = bankController.text.trim();
-                            final accountNumber = accountNumberController.text
-                                .trim();
-                            final accountName = accountNameController.text
-                                .trim();
-                            final amount =
-                                int.tryParse(
-                                  amountController.text.replaceAll(
-                                    RegExp(r'[^0-9]'),
-                                    '',
-                                  ),
-                                ) ??
-                                0;
-
-                            if (bankName.isEmpty ||
-                                accountNumber.isEmpty ||
-                                accountName.isEmpty ||
-                                amount <= 0) {
-                              ScaffoldMessenger.of(rootContext).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Vui lòng nhập đầy đủ thông tin rút tiền.',
-                                  ),
-                                ),
-                              );
-                              return;
-                            }
-
-                            Navigator.of(sheetContext).pop();
-                            ScaffoldMessenger.of(rootContext).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Đã gửi yêu cầu rút ${NumberFormat.decimalPattern('vi_VN').format(amount)} đ đến $bankName.',
+                        child: ListView(
+                          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                          children: [
+                            Center(
+                              child: Container(
+                                width: 46,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: AppColors.border,
+                                  borderRadius: BorderRadius.circular(999),
                                 ),
                               ),
-                            );
-                          },
-                          child: const Text('Xác nhận rút tiền'),
+                            ),
+                            const SizedBox(height: 18),
+                            const Text(
+                              'Rut tien',
+                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Nhap thong tin ngan hang va so tien muon rut.',
+                              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
+                            ),
+                            const SizedBox(height: 18),
+                            TextField(
+                              controller: bankController,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Ten ngan hang',
+                                hintText: 'Vi du: Vietcombank',
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: accountNumberController,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'So tai khoan',
+                                hintText: 'Nhap so tai khoan',
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: accountNameController,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'Ten chu tai khoan',
+                                hintText: 'Nhap ho va ten',
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'So tien muon rut',
+                                hintText: 'Vi du: 500.000',
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: AppColors.border),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    'Xac nhan truoc khi gui',
+                                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Khi nhan xac nhan, he thong se tao lenh rut tien cho tai khoan ngan hang ban da nhap.',
+                                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, height: 1.5),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () {
+                                        final bankName = bankController.text.trim();
+                                        final accountNumber = accountNumberController.text.trim();
+                                        final accountName = accountNameController.text.trim();
+                                        final amount = int.tryParse(
+                                              amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+                                            ) ??
+                                            0;
+
+                                        if (bankName.isEmpty || accountNumber.isEmpty || accountName.isEmpty || amount <= 0) {
+                                          AppToast.show(
+                                            rootContext,
+                                            message: 'Vui long nhap day du thong tin rut tien.',
+                                            type: AppToastType.error,
+                                          );
+                                          return;
+                                        }
+
+                                        context.read<WithdrawBloc>().add(
+                                              WithdrawSubmitted(
+                                                WithdrawRequestEntity(
+                                                  amount: amount,
+                                                  bankName: bankName,
+                                                  bankAccount: accountNumber,
+                                                  accountHolder: accountName,
+                                                ),
+                                              ),
+                                            );
+                                      },
+                                child: isSubmitting
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('Xac nhan rut tien'),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         );
       },
@@ -317,7 +367,6 @@ class _WalletScreenState extends State<WalletScreen>
     accountNameController.dispose();
     amountController.dispose();
   }
-
   Future<void> _showWithdrawSheet() async {
     final amountController = TextEditingController();
 
@@ -469,6 +518,7 @@ class _WalletScreenState extends State<WalletScreen>
       providers: [
         BlocProvider.value(value: _walletBloc),
         BlocProvider.value(value: _depositBloc),
+        BlocProvider.value(value: _withdrawBloc),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -1277,5 +1327,6 @@ class _TopupPanel extends StatelessWidget {
     );
   }
 }
+
 
 

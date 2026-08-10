@@ -11,7 +11,10 @@ abstract class HomeRepository {
     double? longitude,
     String? vehicleType,
     String? brand,
+    String? model,
   });
+
+  Future<List<CarEntity>> searchCarsByCity(String cityName);
 
   Future<CarEntity> getCarDetail(String id);
 }

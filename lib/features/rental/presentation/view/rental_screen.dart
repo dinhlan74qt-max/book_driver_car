@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/rental/domain/entities/rental_list_item_entity.dart';
 import 'package:book_drive_car/features/rental/domain/usecases/get_renter_bookings.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/foundation.dart';
@@ -265,7 +267,7 @@ class _RentalScreenState extends State<RentalScreen> {
     BuildContext context,
     RentalListItemEntity booking,
   ) async {
-    await showModalBottomSheet<void>(
+    final cancelled = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -280,6 +282,10 @@ class _RentalScreenState extends State<RentalScreen> {
         vehicleLocation: _vehicleLocation(booking),
       ),
     );
+
+    if (cancelled == true) {
+      await _loadBookings(showRefreshing: true);
+    }
   }
 
   String _listEmptyMessage() {
@@ -292,6 +298,258 @@ class _RentalScreenState extends State<RentalScreen> {
   @override
   Widget build(BuildContext context) {
     final bookings = _filteredBookings;
+    final totalBookings = _bookings.length;
+    final activeBookings = _bookings.where((booking) {
+      final status = _normalizeStatus(booking.status);
+      return status == 'RENTING' || status == 'ONGOING';
+    }).length;
+    final confirmedBookings = _bookings
+        .where((booking) => _normalizeStatus(booking.status) == 'APPROVED')
+        .length;
+    final completedBookings = _bookings
+        .where((booking) => _normalizeStatus(booking.status) == 'COMPLETED')
+        .length;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const Positioned.fill(child: _LuxuryBackground()),
+        SafeArea(
+          child: Column(
+            children: [
+              StaggeredFadeIn(
+                index: 0,
+                child: _RentalHeroCard(
+                  title: 'Chuyến đi của tôi',
+                  subtitle:
+                      'Theo dõi trạng thái chuyến đi, lịch thuê và thông tin thanh toán thật rõ ràng trong một giao diện sang hơn.',
+                  totalBookings: totalBookings,
+                  activeBookings: activeBookings,
+                  confirmedBookings: confirmedBookings,
+                  completedBookings: completedBookings,
+                ),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 44,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _filters.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) {
+                    final filter = _filters[i];
+                    final isSelected = _selectedFilter == filter.statuses;
+                    return TapScale(
+                      onTap: () => setState(() => _selectedFilter = filter.statuses),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.headlightAmber
+                              : Colors.white.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.headlightAmber
+                                : Colors.white.withValues(alpha: 0.12),
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.headlightAmber.withValues(alpha: 0.22),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 8),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          filter.label,
+                          style: TextStyle(
+                            color: isSelected ? Colors.black : Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.headlightAmber,
+                  onRefresh: () => _loadBookings(showRefreshing: true),
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    children: [
+                      if (_refreshing) ...[
+                        const SizedBox(height: 4),
+                        const ClipRRect(
+                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                          child: LinearProgressIndicator(
+                            minHeight: 2.5,
+                            color: AppColors.headlightAmber,
+                            backgroundColor: Colors.white24,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                      if (_initialLoading && _bookings.isEmpty)
+                        const _LuxuryMessageCard(
+                          icon: Icons.hourglass_top_rounded,
+                          title: 'Đang tải danh sách đơn thuê...',
+                          description:
+                              'Mình đang lấy dữ liệu mới nhất để hiển thị hành trình của bạn.',
+                        )
+                      else if (_errorMessage != null && _bookings.isEmpty)
+                        _LuxuryMessageCard(
+                          icon: Icons.error_outline_rounded,
+                          title: 'Không tải được đơn thuê',
+                          description: _errorMessage!,
+                          actionLabel: 'Thử lại',
+                          actionColor: AppColors.headlightAmber,
+                          onAction: () => _loadBookings(showRefreshing: true),
+                        )
+                      else if (bookings.isEmpty)
+                        _LuxuryMessageCard(
+                          icon: Icons.calendar_month_rounded,
+                          title: 'Chưa có đơn thuê nào',
+                          description: _listEmptyMessage(),
+                        )
+                      else
+                        ...List.generate(bookings.length, (index) {
+                          final booking = bookings[index];
+                          final statusColor = _statusColor(booking.status);
+                          final status = _normalizeStatus(booking.status);
+                          final isDimmed =
+                              status == 'CANCELLED' || status == 'REJECTED';
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: StaggeredFadeIn(
+                              index: 1 + index,
+                              child: Opacity(
+                                opacity: isDimmed ? 0.6 : 1,
+                                child: TapScale(
+                                  onTap: () => _openBookingDetail(context, booking),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF7F6F1),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: statusColor.withValues(alpha: 0.20),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+                                          blurRadius: 18,
+                                          offset: const Offset(0, 10),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(
+                                                          horizontal: 10,
+                                                          vertical: 5,
+                                                        ),
+                                                        decoration: BoxDecoration(
+                                                          color: statusColor.withValues(alpha: 0.12),
+                                                          borderRadius: BorderRadius.circular(999),
+                                                        ),
+                                                        child: Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(
+                                                              _statusIcon(booking.status),
+                                                              size: 14,
+                                                              color: statusColor,
+                                                            ),
+                                                            const SizedBox(width: 4),
+                                                            Text(
+                                                              _statusLabel(booking.status),
+                                                              style: TextStyle(
+                                                                color: statusColor,
+                                                                fontSize: 12,
+                                                                fontWeight: FontWeight.w800,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        booking.bookingCode,
+                                                        style: const TextStyle(
+                                                          color: AppColors.textMuted,
+                                                          fontWeight: FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 10),
+                                                  Text(
+                                                    booking.vehicle.vehicleName,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w800,
+                                                      color: AppColors.textPrimary,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    _vehicleSubtitle(booking),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      color: AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
 
     return Column(
       children: [
@@ -811,11 +1069,6 @@ class _BookingDetailSheet extends StatelessWidget {
     return !_isAfterEndDate;
   }
 
-  bool get _needsCancelConfirmation {
-    if (!_canCancelBooking) return false;
-    return !_today.isAfter(_endDate);
-  }
-
   bool get _isFinal {
     final status = booking.status.trim().toUpperCase();
     return status == 'COMPLETED' ||
@@ -823,25 +1076,26 @@ class _BookingDetailSheet extends StatelessWidget {
         status == 'REJECTED';
   }
 
-  Future<void> _callSupport(BuildContext context, {String? phoneNumber}) async {
-    final uri = Uri(scheme: 'tel', path: phoneNumber ?? _supportPhoneNumber);
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể mở ứng dụng gọi điện')),
-      );
+  String _cancelDialogMessage() {
+    final status = booking.status.trim().toUpperCase();
+    if (status == 'PENDING') {
+      return 'Đơn thuê chưa được xác nhận, vì vậy bạn sẽ không mất tiền nếu hủy đơn. Bạn có muốn tiếp tục hủy đơn thuê không?';
     }
+    if (status == 'APPROVED' || status == 'RENTING' || status == 'ONGOING') {
+      return 'Đơn thuê đã xác nhận, nếu hủy bạn sẽ mất 10% số tiền. Bạn có muốn tiếp tục hủy đơn thuê không?';
+    }
+    return 'Bạn có muốn hủy đơn thuê này không?';
   }
 
-  Future<void> _confirmCancelBooking(BuildContext context) async {
+  Future<void> _cancelBooking(BuildContext context) async {
+    if (!_canCancelBooking) return;
+
     final shouldCancel = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Xác nhận hủy đơn'),
-          content: const Text(
-            'Khi hủy đơn thuê bạn sẽ mất 10% số tiền. Bạn có muốn hủy đơn thuê?',
-          ),
+          content: Text(_cancelDialogMessage()),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -856,15 +1110,48 @@ class _BookingDetailSheet extends StatelessWidget {
       },
     );
 
-    if (shouldCancel == true && context.mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xác nhận hủy đơn thuê.')),
+    if (shouldCancel != true || !context.mounted) {
+      return;
+    }
+
+    try {
+      await sl<BookingRemoteDataSource>().updateBookingStatus(
+        id: booking.id,
+        status: 'CANCELLED',
       );
+
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: 'Đã hủy đơn thuê thành công',
+        type: AppToastType.success,
+      );
+      Navigator.of(context).pop(true);
       debugPrint(
-        '[RentalScreen] cancel booking requested bookingId=${booking.id} bookingCode=${booking.bookingCode}',
+        '[RentalScreen] cancel booking success bookingId=${booking.id} bookingCode=${booking.bookingCode}',
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
       );
     }
+  }
+
+  Future<void> _callSupport(BuildContext context, {String? phoneNumber}) async {
+    final uri = Uri(scheme: 'tel', path: phoneNumber ?? _supportPhoneNumber);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể mở ứng dụng gọi điện')),
+      );
+    }
+  }
+
+  Future<void> _confirmCancelBooking(BuildContext context) async {
+    await _cancelBooking(context);
   }
 
   Widget _buildImageCarousel() {
@@ -1317,9 +1604,7 @@ class _BookingDetailSheet extends StatelessWidget {
                         ),
                         onPressed: _canCancelBooking
                             ? () {
-                                if (_needsCancelConfirmation) {
-                                  _confirmCancelBooking(context);
-                                }
+                                _confirmCancelBooking(context);
                               }
                             : null,
                         icon: Icon(
@@ -1515,6 +1800,339 @@ class _DetailRow extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LuxuryBackground extends StatelessWidget {
+  const _LuxuryBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF0C1017),
+            Color(0xFF151A24),
+            Color(0xFFF7F8FA),
+          ],
+          stops: [0.0, 0.42, 1.0],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: -92,
+            right: -64,
+            child: _LuxuryGlow(
+              size: 230,
+              colors: [
+                AppColors.headlightAmber.withValues(alpha: 0.22),
+                Colors.transparent,
+              ],
+            ),
+          ),
+          Positioned(
+            top: 156,
+            left: -72,
+            child: _LuxuryGlow(
+              size: 180,
+              colors: [
+                AppColors.pageAccents[2].withValues(alpha: 0.18),
+                Colors.transparent,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LuxuryGlow extends StatelessWidget {
+  final double size;
+  final List<Color> colors;
+
+  const _LuxuryGlow({
+    required this.size,
+    required this.colors,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(colors: colors),
+      ),
+    );
+  }
+}
+
+class _RentalHeroCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final int totalBookings;
+  final int activeBookings;
+  final int confirmedBookings;
+  final int completedBookings;
+
+  const _RentalHeroCard({
+    required this.title,
+    required this.subtitle,
+    required this.totalBookings,
+    required this.activeBookings,
+    required this.confirmedBookings,
+    required this.completedBookings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFF0F141B),
+            const Color(0xFF16202B),
+            AppColors.primary.withValues(alpha: 0.95),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.24),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.directions_car_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.74),
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _HeroStatChip(label: '$totalBookings', caption: 'Tổng đơn'),
+              _HeroStatChip(label: '$activeBookings', caption: 'Đang đi'),
+              _HeroStatChip(label: '$confirmedBookings', caption: 'Đã xác nhận'),
+              _HeroStatChip(label: '$completedBookings', caption: 'Hoàn thành'),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.lock_rounded, size: 18, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Dữ liệu chuyến đi được cập nhật trực tiếp từ hệ thống của bạn.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      fontSize: 12.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroStatChip extends StatelessWidget {
+  final String label;
+  final String caption;
+
+  const _HeroStatChip({required this.label, required this.caption});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            caption,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.72),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LuxuryMessageCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final String? actionLabel;
+  final Color? actionColor;
+  final VoidCallback? onAction;
+
+  const _LuxuryMessageCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    this.actionLabel,
+    this.actionColor,
+    this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F6F1),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.85)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: (actionColor ?? AppColors.primary).withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: actionColor ?? AppColors.primary, size: 38),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          if (onAction != null && actionLabel != null) ...[
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onAction,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: actionColor ?? AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  actionLabel!,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

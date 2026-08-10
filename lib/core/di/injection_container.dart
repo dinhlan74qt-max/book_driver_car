@@ -25,8 +25,10 @@ import 'package:book_drive_car/features/wallet/data/repositories/wallet_reposito
 import 'package:book_drive_car/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:book_drive_car/features/wallet/domain/usecases/deposit.dart';
 import 'package:book_drive_car/features/wallet/domain/usecases/get_my_wallet.dart';
+import 'package:book_drive_car/features/wallet/domain/usecases/withdraw.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_bloc.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dart';
+import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_bloc.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
@@ -109,12 +111,20 @@ Future<void> configureDependencies() async {
     sl.registerFactory<Deposit>(() => Deposit(sl<WalletRepository>()));
   }
 
+  if (!sl.isRegistered<Withdraw>()) {
+    sl.registerFactory<Withdraw>(() => Withdraw(sl<WalletRepository>()));
+  }
+
   if (!sl.isRegistered<WalletBloc>()) {
     sl.registerFactory<WalletBloc>(() => WalletBloc(sl<WalletRepository>()));
   }
 
   if (!sl.isRegistered<DepositBloc>()) {
     sl.registerFactory<DepositBloc>(() => DepositBloc(sl<Deposit>()));
+  }
+
+  if (!sl.isRegistered<WithdrawBloc>()) {
+    sl.registerFactory<WithdrawBloc>(() => WithdrawBloc(sl<Withdraw>()));
   }
 
   // Home feature

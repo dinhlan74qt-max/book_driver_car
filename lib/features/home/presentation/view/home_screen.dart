@@ -9,6 +9,7 @@ import 'package:book_drive_car/features/home/presentation/widget/car_search_shee
 import 'package:book_drive_car/features/home/presentation/widget/home_car_section.dart';
 import 'package:book_drive_car/features/home/presentation/widget/home_hero_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/home_info_pill.dart';
+import 'package:book_drive_car/features/home/presentation/view/search_results_screen.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -49,15 +50,9 @@ class _HomeScreenContent extends StatefulWidget {
 }
 
 class _HomeScreenContentState extends State<_HomeScreenContent> {
-  static const _defaultProvince = 'Đà Nẵng';
-
   String _userName = '';
   final ScrollController _scrollController = ScrollController();
-
-  CarSearchFilter _filter = const CarSearchFilter(
-    locationMode: LocationSearchMode.province,
-    locationLabel: _defaultProvince,
-  );
+  CarSearchFilter _filter = const CarSearchFilter();
 
   @override
   void initState() {
@@ -79,19 +74,19 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   Future<void> _openSearch() async {
-    final result = await CarSearchSheet.show(context, initialFilter: _filter);
-    if (result != null) {
-      setState(() => _filter = result);
-      if (!mounted) return;
-      context.read<HomeCubit>().searchCars(
-            locationMode: _filter.locationMode.toString(),
-            locationLabel: _filter.locationLabel,
-            latitude: _filter.latitude,
-            longitude: _filter.longitude,
-            vehicleType: _filter.vehicleType,
-            brand: _filter.brand,
-          );
-    }
+    final result = await CarSearchSheet.show(
+      context,
+      initialFilter: _filter,
+    );
+    if (result == null) return;
+
+    setState(() => _filter = result);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => SearchResultsScreen(filter: result),
+      ),
+    );
   }
 
   void _openAllCars(List<CarEntity> cars, String title) {
@@ -103,27 +98,8 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   }
 
   void _resetFilter() {
-    setState(() {
-      _filter = const CarSearchFilter(
-        locationMode: LocationSearchMode.province,
-        locationLabel: _defaultProvince,
-      );
-    });
+    setState(() => _filter = const CarSearchFilter());
     context.read<HomeCubit>().fetchCars();
-  }
-
-  String get _locationLabel => _filter.locationLabel ?? _defaultProvince;
-
-  String get _heroSubtitle {
-    switch (_filter.locationMode) {
-      case LocationSearchMode.currentLocation:
-        return 'Đang xem xe gần vị trí hiện tại của bạn';
-      case LocationSearchMode.address:
-        return 'Đang xem xe gần "$_locationLabel"';
-      case LocationSearchMode.province:
-      case LocationSearchMode.none:
-        return 'Đang xem xe tại $_locationLabel';
-    }
   }
 
   @override
@@ -245,10 +221,8 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
                           index: 0,
                           child: HomeHeroCard(
                             userName: _userName,
-                            subtitle: _heroSubtitle,
-                            searchPlaceholder: _filter.locationMode == LocationSearchMode.none
-                                ? 'Nhập tên tỉnh hoặc địa chỉ cụ thể'
-                                : _locationLabel,
+                            subtitle: 'Tìm xe theo thành phố, hãng và dòng trong một bước.',
+                            searchPlaceholder: 'Thành phố, hãng, dòng xe',
                             onSearchTap: _openSearch,
                           ),
                         ),

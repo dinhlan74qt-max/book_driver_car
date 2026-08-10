@@ -1,3 +1,4 @@
+import 'package:book_drive_car/features/wallet/domain/entities/withdraw_request_entity.dart';
 import 'package:injectable/injectable.dart';
 import '../../domain/entities/wallet_entity.dart';
 import '../../domain/entities/deposit_result_entity.dart';
@@ -23,5 +24,9 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<List<WalletTransactionEntity>> getMyWalletHistory() async {
     return await remoteDataSource.getMyWalletHistory();
+  }
+  @override
+  Future<String> withdraw(WithdrawRequestEntity request) async {
+    return await remoteDataSource.withdraw(request);
   }
 }

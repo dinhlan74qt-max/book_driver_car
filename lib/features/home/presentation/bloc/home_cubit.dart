@@ -38,6 +38,7 @@ class HomeCubit extends Cubit<HomeState> {
     double? longitude,
     String? vehicleType,
     String? brand,
+    String? model,
   }) async {
     emit(HomeLoading());
     try {
@@ -48,7 +49,29 @@ class HomeCubit extends Cubit<HomeState> {
         longitude: longitude,
         vehicleType: vehicleType,
         brand: brand,
+        model: model,
       );
+
+      final nearbyCars = List<CarEntity>.from(cars)
+        ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+      final suggestedCars = List<CarEntity>.from(cars)
+        ..sort((a, b) => b.rating.compareTo(a.rating));
+
+      emit(HomeLoaded(
+        cars: cars,
+        nearbyCars: nearbyCars,
+        suggestedCars: suggestedCars,
+      ));
+    } catch (e) {
+      emit(HomeError(e.toString()));
+    }
+  }
+
+  Future<void> searchCarsByCity(String cityName) async {
+    emit(HomeLoading());
+    try {
+      final cars = await repository.searchCarsByCity(cityName);
 
       final nearbyCars = List<CarEntity>.from(cars)
         ..sort((a, b) => a.distanceKm.compareTo(b.distanceKm));

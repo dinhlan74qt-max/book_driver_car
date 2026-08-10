@@ -27,14 +27,21 @@ class HomeRepositoryImpl implements HomeRepository {
     double? longitude,
     String? vehicleType,
     String? brand,
+    String? model,
   }) async {
     final params = <String, dynamic>{};
     if (brand != null && brand.isNotEmpty) params['brand'] = brand;
     if (vehicleType != null && vehicleType.isNotEmpty) params['vehicleType'] = vehicleType;
+    if (model != null && model.isNotEmpty) params['model'] = model;
     if (latitude != null && longitude != null) {
       params['lat'] = latitude.toString();
       params['lng'] = longitude.toString();
     }
     return await remoteDataSource.searchCars(params);
+  }
+
+  @override
+  Future<List<CarEntity>> searchCarsByCity(String cityName) async {
+    return await remoteDataSource.searchCarsByCity(cityName);
   }
 }

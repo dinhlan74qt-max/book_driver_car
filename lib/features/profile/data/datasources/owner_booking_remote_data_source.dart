@@ -151,7 +151,7 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
 
     // 1. Gọi API /api/booking/update-status
     try {
-      final response = await dio.get(
+      final response = await dio.post(
         '${ApiConstants.baseUrl}/api/booking/update-status',
         data: {
           'id': parsedId,

@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/features/home/presentation/widget/city_search_suggestions.dart';
+import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -14,6 +15,7 @@ class CarSearchFilter {
   final double? longitude;
   final String? vehicleType;
   final String? brand;
+  final String? model;
 
   const CarSearchFilter({
     this.locationMode = LocationSearchMode.none,
@@ -22,6 +24,7 @@ class CarSearchFilter {
     this.longitude,
     this.vehicleType,
     this.brand,
+    this.model,
   });
 }
 
@@ -106,6 +109,19 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
 
   String? _selectedType;
   String? _selectedBrand;
+  String? _selectedModel;
+
+  static const Map<String, List<String>> _modelsByBrand = {
+    'VinFast': ['VF 3', 'VF 5', 'VF 6', 'VF 7', 'VF 8', 'VF 9'],
+    'Toyota': ['Vios', 'Camry', 'Corolla Cross', 'Fortuner', 'Innova'],
+    'Honda': ['City', 'Civic', 'CR-V', 'HR-V', 'Accord'],
+    'Mazda': ['Mazda 2', 'Mazda 3', 'Mazda 6', 'CX-3', 'CX-5', 'CX-8'],
+    'Hyundai': ['Grand i10', 'Accent', 'Elantra', 'Tucson', 'Santa Fe'],
+    'Kia': ['Morning', 'Cerato', 'Sonet', 'Seltos', 'Carnival'],
+    'Mitsubishi': ['Attrage', 'Xforce', 'Xpander', 'Outlander', 'Pajero'],
+    'Ford': ['Ranger', 'Everest', 'Territory', 'Transit'],
+    'Suzuki': ['Swift', 'XL7', 'Ciaz', 'Ertiga'],
+  };
 
   LocationSearchMode _locationMode = LocationSearchMode.none;
   double? _latitude;
@@ -122,6 +138,7 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
     super.initState();
     _selectedType = widget.initialFilter.vehicleType;
     _selectedBrand = widget.initialFilter.brand;
+    _selectedModel = widget.initialFilter.model;
     _locationMode = widget.initialFilter.locationMode;
     _latitude = widget.initialFilter.latitude;
     _longitude = widget.initialFilter.longitude;
@@ -282,8 +299,32 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
   ///         ))
   ///     .toList();
   Future<List<LocationSuggestion>> _searchLocations(String keyword) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    return const [];
+    await Future.delayed(const Duration(milliseconds: 120));
+    return filterCitySuggestions(keyword)
+        .map(
+          (city) => LocationSuggestion(
+            label: city,
+            subtitle: 'Thành phố',
+            isAddress: false,
+          ),
+        )
+        .toList();
+  }
+
+  List<String> _modelOptions() {
+    if (_selectedBrand != null && _selectedBrand != kAllOption) {
+      return [kAllOption, ...(_modelsByBrand[_selectedBrand!] ?? const [])];
+    }
+
+    return const [
+      kAllOption,
+      'Sedan',
+      'SUV',
+      'Hatchback',
+      'MPV',
+      'Pickup',
+      'Coupe',
+    ];
   }
 
   void _clearLocation() {
@@ -409,17 +450,52 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
                               .map(
                                 (brand) => FilterChip(
                                   label: Text(brand),
-                                  selected: brand == kAllOption
+                                selected: brand == kAllOption
                                       ? _selectedBrand == null
                                       : _selectedBrand == brand,
                                   onSelected: (_) {
                                     setState(() {
                                       _selectedBrand = brand == kAllOption ? null : brand;
+                                      _selectedModel = null;
                                     });
                                   },
                                 ),
                               )
                               .toList(),
+                        ),
+                        const SizedBox(height: 20),
+                        _SectionTitle(
+                          icon: Icons.route_rounded,
+                          title: 'Dòng xe',
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _selectedBrand == null || _selectedBrand == kAllOption
+                              ? 'Chọn hãng xe trước, hoặc tạm dùng nhóm dòng xe chung.'
+                              : 'Đang lọc theo ${_selectedBrand!}. Bạn có thể chọn dòng xe phù hợp bên dưới.',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12.5,
+                            height: 1.4,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: _modelOptions().map((model) {
+                            final isSelected = _selectedModel == model ||
+                                (_selectedModel == null && model == kAllOption);
+                            return FilterChip(
+                              label: Text(model),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                setState(() {
+                                  _selectedModel = model == kAllOption ? null : model;
+                                });
+                              },
+                            );
+                          }).toList(),
                         ),
                         const SizedBox(height: 24),
                         SizedBox(
@@ -436,6 +512,7 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
                                   longitude: _longitude,
                                   vehicleType: _selectedType,
                                   brand: _selectedBrand,
+                                  model: _selectedModel,
                                 ),
                               );
                             },
@@ -598,84 +675,87 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
           ),
         ],
       ),
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        children: [
-          ListTile(
-            dense: true,
-            leading: Icon(Icons.my_location_rounded, size: 20, color: AppColors.primary),
-            title: const Text(
-              'Vị trí hiện tại',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-            ),
-            trailing: _isLocating
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : null,
-            onTap: _isLocating ? null : _useCurrentLocation,
-          ),
-          if (text.isNotEmpty) ...[
-            const Divider(height: 1),
-            if (_isSearching)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
+      child: Material(
+        color: Colors.white,
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          children: [
+            ListTile(
+              dense: true,
+              leading: Icon(Icons.my_location_rounded, size: 20, color: AppColors.primary),
+              title: const Text(
+                'Vị trí hiện tại',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
+              ),
+              trailing: _isLocating
+                  ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Đang tìm kiếm...',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                  ],
-                ),
-              )
-            else if (_searchError != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                child: Text(
-                  _searchError!,
-                  style: const TextStyle(color: AppColors.danger, fontSize: 13),
-                ),
-              )
-            else if (_suggestions.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                child: Text(
-                  'Không tìm thấy kết quả cho "$text". Nhấn tìm kiếm để dùng địa chỉ này.',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                ),
-              )
-            else
-              for (final suggestion in _suggestions)
-                ListTile(
-                  dense: true,
-                  leading: Icon(
-                    suggestion.isAddress ? Icons.place_rounded : Icons.location_city_rounded,
-                    size: 20,
-                    color: AppColors.textSecondary,
+                    )
+                  : null,
+              onTap: _isLocating ? null : _useCurrentLocation,
+            ),
+            if (text.isNotEmpty) ...[
+              const Divider(height: 1),
+              if (_isSearching)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        'Đang tìm kiếm...',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                    ],
                   ),
-                  title: Text(suggestion.label, style: const TextStyle(fontSize: 13.5)),
-                  subtitle: suggestion.subtitle != null
-                      ? Text(
-                          suggestion.subtitle!,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          overflow: TextOverflow.ellipsis,
-                        )
-                      : null,
-                  onTap: () => _selectSuggestion(suggestion),
-                ),
+                )
+              else if (_searchError != null)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  child: Text(
+                    _searchError!,
+                    style: const TextStyle(color: AppColors.danger, fontSize: 13),
+                  ),
+                )
+              else if (_suggestions.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                  child: Text(
+                    'Không tìm thấy kết quả cho "$text". Nhấn tìm kiếm để dùng địa chỉ này.',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                )
+              else
+                for (final suggestion in _suggestions)
+                  ListTile(
+                    dense: true,
+                    leading: Icon(
+                      suggestion.isAddress ? Icons.place_rounded : Icons.location_city_rounded,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
+                    title: Text(suggestion.label, style: const TextStyle(fontSize: 13.5)),
+                    subtitle: suggestion.subtitle != null
+                        ? Text(
+                            suggestion.subtitle!,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        : null,
+                    onTap: () => _selectSuggestion(suggestion),
+                  ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -685,6 +765,7 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
     setState(() {
       _selectedType = null;
       _selectedBrand = null;
+      _selectedModel = null;
       _locationMode = LocationSearchMode.none;
       _latitude = null;
       _longitude = null;
@@ -717,3 +798,4 @@ class _SectionTitle extends StatelessWidget {
     );
   }
 }
+

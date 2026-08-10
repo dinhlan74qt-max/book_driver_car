@@ -102,6 +102,8 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
             }
 
             final pendingCount = state.countByStatus(BookingStatus.pending);
+            final rejectedCount = state.countByStatus(BookingStatus.rejected);
+            final cancelledCount = state.countByStatus(BookingStatus.cancelled);
 
             return Column(
               children: [
@@ -146,9 +148,15 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                         ),
                         const SizedBox(width: 8),
                         _FilterChip(
-                          label: 'Từ chối / Đã huỷ',
-                          isSelected: state.filterStatus == BookingStatus.rejected || state.filterStatus == BookingStatus.cancelled,
+                          label: 'Từ chối ($rejectedCount)',
+                          isSelected: state.filterStatus == BookingStatus.rejected,
                           onTap: () => context.read<OwnerBookingCubit>().filterByStatus(BookingStatus.rejected),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: 'Đã huỷ ($cancelledCount)',
+                          isSelected: state.filterStatus == BookingStatus.cancelled,
+                          onTap: () => context.read<OwnerBookingCubit>().filterByStatus(BookingStatus.cancelled),
                         ),
                       ],
                     ),
