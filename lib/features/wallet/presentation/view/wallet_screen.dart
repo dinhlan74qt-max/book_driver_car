@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/wallet/domain/entities/deposit_result_entity.dart';
+import 'package:book_drive_car/features/wallet/domain/usecases/withdraw.dart';
 import 'package:book_drive_car/features/wallet/domain/entities/withdraw_request_entity.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_bloc.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_event.dart';
@@ -10,9 +11,6 @@ import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_state.d
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_event.dart';
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_state.dart';
-import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_bloc.dart';
-import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_event.dart';
-import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_state.dart';
 import 'package:book_drive_car/features/wallet/presentation/view/wallet_deposit_qr_screen.dart';
 import 'package:book_drive_car/features/wallet/domain/entities/wallet_transaction_entity.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
@@ -34,16 +32,26 @@ class _WalletScreenState extends State<WalletScreen>
     with TickerProviderStateMixin {
   late final WalletBloc _walletBloc;
   late final DepositBloc _depositBloc;
-  late final WithdrawBloc _withdrawBloc;
   List<WalletTransactionEntity> _transactions = const [];
 
   final TextEditingController _customAmountController = TextEditingController();
+  final TextEditingController _withdrawBankController = TextEditingController();
+  final TextEditingController _withdrawAccountNumberController =
+      TextEditingController();
+  final TextEditingController _withdrawAccountNameController =
+      TextEditingController();
+  final TextEditingController _withdrawAmountController =
+      TextEditingController();
   final List<int> _quickAmounts = const [100000, 200000, 500000, 1000000];
 
   late final AnimationController _panelController;
+  late final AnimationController _withdrawPanelController;
 
   bool _panelOpen = false;
+  bool _withdrawPanelOpen = false;
   bool _isFormattingDepositAmount = false;
+  bool _isFormattingWithdrawAmount = false;
+  bool _isSubmittingWithdraw = false;
   int? _selectedAmount;
   int? _lastSubmittedAmount;
   int? _currentBalance;
@@ -55,8 +63,11 @@ class _WalletScreenState extends State<WalletScreen>
     super.initState();
     _walletBloc = sl<WalletBloc>();
     _depositBloc = sl<DepositBloc>();
-    _withdrawBloc = sl<WithdrawBloc>();
     _panelController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _withdrawPanelController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
@@ -71,20 +82,42 @@ class _WalletScreenState extends State<WalletScreen>
   @override
   void dispose() {
     _panelController.dispose();
+    _withdrawPanelController.dispose();
     _customAmountController.dispose();
+    _withdrawBankController.dispose();
+    _withdrawAccountNumberController.dispose();
+    _withdrawAccountNameController.dispose();
+    _withdrawAmountController.dispose();
     _walletBloc.close();
     _depositBloc.close();
-    _withdrawBloc.close();
     super.dispose();
   }
 
   void _togglePanel() {
     if (_depositBloc.state is DepositLoading) return;
+    if (_withdrawPanelOpen) {
+      setState(() => _withdrawPanelOpen = false);
+      _withdrawPanelController.reverse();
+    }
     setState(() => _panelOpen = !_panelOpen);
     if (_panelOpen) {
       _panelController.forward();
     } else {
       _panelController.reverse();
+    }
+  }
+
+  void _toggleWithdrawPanel() {
+    if (_isSubmittingWithdraw) return;
+    if (_panelOpen) {
+      setState(() => _panelOpen = false);
+      _panelController.reverse();
+    }
+    setState(() => _withdrawPanelOpen = !_withdrawPanelOpen);
+    if (_withdrawPanelOpen) {
+      _withdrawPanelController.forward();
+    } else {
+      _withdrawPanelController.reverse();
     }
   }
 
@@ -138,327 +171,92 @@ class _WalletScreenState extends State<WalletScreen>
     _walletBloc.add(const WalletRequested());
   }
 
-  Future<void> _showWithdrawSheetV2() async {
-    final rootContext = context;
-    final bankController = TextEditingController();
-    final accountNumberController = TextEditingController();
-    final accountNameController = TextEditingController();
-    final amountController = TextEditingController();
-    bool isFormattingAmount = false;
+  void _onWithdrawAmountChanged(String value) {
+    if (_isFormattingWithdrawAmount) return;
 
-    void formatAmountField() {
-      if (isFormattingAmount) return;
-      final digitsOnly = amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
-      if (digitsOnly.isEmpty) return;
+    final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) return;
 
-      final formatted = NumberFormat.decimalPattern('vi_VN').format(int.parse(digitsOnly));
-      if (formatted == amountController.text) return;
+    final formatted = NumberFormat.decimalPattern(
+      'vi_VN',
+    ).format(int.tryParse(digitsOnly) ?? 0);
 
-      isFormattingAmount = true;
-      amountController.value = TextEditingValue(
+    if (formatted != value) {
+      _isFormattingWithdrawAmount = true;
+      _withdrawAmountController.value = TextEditingValue(
         text: formatted,
         selection: TextSelection.collapsed(offset: formatted.length),
       );
-      isFormattingAmount = false;
+      _isFormattingWithdrawAmount = false;
+    }
+  }
+
+  Future<void> _submitWithdraw() async {
+    if (_isSubmittingWithdraw) return;
+
+    final bankName = _withdrawBankController.text.trim();
+    final accountNumber = _withdrawAccountNumberController.text.trim();
+    final accountName = _withdrawAccountNameController.text.trim();
+    final amount =
+        int.tryParse(
+          _withdrawAmountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+        ) ??
+        0;
+
+    if (bankName.isEmpty ||
+        accountNumber.isEmpty ||
+        accountName.isEmpty ||
+        amount <= 0) {
+      AppToast.show(
+        context,
+        message: 'Vui long nhap day du thong tin rut tien.',
+        type: AppToastType.error,
+      );
+      return;
     }
 
-    amountController.addListener(formatAmountField);
+    setState(() {
+      _isSubmittingWithdraw = true;
+    });
 
-    await showModalBottomSheet<void>(
-      context: rootContext,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: false,
-      requestFocus: false,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return BlocProvider.value(
-          value: _withdrawBloc,
-          child: BlocConsumer<WithdrawBloc, WithdrawState>(
-            listener: (context, state) {
-              if (state is WithdrawSuccess) {
-                Navigator.of(sheetContext).pop();
-                AppToast.show(
-                  rootContext,
-                  message: state.message,
-                  type: AppToastType.success,
-                );
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) {
-                    _refreshWallet();
-                  }
-                });
-              }
+    try {
+      final message = await sl<Withdraw>()
+          .call(
+            WithdrawRequestEntity(
+              amount: amount,
+              bankName: bankName,
+              bankAccount: accountNumber,
+              accountHolder: accountName,
+            ),
+          )
+          .timeout(const Duration(seconds: 12));
 
-              if (state is WithdrawFailure) {
-                AppToast.show(
-                  rootContext,
-                  message: state.error,
-                  type: AppToastType.error,
-                );
-              }
-            },
-            builder: (context, state) {
-              final isSubmitting = state is WithdrawLoading;
+      if (!mounted) return;
 
-              return SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-                  ),
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                    child: FractionallySizedBox(
-                      heightFactor: 0.84,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-                        ),
-                        child: ListView(
-                          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                          children: [
-                            Center(
-                              child: Container(
-                                width: 46,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: AppColors.border,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            const Text(
-                              'Rut tien',
-                              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Nhap thong tin ngan hang va so tien muon rut.',
-                              style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-                            ),
-                            const SizedBox(height: 18),
-                            TextField(
-                              controller: bankController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Ten ngan hang',
-                                hintText: 'Vi du: Vietcombank',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: accountNumberController,
-                              keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'So tai khoan',
-                                hintText: 'Nhap so tai khoan',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: accountNameController,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Ten chu tai khoan',
-                                hintText: 'Nhap ho va ten',
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: amountController,
-                              keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'So tien muon rut',
-                                hintText: 'Vi du: 500.000',
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    'Xac nhan truoc khi gui',
-                                    style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'Khi nhan xac nhan, he thong se tao lenh rut tien cho tai khoan ngan hang ban da nhap.',
-                                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5, height: 1.5),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: isSubmitting
-                                    ? null
-                                    : () {
-                                        final bankName = bankController.text.trim();
-                                        final accountNumber = accountNumberController.text.trim();
-                                        final accountName = accountNameController.text.trim();
-                                        final amount = int.tryParse(
-                                              amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-                                            ) ??
-                                            0;
+      setState(() {
+        _withdrawPanelOpen = false;
+      });
+      _withdrawPanelController.reverse();
 
-                                        if (bankName.isEmpty || accountNumber.isEmpty || accountName.isEmpty || amount <= 0) {
-                                          AppToast.show(
-                                            rootContext,
-                                            message: 'Vui long nhap day du thong tin rut tien.',
-                                            type: AppToastType.error,
-                                          );
-                                          return;
-                                        }
-
-                                        context.read<WithdrawBloc>().add(
-                                              WithdrawSubmitted(
-                                                WithdrawRequestEntity(
-                                                  amount: amount,
-                                                  bankName: bankName,
-                                                  bankAccount: accountNumber,
-                                                  accountHolder: accountName,
-                                                ),
-                                              ),
-                                            );
-                                      },
-                                child: isSubmitting
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Text('Xac nhan rut tien'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-
-    amountController.removeListener(formatAmountField);
-    bankController.dispose();
-    accountNumberController.dispose();
-    accountNameController.dispose();
-    amountController.dispose();
-  }
-  Future<void> _showWithdrawSheet() async {
-    final amountController = TextEditingController();
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.42,
-          minChildSize: 0.34,
-          maxChildSize: 0.7,
-          expand: false,
-          builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: SingleChildScrollView(
-                controller: scrollController,
-                padding: EdgeInsets.fromLTRB(
-                  20,
-                  14,
-                  20,
-                  20 + MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 46,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Rút tiền',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Nhập số tiền muốn rút từ ví. Màn hình này đang ở dạng giao diện, bạn có thể nối API rút tiền sau.',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    TextField(
-                      controller: amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Số tiền muốn rút',
-                        hintText: 'Ví dụ: 500000',
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(this.context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Tính năng rút tiền sẽ được kết nối sau.',
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('Xác nhận rút tiền'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    amountController.dispose();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        AppToast.show(context, message: message, type: AppToastType.success);
+        _refreshWallet();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.show(
+        context,
+        message: e.toString().replaceFirst('Exception: ', ''),
+        type: AppToastType.error,
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingWithdraw = false;
+        });
+      }
+    }
   }
 
   Future<void> _handlePullToRefresh() {
@@ -518,7 +316,6 @@ class _WalletScreenState extends State<WalletScreen>
       providers: [
         BlocProvider.value(value: _walletBloc),
         BlocProvider.value(value: _depositBloc),
-        BlocProvider.value(value: _withdrawBloc),
       ],
       child: MultiBlocListener(
         listeners: [
@@ -655,7 +452,7 @@ class _WalletScreenState extends State<WalletScreen>
                                     'Rút tiền từ số dư khả dụng trong ví.',
                                 icon: Icons.payments_outlined,
                                 accent: AppColors.pageAccents[2],
-                                onTap: _showWithdrawSheetV2,
+                                onTap: _toggleWithdrawPanel,
                               ),
                             ),
                           ],
@@ -683,6 +480,30 @@ class _WalletScreenState extends State<WalletScreen>
                           ),
                         ),
                       ),
+                      SizeTransition(
+                        sizeFactor: CurvedAnimation(
+                          parent: _withdrawPanelController,
+                          curve: Curves.easeInOutCubic,
+                        ),
+                        axisAlignment: -1,
+                        child: FadeTransition(
+                          opacity: _withdrawPanelController,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: _WithdrawPanel(
+                              bankController: _withdrawBankController,
+                              accountNumberController:
+                                  _withdrawAccountNumberController,
+                              accountNameController:
+                                  _withdrawAccountNameController,
+                              amountController: _withdrawAmountController,
+                              isLoading: _isSubmittingWithdraw,
+                              onAmountChanged: _onWithdrawAmountChanged,
+                              onConfirm: _submitWithdraw,
+                            ),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 18),
                       StaggeredFadeIn(
                         index: 2,
@@ -704,9 +525,7 @@ class _WalletScreenState extends State<WalletScreen>
                           final isPositive = tx.isCredit;
                           final createdAtText = tx.createdAt == null
                               ? 'Chưa có thời gian'
-                              : DateFormat(
-                                  'dd/MM/yyyy',
-                                ).format(tx.createdAt!);
+                              : DateFormat('dd/MM/yyyy').format(tx.createdAt!);
 
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 10),
@@ -955,6 +774,149 @@ class _HeroStat extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w800,
               letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WithdrawPanel extends StatelessWidget {
+  final TextEditingController bankController;
+  final TextEditingController accountNumberController;
+  final TextEditingController accountNameController;
+  final TextEditingController amountController;
+  final bool isLoading;
+  final ValueChanged<String> onAmountChanged;
+  final VoidCallback onConfirm;
+
+  const _WithdrawPanel({
+    required this.bankController,
+    required this.accountNumberController,
+    required this.accountNameController,
+    required this.amountController,
+    required this.isLoading,
+    required this.onAmountChanged,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBFBFC),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.border.withOpacity(0.8)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Rut tien',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Nhap thong tin ngan hang va so tien muon rut, sau do bam xac nhan.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12.5,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: bankController,
+            enabled: !isLoading,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Ten ngan hang',
+              hintText: 'Vi du: Vietcombank',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: accountNumberController,
+            enabled: !isLoading,
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'So tai khoan',
+              hintText: 'Nhap so tai khoan',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: accountNameController,
+            enabled: !isLoading,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(
+              labelText: 'Ten chu tai khoan',
+              hintText: 'Nhap ho va ten',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: amountController,
+            enabled: !isLoading,
+            keyboardType: TextInputType.number,
+            onChanged: onAmountChanged,
+            decoration: const InputDecoration(
+              labelText: 'So tien muon rut',
+              hintText: 'Vi du: 500.000',
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Luu y truoc khi gui',
+                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'He thong se tao lenh rut tien cho tai khoan ban da nhap.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isLoading ? null : onConfirm,
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Xac nhan rut tien'),
             ),
           ),
         ],
@@ -1327,6 +1289,3 @@ class _TopupPanel extends StatelessWidget {
     );
   }
 }
-
-
-

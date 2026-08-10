@@ -27,9 +27,13 @@ class OwnerBookingCubit extends Cubit<OwnerBookingState> {
     }
   }
 
-  Future<bool> approveBooking(String id) async {
+  Future<bool> _updateStatus(String id, String status, {String? reason}) async {
     try {
-      final updated = await repository.updateBookingStatus(id: id, status: 'APPROVED');
+      final updated = await repository.updateBookingStatus(
+        id: id,
+        status: status,
+        reason: reason,
+      );
       if (state is OwnerBookingLoaded) {
         final current = state as OwnerBookingLoaded;
         final updatedList = current.allBookings.map((e) => e.id == id ? updated : e).toList();
@@ -41,17 +45,19 @@ class OwnerBookingCubit extends Cubit<OwnerBookingState> {
     }
   }
 
+  Future<bool> approveBooking(String id) async {
+    return _updateStatus(id, 'APPROVED');
+  }
+
   Future<bool> rejectBooking(String id, {String? reason}) async {
-    try {
-      final updated = await repository.updateBookingStatus(id: id, status: 'REJECTED', reason: reason);
-      if (state is OwnerBookingLoaded) {
-        final current = state as OwnerBookingLoaded;
-        final updatedList = current.allBookings.map((e) => e.id == id ? updated : e).toList();
-        emit(current.copyWith(allBookings: updatedList));
-      }
-      return true;
-    } catch (e) {
-      return false;
-    }
+    return _updateStatus(id, 'REJECTED', reason: reason);
+  }
+
+  Future<bool> markCustomerReceived(String id) async {
+    return _updateStatus(id, 'RENTING');
+  }
+
+  Future<bool> markCustomerReturned(String id) async {
+    return _updateStatus(id, 'COMPLETED');
   }
 }

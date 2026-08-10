@@ -1,6 +1,7 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
@@ -194,6 +195,8 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                                       ),
                                     ),
                                   );
+                                  if (!context.mounted) return;
+                                  await context.read<OwnerBookingCubit>().fetchBookings();
                                 },
                               );
                             },
@@ -360,10 +363,19 @@ class _BookingOrderCard extends StatelessWidget {
                     width: 76,
                     height: 76,
                     child: booking.vehicleImage.isNotEmpty
-                        ? Image.network(
-                            booking.vehicleImage,
+                        ? CachedNetworkImage(
+                            imageUrl: booking.vehicleImage,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            placeholder: (_, __) => Container(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              alignment: Alignment.center,
+                              child: const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
                             ),

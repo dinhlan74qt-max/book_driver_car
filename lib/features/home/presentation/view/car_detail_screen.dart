@@ -3,6 +3,7 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_spec_grid.dart';
@@ -244,10 +245,19 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                           itemCount: images.length,
                           onPageChanged: (i) =>
                               setState(() => _currentImage = i),
-                          itemBuilder: (_, i) => Image.network(
-                            images[i],
+                          itemBuilder: (_, i) => CachedNetworkImage(
+                            imageUrl: images[i],
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
+                            placeholder: (_, __) => Container(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              alignment: Alignment.center,
+                              child: const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: (context, error, stackTrace) =>
                                 Container(
                                   color: AppColors.primary.withValues(
                                     alpha: 0.15,

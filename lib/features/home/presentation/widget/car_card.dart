@@ -1,6 +1,7 @@
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class CarCard extends StatelessWidget {
@@ -364,19 +365,37 @@ class _CarImageState extends State<_CarImage> {
                             });
                           },
                           itemBuilder: (context, index) {
-                            return Image.network(
-                              images[index],
+                            return CachedNetworkImage(
+                              imageUrl: images[index],
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                              placeholder: (_, __) => Container(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                alignment: Alignment.center,
+                                child: const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => Center(
                                 child: _carIconFor(widget.car.imageIcon),
                               ),
                             );
                           },
                         )
-                      : Image.network(
-                          images.first,
+                      : CachedNetworkImage(
+                          imageUrl: images.first,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          placeholder: (_, __) => Container(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            alignment: Alignment.center,
+                            child: const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) =>
                               Center(child: _carIconFor(widget.car.imageIcon)),
                         ))
                 : Center(child: _carIconFor(widget.car.imageIcon)),
@@ -511,7 +530,7 @@ class _SpecChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: const EdgeInsets.all(3),
+            padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(
               color: chipColor.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(6),
