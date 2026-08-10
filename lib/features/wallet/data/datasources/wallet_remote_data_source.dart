@@ -52,6 +52,11 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
       final response = await dio.get(
         ApiConstants.myWallet,
         options: await _authOptions(),
+      ).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () {
+          throw TimeoutException('Yeu cau tai vi bi timeout');
+        },
       );
 
       final data = response.data;
@@ -142,6 +147,11 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
       final response = await dio.get(
         '${ApiConstants.myWallet}/history',
         options: await _authOptions(),
+      ).timeout(
+        const Duration(seconds: 12),
+        onTimeout: () {
+          throw TimeoutException('Yeu cau tai lich su giao dich bi timeout');
+        },
       );
 
       final data = response.data;

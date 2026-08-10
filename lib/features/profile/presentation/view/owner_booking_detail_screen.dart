@@ -1,5 +1,6 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
@@ -143,6 +144,122 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
     );
   }
 
+  bool get _canMarkReceived {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final startDay = DateUtils.dateOnly(_currentBooking.startDate);
+    return !today.isBefore(startDay);
+  }
+
+  bool get _canMarkReturned {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final endDay = DateUtils.dateOnly(_currentBooking.endDate);
+    return !today.isBefore(endDay);
+  }
+
+  Future<void> _handleMarkReceived() async {
+    if (!_canMarkReceived) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận khách đã nhận xe'),
+        content: Text(
+          'Bạn muốn chuyển đơn ${_currentBooking.bookingCode} sang trạng thái khách đã nhận xe không?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _isProcessing = true);
+    final success = await context.read<OwnerBookingCubit>().markCustomerReceived(
+          _currentBooking.id,
+        );
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    if (success) {
+      setState(() {
+        _currentBooking = _currentBooking.copyWith(status: BookingStatus.renting);
+      });
+      AppToast.show(
+        context,
+        message: 'Đã cập nhật khách đã nhận xe cho đơn ${_currentBooking.bookingCode}',
+        type: AppToastType.success,
+      );
+      return;
+    }
+
+    AppToast.show(
+      context,
+      message: 'Không thể cập nhật trạng thái nhận xe. Vui lòng thử lại!',
+      type: AppToastType.error,
+    );
+  }
+
+  Future<void> _handleMarkReturned() async {
+    if (!_canMarkReturned) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xác nhận khách đã trả xe'),
+        content: Text(
+          'Bạn muốn chuyển đơn ${_currentBooking.bookingCode} sang trạng thái hoàn thành không?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _isProcessing = true);
+    final success = await context.read<OwnerBookingCubit>().markCustomerReturned(
+          _currentBooking.id,
+        );
+    if (!mounted) return;
+    setState(() => _isProcessing = false);
+
+    if (success) {
+      setState(() {
+        _currentBooking = _currentBooking.copyWith(status: BookingStatus.completed);
+      });
+      AppToast.show(
+        context,
+        message: 'Đã cập nhật khách đã trả xe cho đơn ${_currentBooking.bookingCode}',
+        type: AppToastType.success,
+      );
+      return;
+    }
+
+    AppToast.show(
+      context,
+      message: 'Không thể cập nhật trạng thái trả xe. Vui lòng thử lại!',
+      type: AppToastType.error,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = _currentBooking.status;
@@ -225,10 +342,19 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                       width: 84,
                       height: 84,
                       child: _currentBooking.vehicleImage.isNotEmpty
-                          ? Image.network(
-                              _currentBooking.vehicleImage,
+                          ? CachedNetworkImage(
+                              imageUrl: _currentBooking.vehicleImage,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              placeholder: (_, __) => Container(
+                                color: AppColors.primary.withValues(alpha: 0.08),
+                                alignment: Alignment.center,
+                                child: const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
                               ),
@@ -445,66 +571,233 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
       ),
 
       // ── BOTTOM ACTION BAR (DUYỆT / TỪ CHỐI CHO ĐƠN PENDING) ─────────────────
-      bottomNavigationBar: status == BookingStatus.pending
-          ? Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: const Border(top: BorderSide(color: AppColors.border)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isProcessing ? null : _handleReject,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text(
-                        'Từ chối',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton.icon(
-                      onPressed: _isProcessing ? null : _handleApprove,
-                      icon: _isProcessing
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                      label: Text(
-                        _isProcessing ? 'Đang xử lý...' : 'Duyệt đơn ngay',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15.5, color: Colors.white),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        elevation: 2,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : null,
+      bottomNavigationBar: _buildBottomActionBar(status),
     );
+  }
+
+  Widget? _buildBottomActionBar(BookingStatus status) {
+    if (status == BookingStatus.pending) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _isProcessing ? null : _handleReject,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: const Text(
+                  'Từ chối',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton.icon(
+                onPressed: _isProcessing ? null : _handleApprove,
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                label: Text(
+                  _isProcessing ? 'Đang xử lý...' : 'Duyệt đơn ngay',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (status == BookingStatus.approved) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isProcessing || !_canMarkReceived
+                    ? null
+                    : _handleMarkReceived,
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.login_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                label: Text(
+                  _canMarkReceived ? 'Khách đã nhận xe' : 'Chỉ bật từ ngày nhận xe',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.primary.withValues(
+                    alpha: 0.35,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 2,
+                ),
+              ),
+            ),
+            if (!_canMarkReceived) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Nút này chỉ hoạt động từ ngày nhận xe trở đi.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12.5,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    if (status == BookingStatus.renting) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(top: BorderSide(color: AppColors.border)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isProcessing || !_canMarkReturned
+                    ? null
+                    : _handleMarkReturned,
+                icon: _isProcessing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.logout_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                label: Text(
+                  _canMarkReturned ? 'Khách đã trả xe' : 'Chỉ bật từ ngày trả xe',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  disabledBackgroundColor: AppColors.success.withValues(
+                    alpha: 0.35,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  elevation: 2,
+                ),
+              ),
+            ),
+            if (!_canMarkReturned) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Nút này chỉ hoạt động từ ngày trả xe trở đi.',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12.5,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return null;
   }
 
   String _getStatusDescription(BookingStatus st) {
