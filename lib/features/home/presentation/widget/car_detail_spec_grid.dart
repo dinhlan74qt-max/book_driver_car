@@ -2,7 +2,6 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
 
-
 class SpecItem {
   final IconData icon;
   final String label;
@@ -22,7 +21,7 @@ class CarDetailSpecGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final columnCount = context.isTablet ? 4 : (context.isSmallPhone ? 1: 2);
+    final columnCount = context.isTablet ? 4 : (context.isSmallPhone ? 1 : 2);
     final aspectRatio = context.isTablet ? 3.2 : 2.8;
 
     return Container(
@@ -37,11 +36,11 @@ class CarDetailSpecGrid extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: specs.length,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: columnCount,
-              childAspectRatio: aspectRatio,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-            ),
+          crossAxisCount: columnCount,
+          childAspectRatio: aspectRatio,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
         itemBuilder: (_, index) {
           final item = specs[index];
           return Row(
@@ -62,7 +61,10 @@ class CarDetailSpecGrid extends StatelessWidget {
                   children: [
                     Text(
                       item.label,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                     const SizedBox(height: 1),
                     Text(

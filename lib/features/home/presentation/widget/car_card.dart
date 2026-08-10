@@ -8,18 +8,15 @@ class CarCard extends StatelessWidget {
   final VoidCallback? onTap;
   final double? width;
 
-  const CarCard({
-    super.key,
-    required this.car,
-    this.onTap,
-    this.width,
-  });
+  const CarCard({super.key, required this.car, this.onTap, this.width});
 
   @override
   Widget build(BuildContext context) {
     final card = LayoutBuilder(
       builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite ? constraints.maxWidth : width ?? double.infinity;
+        final availableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : width ?? double.infinity;
         final isCompact = availableWidth < 330;
         return _CardShell(
           onTap: onTap,
@@ -50,10 +47,7 @@ class _CardShell extends StatelessWidget {
   final Widget child;
   final VoidCallback? onTap;
 
-  const _CardShell({
-    required this.child,
-    required this.onTap,
-  });
+  const _CardShell({required this.child, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +55,7 @@ class _CardShell extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: const Color.fromARGB(255, 233, 231, 231),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
           boxShadow: [
@@ -114,21 +108,26 @@ class _ExpandedCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      _RatingBadge(rating: car.rating),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.place_outlined, size: 14, color: AppColors.textMuted),
+                      const Icon(
+                        Icons.place_outlined,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(width: 3),
                       Expanded(
                         child: Text(
                           car.location.isNotEmpty ? car.location : car.province,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
@@ -138,9 +137,21 @@ class _ExpandedCard extends StatelessWidget {
                     spacing: 6,
                     runSpacing: 4,
                     children: [
-                      _SpecChip(icon: Icons.apartment_outlined, label: car.brand, color: const Color(0xFF1B4F72)),
-                      _SpecChip(icon: Icons.directions_car_outlined, label: car.vehicleType, color: const Color(0xFF1E8E5A)),
-                      _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ', color: const Color(0xFFFF7A00)),
+                      _SpecChip(
+                        icon: Icons.apartment_outlined,
+                        label: car.brand,
+                        color: const Color(0xFF1B4F72),
+                      ),
+                      _SpecChip(
+                        icon: Icons.directions_car_outlined,
+                        label: car.vehicleType,
+                        color: const Color(0xFF1E8E5A),
+                      ),
+                      _SpecChip(
+                        icon: Icons.people_alt_outlined,
+                        label: '${car.seats} chỗ',
+                        color: const Color(0xFFFF7A00),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -161,7 +172,10 @@ class _ExpandedCard extends StatelessWidget {
                             ),
                             const TextSpan(
                               text: ' /ngày',
-                              style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           ],
                         ),
@@ -201,10 +215,7 @@ class _CompactCard extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          height: 112,
-          child: _CarImage(car: car, height: 112),
-        ),
+        SizedBox(height: 112, child: _CarImage(car: car, height: 112)),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: Column(
@@ -225,8 +236,6 @@ class _CompactCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  _RatingBadge(rating: car.rating),
                 ],
               ),
               const SizedBox(height: 3),
@@ -234,15 +243,26 @@ class _CompactCard extends StatelessWidget {
                 car.location.isNotEmpty ? car.location : car.province,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 6),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  _SpecChip(icon: Icons.apartment_outlined, label: car.brand, color: const Color(0xFF1B4F72)),
-                  _SpecChip(icon: Icons.people_alt_outlined, label: '${car.seats} chỗ', color: const Color(0xFFFF7A00)),
+                  _SpecChip(
+                    icon: Icons.apartment_outlined,
+                    label: car.brand,
+                    color: const Color(0xFF1B4F72),
+                  ),
+                  _SpecChip(
+                    icon: Icons.people_alt_outlined,
+                    label: '${car.seats} chỗ',
+                    color: const Color(0xFFFF7A00),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -264,7 +284,10 @@ class _CompactCard extends StatelessWidget {
                           ),
                           const TextSpan(
                             text: ' /ngày',
-                            style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                         ],
                       ),
@@ -297,11 +320,7 @@ class _CarImage extends StatefulWidget {
   final double? width;
   final double? height;
 
-  const _CarImage({
-    required this.car,
-    this.width,
-    this.height,
-  });
+  const _CarImage({required this.car, this.width, this.height});
 
   @override
   State<_CarImage> createState() => _CarImageState();
@@ -337,30 +356,29 @@ class _CarImageState extends State<_CarImage> {
             ),
             child: hasNetworkImages
                 ? (images.length > 1
-                    ? PageView.builder(
-                        itemCount: images.length,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentIndex = index;
-                          });
-                        },
-                        itemBuilder: (context, index) {
-                          return Image.network(
-                            images[index],
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: _carIconFor(widget.car.imageIcon),
-                            ),
-                          );
-                        },
-                      )
-                    : Image.network(
-                        images.first,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Center(
-                          child: _carIconFor(widget.car.imageIcon),
-                        ),
-                      ))
+                      ? PageView.builder(
+                          itemCount: images.length,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentIndex = index;
+                            });
+                          },
+                          itemBuilder: (context, index) {
+                            return Image.network(
+                              images[index],
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: _carIconFor(widget.car.imageIcon),
+                              ),
+                            );
+                          },
+                        )
+                      : Image.network(
+                          images.first,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Center(child: _carIconFor(widget.car.imageIcon)),
+                        ))
                 : Center(child: _carIconFor(widget.car.imageIcon)),
           ),
           Positioned(
@@ -413,13 +431,29 @@ class _CarImageState extends State<_CarImage> {
   Icon _carIconFor(String iconName) {
     switch (iconName) {
       case 'directions_car_filled':
-        return const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary, size: 42);
+        return const Icon(
+          Icons.directions_car_filled_rounded,
+          color: AppColors.primary,
+          size: 42,
+        );
       case 'airport_shuttle':
-        return const Icon(Icons.airport_shuttle_rounded, color: AppColors.primary, size: 42);
+        return const Icon(
+          Icons.airport_shuttle_rounded,
+          color: AppColors.primary,
+          size: 42,
+        );
       case 'electric_car':
-        return const Icon(Icons.electric_car_rounded, color: AppColors.primary, size: 42);
+        return const Icon(
+          Icons.electric_car_rounded,
+          color: AppColors.primary,
+          size: 42,
+        );
       default:
-        return const Icon(Icons.directions_car_filled_outlined, color: AppColors.primary, size: 42);
+        return const Icon(
+          Icons.directions_car_filled_outlined,
+          color: AppColors.primary,
+          size: 42,
+        );
     }
   }
 }
@@ -444,7 +478,11 @@ class _RatingBadge extends StatelessWidget {
           const SizedBox(width: 2),
           Text(
             rating.toStringAsFixed(1),
-            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
         ],
       ),
@@ -457,11 +495,7 @@ class _SpecChip extends StatelessWidget {
   final String label;
   final Color? color;
 
-  const _SpecChip({
-    required this.icon,
-    required this.label,
-    this.color,
-  });
+  const _SpecChip({required this.icon, required this.label, this.color});
 
   @override
   Widget build(BuildContext context) {

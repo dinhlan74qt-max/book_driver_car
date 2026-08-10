@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+
 abstract class AppColors {
-   static const primary = Color(0xFF1B4F72);   
-  static const accent = Color(0xFFFF7A00);    
+  static const primary = Color(0xFF1B4F72);
+  static const accent = Color(0xFFFF7A00);
   static const success = Color(0xFF1E8E5A);
   static const danger = Color(0xFFD64545);
   static const surface = Color(0xFFFFFFFF);
@@ -28,7 +29,7 @@ abstract class AppColors {
   static const Color taillightCoral = Color(0xFFFF6B5B);
 
   /// Chữ chính trên nền tối.
-  static const Color laneWhite = Color(0xFFF4F5F9);
+  static const Color laneWhite = Color.fromARGB(255, 233, 231, 231);
 
   /// Chữ phụ, mô tả.
   static const Color steelMist = Color(0xFF8891A6);

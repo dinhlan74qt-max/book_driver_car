@@ -3,6 +3,7 @@ import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -63,20 +64,16 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
       setState(() {
         _currentBooking = _currentBooking.copyWith(status: BookingStatus.approved);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã duyệt đơn ${_currentBooking.bookingCode} thành công!'),
-          backgroundColor: Colors.green.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        message: 'Đã duyệt đơn ${_currentBooking.bookingCode} thành công',
+        type: AppToastType.success,
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể duyệt đơn. Vui lòng thử lại!'),
-          backgroundColor: AppColors.danger,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        message: 'Không thể duyệt đơn. Vui lòng thử lại!',
+        type: AppToastType.error,
       );
     }
   }
@@ -131,14 +128,19 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
           note: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : _currentBooking.note,
         );
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã từ chối đơn ${_currentBooking.bookingCode}'),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        message: 'Đã từ chối đơn ${_currentBooking.bookingCode} thành công',
+        type: AppToastType.success,
       );
+      return;
     }
+
+    AppToast.show(
+      context,
+      message: 'Không thể từ chối đơn. Vui lòng thử lại!',
+      type: AppToastType.error,
+    );
   }
 
   @override

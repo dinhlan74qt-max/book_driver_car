@@ -11,6 +11,11 @@ import '../models/booking_model.dart';
 abstract class BookingRemoteDataSource {
   Future<BookingModel> createBooking(BookingRequestEntity request);
   Future<List<BookingAvailabilityModel>> getBookedRanges(int vehicleId);
+  Future<BookingModel> updateBookingStatus({
+    required int id,
+    required String status,
+    String? reason,
+  });
 }
 
 @LazySingleton(as: BookingRemoteDataSource)
@@ -115,5 +120,43 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
       '[BookingRemoteDataSource][getBookedRanges] HTTP ${response.statusCode}: $message',
     );
     throw Exception(message);
+  }
+
+  @override
+  Future<BookingModel> updateBookingStatus({
+    required int id,
+    required String status,
+    String? reason,
+  }) async {
+    final authHeader = await userLocalStorage.getAuthHeader();
+
+    final response = await dio.post(
+      '${ApiConstants.baseUrl}/api/booking/update-status',
+      data: {
+        'id': id,
+        'status': status,
+        if (reason != null) 'reason': reason,
+      },
+      options: Options(
+        headers: authHeader != null ? {'Authorization': authHeader} : null,
+        validateStatus: (_) => true,
+      ),
+    );
+
+    final data = response.data;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final rawData = data is Map<String, dynamic> ? data['data'] ?? data : data;
+      if (rawData is Map<String, dynamic>) {
+        return BookingModel.fromJson(rawData);
+      }
+      throw Exception('Cập nhật đơn thuê thành công nhưng dữ liệu trả về không hợp lệ');
+    }
+
+    throw Exception(
+      _extractErrorMessage(
+        data,
+        fallback: 'Cập nhật trạng thái đơn thuê thất bại (${response.statusCode})',
+      ),
+    );
   }
 }

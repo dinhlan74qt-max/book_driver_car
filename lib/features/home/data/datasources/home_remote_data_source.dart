@@ -7,6 +7,7 @@ import 'package:injectable/injectable.dart';
 abstract class HomeRemoteDataSource {
   Future<List<CarModel>> getCars();
   Future<List<CarModel>> searchCars(Map<String, dynamic> params);
+  Future<List<CarModel>> searchCarsByCity(String cityName);
   Future<CarModel> getCarDetail(String id);
 }
 
@@ -17,7 +18,10 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
 
   HomeRemoteDataSourceImpl(this.dio, this.userLocalStorage);
 
-  String _extractErrorMessage(dynamic data, {String fallback = 'Đã có lỗi xảy ra'}) {
+  String _extractErrorMessage(
+    dynamic data, {
+    String fallback = 'Đã có lỗi xảy ra',
+  }) {
     if (data is Map<String, dynamic>) {
       final message = data['message'] ?? data['error'] ?? data['detail'];
       if (message is String && message.trim().isNotEmpty) return message;
@@ -25,6 +29,11 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       return data;
     }
     return fallback;
+  }
+
+  List<CarModel> _parseCars(dynamic data) {
+    final List list = (data is Map) ? (data['data'] ?? []) : [];
+    return list.map((e) => CarModel.fromJson(e)).toList();
   }
 
   @override
@@ -40,14 +49,22 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        final List list = (data is Map) ? (data['data'] ?? []) : [];
-        return list.map((e) => CarModel.fromJson(e)).toList();
+        return _parseCars(response.data);
       }
 
-      throw Exception(_extractErrorMessage(response.data, fallback: 'Không thể tải danh sách xe'));
+      throw Exception(
+        _extractErrorMessage(
+          response.data,
+          fallback: 'Không thể tải danh sách xe',
+        ),
+      );
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e.response?.data, fallback: e.message ?? 'Không thể kết nối đến server'));
+      throw Exception(
+        _extractErrorMessage(
+          e.response?.data,
+          fallback: e.message ?? 'Không thể kết nối đến server',
+        ),
+      );
     }
   }
 
@@ -65,14 +82,52 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        final List list = (data is Map) ? (data['data'] ?? []) : [];
-        return list.map((e) => CarModel.fromJson(e)).toList();
+        return _parseCars(response.data);
       }
 
-      throw Exception(_extractErrorMessage(response.data, fallback: 'Không thể tìm kiếm xe'));
+      throw Exception(
+        _extractErrorMessage(response.data, fallback: 'Không thể tìm kiếm xe'),
+      );
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e.response?.data, fallback: e.message ?? 'Không thể kết nối đến server'));
+      throw Exception(
+        _extractErrorMessage(
+          e.response?.data,
+          fallback: e.message ?? 'Không thể kết nối đến server',
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<List<CarModel>> searchCarsByCity(String cityName) async {
+    final authHeader = await userLocalStorage.getAuthHeader();
+    try {
+      final response = await dio.get(
+        '${ApiConstants.baseUrl}/api/vehicles/city',
+        queryParameters: {'name': cityName},
+        options: Options(
+          headers: {if (authHeader != null) 'Authorization': authHeader},
+          validateStatus: (_) => true,
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return _parseCars(response.data);
+      }
+
+      throw Exception(
+        _extractErrorMessage(
+          response.data,
+          fallback: 'Không thể tải danh sách xe theo thành phố',
+        ),
+      );
+    } on DioException catch (e) {
+      throw Exception(
+        _extractErrorMessage(
+          e.response?.data,
+          fallback: e.message ?? 'Không thể kết nối đến server',
+        ),
+      );
     }
   }
 
@@ -93,9 +148,19 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
         return CarModel.fromJson((data is Map) ? (data['data'] ?? data) : data);
       }
 
-      throw Exception(_extractErrorMessage(response.data, fallback: 'Không thể tải chi tiết xe'));
+      throw Exception(
+        _extractErrorMessage(
+          response.data,
+          fallback: 'Không thể tải chi tiết xe',
+        ),
+      );
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e.response?.data, fallback: e.message ?? 'Không thể kết nối đến server'));
+      throw Exception(
+        _extractErrorMessage(
+          e.response?.data,
+          fallback: e.message ?? 'Không thể kết nối đến server',
+        ),
+      );
     }
   }
 }
