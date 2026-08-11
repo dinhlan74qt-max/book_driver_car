@@ -3,6 +3,8 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:book_drive_car/features/home/presentation/view/booking_contract_flow.dart';
+import 'package:book_drive_car/shared/constants/api_constants.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
@@ -257,7 +259,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                               child: const SizedBox(
                                 width: 24,
                                 height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                             ),
                             errorWidget: (context, error, stackTrace) =>
@@ -300,11 +304,13 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    const Color(0xFF0B0F15)
-                                        .withValues(alpha: 0.10),
+                                    const Color(
+                                      0xFF0B0F15,
+                                    ).withValues(alpha: 0.10),
                                     Colors.transparent,
-                                    const Color(0xFF0B0F15)
-                                        .withValues(alpha: 0.76),
+                                    const Color(
+                                      0xFF0B0F15,
+                                    ).withValues(alpha: 0.76),
                                   ],
                                 ),
                               ),
@@ -346,8 +352,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                     begin: Alignment.bottomCenter,
                                     end: Alignment.topCenter,
                                     colors: [
-                                      const Color(0xFF0C1017)
-                                          .withValues(alpha: 0.88),
+                                      const Color(
+                                        0xFF0C1017,
+                                      ).withValues(alpha: 0.88),
                                       Colors.transparent,
                                     ],
                                   ),
@@ -363,8 +370,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: List.generate(images.length, (i) {
                                     return AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
                                       margin: const EdgeInsets.symmetric(
                                         horizontal: 3,
                                       ),
@@ -376,7 +384,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                             : Colors.white.withValues(
                                                 alpha: 0.55,
                                               ),
-                                        borderRadius: BorderRadius.circular(999),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                     );
                                   }),
@@ -777,32 +787,44 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
 
   // ── Kiểm tra Trạng thái Xác minh Danh tính trước khi Đặt Xe ──────────────────
   Future<void> _handleBookingTap(BuildContext context) async {
-    final vData = await sl<VerificationLocalDataSource>().getVerificationData();
-    if (vData.status != VerificationStatus.verified) {
+    debugPrint('[BookingFlow] tapped booking, vehicleId=$_vehicleId');
+    try {
+      debugPrint('[BookingFlow] calling ${ApiConstants.checkVerified}');
+      final verifiedUser = await sl<BookingRemoteDataSource>().checkVerified();
+      debugPrint(
+        '[BookingFlow] verified result isCccdVerified=${verifiedUser.isVerified} fullname=${verifiedUser.fullname} email=${verifiedUser.email} cccd=${verifiedUser.cccd ?? ""}',
+      );
+
+      final verificationLocal = sl<VerificationLocalDataSource>();
+      final current = await verificationLocal.getVerificationData();
+      await verificationLocal.saveVerificationData(
+        current.copyWith(
+          status: VerificationStatus.verified,
+          fullName: verifiedUser.fullname,
+          cccdNumber: verifiedUser.cccd ?? current.cccdNumber,
+          address: verifiedUser.addressText.isNotEmpty
+              ? verifiedUser.addressText
+              : current.address,
+        ),
+      );
+    } catch (e) {
+      debugPrint('[BookingFlow] checkVerified failed: $e');
       if (!context.mounted) return;
+      final vData = await sl<VerificationLocalDataSource>()
+          .getVerificationData();
       _showVerificationRequiredDialog(context, vData);
       return;
-    }
-
-    if (vData.licenseExpiryDate != null && vData.licenseExpiryDate!.isNotEmpty) {
-      try {
-        final parts = vData.licenseExpiryDate!.split('/');
-        if (parts.length == 3) {
-          final expiry = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
-          if (expiry.isBefore(DateTime.now())) {
-            if (!context.mounted) return;
-            _showVerificationRequiredDialog(context, vData, isExpired: true);
-            return;
-          }
-        }
-      } catch (_) {}
     }
 
     if (!context.mounted) return;
     _showBookingBottomSheet(context);
   }
 
-  void _showVerificationRequiredDialog(BuildContext context, VerificationData vData, {bool isExpired = false}) {
+  void _showVerificationRequiredDialog(
+    BuildContext context,
+    VerificationData vData, {
+    bool isExpired = false,
+  }) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -812,35 +834,55 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
           children: const [
             Icon(Icons.warning_amber_rounded, color: AppColors.headlightAmber),
             SizedBox(width: 8),
-            Text('Xác minh tài khoản', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+            Text(
+              'Xác minh tài khoản',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ],
         ),
         content: Text(
           isExpired
               ? 'Giấy phép lái xe của bạn đã hết hạn. Vui lòng cập nhật GPLX mới để tiếp tục đặt thuê xe.'
               : 'Bạn cần hoàn thành Xác minh danh tính & Giấy phép lái xe (KYC) trước khi bắt đầu thuê xe trên hệ thống.',
-          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13,
+            height: 1.4,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Để sau', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Để sau',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => IdentityVerificationScreen(initialData: vData),
+                  builder: (_) =>
+                      IdentityVerificationScreen(initialData: vData),
                 ),
               );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text('Xác minh ngay', style: TextStyle(fontWeight: FontWeight.w800)),
+            child: const Text(
+              'Xác minh ngay',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),
@@ -884,21 +926,35 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
               });
 
               try {
+                final bookingRemoteDataSource = sl<BookingRemoteDataSource>();
+                final verifiedUser = await bookingRemoteDataSource
+                    .checkVerified();
+
                 debugPrint(
                   '[BookingSubmit] vehicleId=$vehicleId start=${_selectedDateRange!.start.toIso8601String()} end=${_selectedDateRange!.end.toIso8601String()}',
                 );
 
-                final booking = await sl<BookingRemoteDataSource>()
-                    .createBooking(
-                      BookingRequestEntity(
+                final bookingResult = await Navigator.of(context).push<Object?>(
+                  MaterialPageRoute(
+                    builder: (_) => BookingContractScreen(
+                      car: car,
+                      request: BookingRequestEntity(
                         vehicleId: vehicleId,
                         startDate: _selectedDateRange!.start,
                         endDate: _selectedDateRange!.end,
                         note: '',
                       ),
-                    );
+                      renter: verifiedUser,
+                    ),
+                  ),
+                );
 
-                debugPrint('[BookingSubmit] success bookingId=${booking.id}');
+                if (bookingResult == null) {
+                  setModalState(() {
+                    isSubmittingBooking = false;
+                  });
+                  return;
+                }
 
                 if (!context.mounted) return;
                 Navigator.of(context).pop();

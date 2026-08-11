@@ -1,11 +1,36 @@
 import 'package:flutter/material.dart';
 
 enum VerificationStatus {
-  unverified('UNVERIFIED', 'Chưa xác minh', Color(0xFFFFA000), Icons.warning_amber_rounded),
-  pending('PENDING', 'Đang chờ duyệt', Color(0xFF1976D2), Icons.access_time_rounded),
-  verified('VERIFIED', 'Đã xác minh', Color(0xFF388E3C), Icons.verified_rounded),
-  rejected('REJECTED', 'Bị từ chối', Color(0xFFD32F2F), Icons.error_outline_rounded),
-  expired('EXPIRED', 'GPLX hết hạn', Color(0xFFE65100), Icons.running_with_errors_rounded);
+  unverified(
+    'UNVERIFIED',
+    'Chưa xác minh',
+    Color(0xFFFFA000),
+    Icons.warning_amber_rounded,
+  ),
+  pending(
+    'PENDING',
+    'Đang chờ duyệt',
+    Color(0xFF1976D2),
+    Icons.access_time_rounded,
+  ),
+  verified(
+    'VERIFIED',
+    'Đã xác minh',
+    Color(0xFF388E3C),
+    Icons.verified_rounded,
+  ),
+  rejected(
+    'REJECTED',
+    'Bị từ chối',
+    Color(0xFFD32F2F),
+    Icons.error_outline_rounded,
+  ),
+  expired(
+    'EXPIRED',
+    'GPLX hết hạn',
+    Color(0xFFE65100),
+    Icons.running_with_errors_rounded,
+  );
 
   final String code;
   final String label;
@@ -108,8 +133,10 @@ class VerificationData {
       licenseBackImage: licenseBackImage ?? this.licenseBackImage,
       selfieImage: selfieImage ?? this.selfieImage,
       emergencyContactName: emergencyContactName ?? this.emergencyContactName,
-      emergencyContactPhone: emergencyContactPhone ?? this.emergencyContactPhone,
-      emergencyContactRelation: emergencyContactRelation ?? this.emergencyContactRelation,
+      emergencyContactPhone:
+          emergencyContactPhone ?? this.emergencyContactPhone,
+      emergencyContactRelation:
+          emergencyContactRelation ?? this.emergencyContactRelation,
       hasAgreedTerms: hasAgreedTerms ?? this.hasAgreedTerms,
       rejectionReason: rejectionReason ?? this.rejectionReason,
       submittedAt: submittedAt ?? this.submittedAt,
@@ -161,11 +188,16 @@ class VerificationData {
       selfieImage: json['selfieImage'] as String?,
       emergencyContactName: json['emergencyContactName'] as String?,
       emergencyContactPhone: json['emergencyContactPhone'] as String?,
-      emergencyContactRelation: json['emergencyContactRelation'] as String? ?? 'Bố/Mẹ',
+      emergencyContactRelation:
+          json['emergencyContactRelation'] as String? ?? 'Bố/Mẹ',
       hasAgreedTerms: json['hasAgreedTerms'] as bool? ?? false,
       rejectionReason: json['rejectionReason'] as String?,
-      submittedAt: json['submittedAt'] != null ? DateTime.tryParse(json['submittedAt'] as String) : null,
-      verifiedAt: json['verifiedAt'] != null ? DateTime.tryParse(json['verifiedAt'] as String) : null,
+      submittedAt: json['submittedAt'] != null
+          ? DateTime.tryParse(json['submittedAt'] as String)
+          : null,
+      verifiedAt: json['verifiedAt'] != null
+          ? DateTime.tryParse(json['verifiedAt'] as String)
+          : null,
     );
   }
 }

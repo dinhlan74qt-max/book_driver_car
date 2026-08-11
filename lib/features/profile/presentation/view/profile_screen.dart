@@ -2,6 +2,7 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
+import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification_screen.dart';
@@ -40,7 +41,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUser() async {
     final user = await sl<UserLocalStorage>().getUser();
-    final vData = await sl<VerificationLocalDataSource>().getVerificationData();
+    final verificationLocal = sl<VerificationLocalDataSource>();
+    final current = await verificationLocal.getVerificationData();
+    VerificationData vData = current;
+
+    try {
+      final serverUser = await sl<BookingRemoteDataSource>().checkVerified();
+      vData = current.copyWith(
+        status: VerificationStatus.verified,
+        fullName: serverUser.fullname,
+        cccdNumber: serverUser.cccd ?? current.cccdNumber,
+        address: serverUser.addressText.isNotEmpty
+            ? serverUser.addressText
+            : current.address,
+      );
+      await verificationLocal.saveVerificationData(vData);
+    } catch (_) {
+      // Giữ nguyên trạng thái local nếu server chưa phản hồi hoặc chưa xác thực.
+    }
+
     if (mounted) {
       setState(() {
         _user = user;
@@ -52,7 +71,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _openVerificationForm() async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => IdentityVerificationScreen(initialData: _verificationData),
+        builder: (_) =>
+            IdentityVerificationScreen(initialData: _verificationData),
       ),
     );
     if (result == true) {
@@ -76,9 +96,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               if (user != null) ...[
                 _InfoRow(label: 'Họ tên', value: user.fullname ?? '—'),
-                _InfoRow(label: 'Email', value: user.email.isNotEmpty ? user.email : '—'),
-                _InfoRow(label: 'Số điện thoại', value: user.phone?.isNotEmpty == true ? user.phone! : '—'),
-                if (user.cccd?.isNotEmpty == true) _InfoRow(label: 'CCCD', value: user.cccd!),
+                _InfoRow(
+                  label: 'Email',
+                  value: user.email.isNotEmpty ? user.email : '—',
+                ),
+                _InfoRow(
+                  label: 'Số điện thoại',
+                  value: user.phone?.isNotEmpty == true ? user.phone! : '—',
+                ),
+                if (user.cccd?.isNotEmpty == true)
+                  _InfoRow(label: 'CCCD', value: user.cccd!),
                 _InfoRow(label: 'Vai trò', value: user.role ?? 'user'),
                 _InfoRow(
                   label: 'Trạng thái',
@@ -103,7 +130,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text('Đóng', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text(
+                    'Đóng',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ],
@@ -123,7 +153,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           builder: (context, setModalState) {
             return _BottomSheetShell(
               title: 'Cập nhật avatar',
-              subtitle: 'Chọn một avatar phù hợp để làm mới hồ sơ cá nhân của bạn.',
+              subtitle:
+                  'Chọn một avatar phù hợp để làm mới hồ sơ cá nhân của bạn.',
               child: Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -149,7 +180,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: preset.color.withValues(alpha: active ? 0.18 : 0.06),
+                            color: preset.color.withValues(
+                              alpha: active ? 0.18 : 0.06,
+                            ),
                             blurRadius: active ? 18 : 12,
                             offset: const Offset(0, 8),
                           ),
@@ -175,7 +208,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (_) {
         return _BottomSheetShell(
           title: 'Avatar & tài khoản',
-          subtitle: 'Bạn có thể xem thông tin tài khoản hoặc đổi avatar ngay tại đây.',
+          subtitle:
+              'Bạn có thể xem thông tin tài khoản hoặc đổi avatar ngay tại đây.',
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -194,7 +228,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text('Xem tài khoản', style: TextStyle(fontWeight: FontWeight.w800)),
+                  child: const Text(
+                    'Xem tài khoản',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -213,7 +250,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text('Đổi avatar', style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text(
+                    'Đổi avatar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ],
@@ -244,7 +284,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: const Text('Đóng', style: TextStyle(fontWeight: FontWeight.w800)),
+              child: const Text(
+                'Đóng',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
             ),
           ),
         );
@@ -257,7 +300,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Đăng xuất'),
-        content: const Text('Bạn có muốn đăng xuất khỏi tài khoản hiện tại không?'),
+        content: const Text(
+          'Bạn có muốn đăng xuất khỏi tài khoản hiện tại không?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -310,6 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     userName: userName.isNotEmpty ? userName : 'Người dùng',
                     userEmail: userEmail.isNotEmpty ? userEmail : '—',
                     phone: phone.isNotEmpty ? phone : '—',
+                    verificationData: _verificationData,
                     onTapAvatar: _showAvatarOptions,
                     onTapAccount: _showAccountDetail,
                   ),
@@ -387,7 +433,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                            Icon(
+                              Icons.logout_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                             SizedBox(width: 8),
                             Text(
                               'Đăng xuất',
@@ -424,6 +474,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 userName: userName.isNotEmpty ? userName : 'Người dùng',
                 userEmail: userEmail.isNotEmpty ? userEmail : '—',
                 phone: phone.isNotEmpty ? phone : '—',
+                verificationData: _verificationData,
                 onTapAvatar: _showAvatarOptions,
                 onTapAccount: _showAccountDetail,
               ),
@@ -488,7 +539,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                        Icon(
+                          Icons.logout_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Đăng xuất',
@@ -521,11 +576,7 @@ class _ProfileBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFF7F8FA),
-            Color(0xFFF3F4F7),
-            Color(0xFFF7F8FA),
-          ],
+          colors: [Color(0xFFF7F8FA), Color(0xFFF3F4F7), Color(0xFFF7F8FA)],
         ),
       ),
       child: Stack(
@@ -562,10 +613,7 @@ class _GlowOrb extends StatelessWidget {
   final double size;
   final List<Color> colors;
 
-  const _GlowOrb({
-    required this.size,
-    required this.colors,
-  });
+  const _GlowOrb({required this.size, required this.colors});
 
   @override
   Widget build(BuildContext context) {
@@ -585,6 +633,7 @@ class _ProfileHero extends StatelessWidget {
   final String userName;
   final String userEmail;
   final String phone;
+  final VerificationData verificationData;
   final VoidCallback onTapAvatar;
   final VoidCallback onTapAccount;
 
@@ -593,6 +642,7 @@ class _ProfileHero extends StatelessWidget {
     required this.userName,
     required this.userEmail,
     required this.phone,
+    required this.verificationData,
     required this.onTapAvatar,
     required this.onTapAccount,
   });
@@ -656,7 +706,11 @@ class _ProfileHero extends StatelessWidget {
                             color: preset.color.withValues(alpha: 0.2),
                           ),
                         ),
-                        child: Icon(Icons.edit_rounded, size: 14, color: preset.color),
+                        child: Icon(
+                          Icons.edit_rounded,
+                          size: 14,
+                          color: preset.color,
+                        ),
                       ),
                     ),
                   ],
@@ -701,10 +755,10 @@ class _ProfileHero extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: const [
+                        children: [
                           _ProfileBadge(
-                            label: 'Đã xác thực',
-                            icon: Icons.verified_rounded,
+                            label: verificationData.status.label,
+                            icon: verificationData.status.icon,
                           ),
                           _ProfileBadge(
                             label: 'Đang hoạt động',
@@ -817,10 +871,7 @@ class _ProfileBadge extends StatelessWidget {
   final String label;
   final IconData icon;
 
-  const _ProfileBadge({
-    required this.label,
-    required this.icon,
-  });
+  const _ProfileBadge({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -854,20 +905,14 @@ class _AvatarPreset {
   final IconData icon;
   final Color color;
 
-  const _AvatarPreset({
-    required this.icon,
-    required this.color,
-  });
+  const _AvatarPreset({required this.icon, required this.color});
 }
 
 class _SectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _SectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
+  const _SectionTitle({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -885,10 +930,7 @@ class _SectionTitle extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            height: 1.45,
-          ),
+          style: const TextStyle(color: AppColors.textSecondary, height: 1.45),
         ),
       ],
     );
@@ -922,9 +964,7 @@ class _ActionTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: AppColors.border.withValues(alpha: 0.8),
-            ),
+            border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.04),
@@ -983,11 +1023,7 @@ class _InfoRow extends StatelessWidget {
   final String value;
   final Color? valueColor;
 
-  const _InfoRow({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
+  const _InfoRow({required this.label, required this.value, this.valueColor});
 
   @override
   Widget build(BuildContext context) {
@@ -1036,11 +1072,7 @@ class _LuxuryProfileBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF0C1017),
-            Color(0xFF151A24),
-            Color(0xFFF7F8FA),
-          ],
+          colors: [Color(0xFF0C1017), Color(0xFF151A24), Color(0xFFF7F8FA)],
           stops: [0.0, 0.42, 1.0],
         ),
       ),
@@ -1078,10 +1110,7 @@ class _LuxuryGlow extends StatelessWidget {
   final double size;
   final List<Color> colors;
 
-  const _LuxuryGlow({
-    required this.size,
-    required this.colors,
-  });
+  const _LuxuryGlow({required this.size, required this.colors});
 
   @override
   Widget build(BuildContext context) {
@@ -1101,6 +1130,7 @@ class _LuxuryProfileHero extends StatelessWidget {
   final String userName;
   final String userEmail;
   final String phone;
+  final VerificationData verificationData;
   final VoidCallback onTapAvatar;
   final VoidCallback onTapAccount;
 
@@ -1109,6 +1139,7 @@ class _LuxuryProfileHero extends StatelessWidget {
     required this.userName,
     required this.userEmail,
     required this.phone,
+    required this.verificationData,
     required this.onTapAvatar,
     required this.onTapAccount,
   });
@@ -1221,10 +1252,10 @@ class _LuxuryProfileHero extends StatelessWidget {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: const [
+                        children: [
                           _ProfileBadge(
-                            label: 'Đã xác thực',
-                            icon: Icons.verified_rounded,
+                            label: verificationData.status.label,
+                            icon: verificationData.status.icon,
                           ),
                           _ProfileBadge(
                             label: 'Đang hoạt động',
@@ -1272,10 +1303,7 @@ class _LuxurySectionTitle extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _LuxurySectionTitle({
-    required this.title,
-    required this.subtitle,
-  });
+  const _LuxurySectionTitle({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -1330,9 +1358,7 @@ class _LuxuryActionTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFF7F6F1),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: color.withValues(alpha: 0.18),
-            ),
+            border: Border.all(color: color.withValues(alpha: 0.18)),
             boxShadow: [
               BoxShadow(
                 color: const Color(0xFF0F172A).withValues(alpha: 0.08),
@@ -1397,10 +1423,7 @@ class _VerificationCard extends StatelessWidget {
   final VerificationData data;
   final VoidCallback onTap;
 
-  const _VerificationCard({
-    required this.data,
-    required this.onTap,
-  });
+  const _VerificationCard({required this.data, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1426,7 +1449,9 @@ class _VerificationCard extends StatelessWidget {
         borderColor = const Color(0xFF1976D2);
         icon = Icons.access_time_rounded;
         title = 'Hồ sơ đang được xét duyệt';
-        final timeStr = data.submittedAt != null ? DateFormat('HH:mm dd/MM').format(data.submittedAt!) : 'mới đây';
+        final timeStr = data.submittedAt != null
+            ? DateFormat('HH:mm dd/MM').format(data.submittedAt!)
+            : 'mới đây';
         subtitle = 'Đã gửi lúc $timeStr • Dự kiến duyệt trong vòng 24h';
         buttonText = 'Xem hồ sơ';
         break;
@@ -1435,8 +1460,11 @@ class _VerificationCard extends StatelessWidget {
         borderColor = const Color(0xFF388E3C);
         icon = Icons.verified_user_rounded;
         title = 'Đã xác minh danh tính';
-        final expiryStr = data.licenseExpiryDate?.isNotEmpty == true ? data.licenseExpiryDate : 'Dài hạn';
-        subtitle = 'Hạng bằng: ${data.licenseClass ?? "B2"} • Hạn GPLX: $expiryStr';
+        final expiryStr = data.licenseExpiryDate?.isNotEmpty == true
+            ? data.licenseExpiryDate
+            : 'Dài hạn';
+        subtitle =
+            'Hạng bằng: ${data.licenseClass ?? "B2"} • Hạn GPLX: $expiryStr';
         buttonText = 'Xem thông tin';
         break;
       case VerificationStatus.rejected:
@@ -1444,7 +1472,9 @@ class _VerificationCard extends StatelessWidget {
         borderColor = const Color(0xFFD32F2F);
         icon = Icons.cancel_rounded;
         title = 'Hồ sơ bị từ chối';
-        subtitle = data.rejectionReason ?? 'Thông tin hoặc ảnh giấy tờ không đủ điều kiện xét duyệt.';
+        subtitle =
+            data.rejectionReason ??
+            'Thông tin hoặc ảnh giấy tờ không đủ điều kiện xét duyệt.';
         buttonText = 'Xem & Nộp lại';
         break;
       case VerificationStatus.expired:
@@ -1464,7 +1494,10 @@ class _VerificationCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1.4),
+          border: Border.all(
+            color: borderColor.withValues(alpha: 0.6),
+            width: 1.4,
+          ),
           boxShadow: [
             BoxShadow(
               color: borderColor.withValues(alpha: 0.12),
@@ -1522,7 +1555,10 @@ class _VerificationCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: borderColor.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(20),
@@ -1547,7 +1583,11 @@ class _VerificationCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 12, color: borderColor),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 12,
+                      color: borderColor,
+                    ),
                   ],
                 ),
               ],

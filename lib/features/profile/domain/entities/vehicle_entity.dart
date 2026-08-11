@@ -18,6 +18,7 @@ class VehicleEntity {
   final String description;
   final List<String> imageUrls;
   final AddressEntity address;
+  final String? contractUrl;
 
   VehicleEntity({
     required this.id,
@@ -37,5 +38,6 @@ class VehicleEntity {
     required this.description,
     required this.imageUrls,
     required this.address,
+    this.contractUrl,
   });
 }
