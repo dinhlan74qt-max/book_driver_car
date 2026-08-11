@@ -10,7 +10,7 @@ import 'package:book_drive_car/features/home/presentation/widget/car_detail_spec
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_terms_card.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
-import 'package:book_drive_car/features/profile/presentation/view/identity_verification_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:intl/intl.dart';
