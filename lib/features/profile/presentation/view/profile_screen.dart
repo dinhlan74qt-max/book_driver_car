@@ -2,11 +2,16 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
+import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
+import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
+import 'package:book_drive_car/features/profile/presentation/view/identity_verification_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking_list_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/rental_management_screen.dart';
 import 'package:book_drive_car/features/welcome/presentation/view/welcome_screen.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -25,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   int _avatarIndex = 0;
   UserEntity? _user;
+  VerificationData _verificationData = const VerificationData();
 
   @override
   void initState() {
@@ -34,7 +40,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUser() async {
     final user = await sl<UserLocalStorage>().getUser();
-    if (mounted) setState(() => _user = user);
+    final vData = await sl<VerificationLocalDataSource>().getVerificationData();
+    if (mounted) {
+      setState(() {
+        _user = user;
+        _verificationData = vData;
+      });
+    }
+  }
+
+  Future<void> _openVerificationForm() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => IdentityVerificationScreen(initialData: _verificationData),
+      ),
+    );
+    if (result == true) {
+      await _loadUser();
+    }
   }
 
   Future<void> _showAccountDetail() async {
@@ -290,7 +313,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTapAvatar: _showAvatarOptions,
                     onTapAccount: _showAccountDetail,
                   ),
+                  const SizedBox(height: 14),
+
+                  // ── CARD TRẠNG THÁI XÁC MINH DANH TÍNH ───────────────────────
+                  _VerificationCard(
+                    data: _verificationData,
+                    onTap: _openVerificationForm,
+                  ),
                   const SizedBox(height: 18),
+
                   const _LuxurySectionTitle(
                     title: 'Khu vực cá nhân',
                     subtitle: 'Các tính năng nhanh cho tài khoản và xe của bạn',
@@ -1354,6 +1385,174 @@ class _LuxuryActionTile extends StatelessWidget {
               Icon(Icons.chevron_right_rounded, color: color),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── WIDGET CARD TRẠNG THÁI XÁC MINH DANH TÍNH (PROFILE) ───────────────────────
+
+class _VerificationCard extends StatelessWidget {
+  final VerificationData data;
+  final VoidCallback onTap;
+
+  const _VerificationCard({
+    required this.data,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = data.status;
+    Color cardColor;
+    Color borderColor;
+    IconData icon;
+    String title;
+    String subtitle;
+    String buttonText;
+
+    switch (status) {
+      case VerificationStatus.unverified:
+        cardColor = const Color(0xFF1E293B);
+        borderColor = const Color(0xFFFFA000);
+        icon = Icons.warning_amber_rounded;
+        title = 'Xác minh danh tính để bắt đầu thuê xe';
+        subtitle = 'Nộp CCCD & Bằng lái xe để mở khoá tính năng đặt thuê xe';
+        buttonText = 'Xác minh ngay';
+        break;
+      case VerificationStatus.pending:
+        cardColor = const Color(0xFF1E293B);
+        borderColor = const Color(0xFF1976D2);
+        icon = Icons.access_time_rounded;
+        title = 'Hồ sơ đang được xét duyệt';
+        final timeStr = data.submittedAt != null ? DateFormat('HH:mm dd/MM').format(data.submittedAt!) : 'mới đây';
+        subtitle = 'Đã gửi lúc $timeStr • Dự kiến duyệt trong vòng 24h';
+        buttonText = 'Xem hồ sơ';
+        break;
+      case VerificationStatus.verified:
+        cardColor = const Color(0xFF0F291E);
+        borderColor = const Color(0xFF388E3C);
+        icon = Icons.verified_user_rounded;
+        title = 'Đã xác minh danh tính';
+        final expiryStr = data.licenseExpiryDate?.isNotEmpty == true ? data.licenseExpiryDate : 'Dài hạn';
+        subtitle = 'Hạng bằng: ${data.licenseClass ?? "B2"} • Hạn GPLX: $expiryStr';
+        buttonText = 'Xem thông tin';
+        break;
+      case VerificationStatus.rejected:
+        cardColor = const Color(0xFF2D1619);
+        borderColor = const Color(0xFFD32F2F);
+        icon = Icons.cancel_rounded;
+        title = 'Hồ sơ bị từ chối';
+        subtitle = data.rejectionReason ?? 'Thông tin hoặc ảnh giấy tờ không đủ điều kiện xét duyệt.';
+        buttonText = 'Xem & Nộp lại';
+        break;
+      case VerificationStatus.expired:
+        cardColor = const Color(0xFF2E1C0C);
+        borderColor = const Color(0xFFE65100);
+        icon = Icons.running_with_errors_rounded;
+        title = 'Giấy phép lái xe hết hạn';
+        subtitle = 'Cần cập nhật GPLX mới để tiếp tục sử dụng dịch vụ thuê xe.';
+        buttonText = 'Cập nhật ngay';
+        break;
+    }
+
+    return TapScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor.withValues(alpha: 0.6), width: 1.4),
+          boxShadow: [
+            BoxShadow(
+              color: borderColor.withValues(alpha: 0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: borderColor.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: borderColor, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.75),
+                          height: 1.35,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1, color: Colors.white12),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: borderColor.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    status.label,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      color: borderColor,
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      buttonText,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: borderColor,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 12, color: borderColor),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

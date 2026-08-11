@@ -1,5 +1,7 @@
 // lib/injection_container.dart
 import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart';
+import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
+import 'package:book_drive_car/features/profile/data/datasources/verification_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/repositories/owner_booking_repository_impl.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
@@ -179,6 +181,19 @@ Future<void> configureDependencies() async {
   if (!sl.isRegistered<OwnerBookingCubit>()) {
     sl.registerFactory<OwnerBookingCubit>(
       () => OwnerBookingCubit(sl<OwnerBookingRepository>()),
+    );
+  }
+
+  // Verification Feature
+  if (!sl.isRegistered<VerificationLocalDataSource>()) {
+    sl.registerLazySingleton<VerificationLocalDataSource>(
+      () => VerificationLocalDataSource(),
+    );
+  }
+
+  if (!sl.isRegistered<VerificationRemoteDataSource>()) {
+    sl.registerLazySingleton<VerificationRemoteDataSource>(
+      () => VerificationRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
     );
   }
 }
