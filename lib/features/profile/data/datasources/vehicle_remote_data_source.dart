@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/features/profile/data/models/address_model.dart';
@@ -116,7 +117,19 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
       district: request.address.district,
       city: request.address.city,
     );
-
+    final contractUrl = request.contractUrl?.trim() ?? '';
+    final contractPdfLength = request.contractPdfBytes?.length ?? 0;
+    print(
+      'request.contractUrl: ${contractUrl.isEmpty ? "[empty]" : contractUrl}',
+    );
+    print('request.contractPdfBytes.length: $contractPdfLength');
+    if (contractPdfLength > 0) {
+      final previewCount = contractPdfLength > 16 ? 16 : contractPdfLength;
+      final previewBytes = request.contractPdfBytes!.sublist(0, previewCount);
+      print(
+        'request.contractPdfBytes.preview(first $previewCount bytes): $previewBytes',
+      );
+    }
     final vehicleJson = {
       'vehicleName': request.vehicleName,
       'vehicleType': request.vehicleType,
@@ -130,6 +143,7 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
       'transmission': request.transmission,
       'pricePerDay': request.pricePerDay,
       'description': request.description,
+      if (contractUrl.isNotEmpty) 'contractUrl': contractUrl,
       'address': addressModel.toJson(),
     };
 
@@ -167,6 +181,21 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
       );
     }
 
+    if (request.contractPdfBytes != null &&
+        request.contractPdfBytes!.isNotEmpty) {
+      formData.files.add(
+        MapEntry(
+          'contractPdf',
+          MultipartFile.fromBytes(
+            request.contractPdfBytes!,
+            filename:
+                'contract_signed_${DateTime.now().millisecondsSinceEpoch}.pdf',
+            contentType: MediaType('application', 'pdf'),
+          ),
+        ),
+      );
+    }
+
     try {
       final response = await dio.post(
         ApiConstants.vehicles,
@@ -195,6 +224,18 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
 
       throw Exception(_extractErrorMessage(data));
     } on DioException catch (error) {
+      final isTimeout =
+          error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.message?.toLowerCase().contains('timeout') == true;
+
+      if (isTimeout) {
+        throw Exception(
+          'TIMEOUT: Dữ liệu đã được gửi đi nếu chưa hiển thị vui lòng nhập lại',
+        );
+      }
+
       final responseData = error.response?.data;
       final bodyStatus = responseData is Map<String, dynamic>
           ? responseData['status']

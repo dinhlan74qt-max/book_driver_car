@@ -1,9 +1,14 @@
+import 'dart:typed_data';
+
 import 'package:book_drive_car/shared/constants/api_constants.dart';
+import 'package:book_drive_car/features/profile/domain/entities/address_entity.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
 import 'package:intl/intl.dart';
+import 'package:http_parser/http_parser.dart';
 import '../../../../core/storage/user_local_storage.dart';
+import '../../domain/entities/verified_user_entity.dart';
 import '../models/booking_availability_model.dart';
 import '../../domain/entities/booking_request_entity.dart';
 import '../models/booking_model.dart';
@@ -15,6 +20,11 @@ abstract class BookingRemoteDataSource {
     required int id,
     required String status,
     String? reason,
+  });
+  Future<VerifiedUserEntity> checkVerified();
+  Future<String> uploadContractPdf({
+    required Uint8List pdfBytes,
+    required String fileName,
   });
 }
 
@@ -40,6 +50,28 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
     }
 
     return fallback;
+  }
+
+  VerifiedUserEntity _parseVerifiedUser(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final addressData = data['address'];
+      return VerifiedUserEntity(
+        fullname: data['fullname']?.toString() ?? '',
+        email: data['email']?.toString() ?? '',
+        phone: data['phone']?.toString() ?? '',
+        cccd: data['cccd']?.toString(),
+        address: addressData is Map<String, dynamic>
+            ? AddressEntity(
+                addressDetail: addressData['addressDetail']?.toString() ?? '',
+                ward: addressData['ward']?.toString() ?? '',
+                district: addressData['district']?.toString() ?? '',
+                city: addressData['city']?.toString() ?? '',
+              )
+            : null,
+      );
+    }
+
+    throw Exception('Dữ liệu xác thực không hợp lệ');
   }
 
   @override
@@ -82,6 +114,75 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
         data,
         fallback: 'Đặt lịch thất bại (${response.statusCode})',
       ),
+    );
+  }
+
+  @override
+  Future<VerifiedUserEntity> checkVerified() async {
+    final authHeader = await userLocalStorage.getAuthHeader();
+    final response = await dio.get(
+      ApiConstants.checkVerified,
+      options: Options(
+        headers: authHeader != null ? {'Authorization': authHeader} : null,
+        validateStatus: (_) => true,
+      ),
+    );
+
+    final data = response.data;
+    if (response.statusCode == 200) {
+      final rawData = data is Map<String, dynamic> ? data['data'] ?? data : data;
+      return _parseVerifiedUser(rawData);
+    }
+
+    throw Exception(
+      _extractErrorMessage(
+        data,
+        fallback: 'Tài khoản chưa được xác thực',
+      ),
+    );
+  }
+
+  @override
+  Future<String> uploadContractPdf({
+    required Uint8List pdfBytes,
+    required String fileName,
+  }) async {
+    final authHeader = await userLocalStorage.getAuthHeader();
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        pdfBytes,
+        filename: fileName,
+        contentType: MediaType('application', 'pdf'),
+      ),
+    });
+
+    final response = await dio.post(
+      ApiConstants.contractUpload,
+      data: formData,
+      options: Options(
+        headers: authHeader != null ? {'Authorization': authHeader} : null,
+        validateStatus: (_) => true,
+      ),
+    );
+
+    final data = response.data;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (data is Map<String, dynamic>) {
+        final direct = data['contractUrl'] ?? data['url'];
+        if (direct is String && direct.trim().isNotEmpty) return direct;
+        final nested = data['data'];
+        if (nested is Map<String, dynamic>) {
+          final nestedUrl = nested['contractUrl'] ?? nested['url'];
+          if (nestedUrl is String && nestedUrl.trim().isNotEmpty) {
+            return nestedUrl;
+          }
+        }
+      }
+      return '';
+    }
+
+    throw Exception(
+      _extractErrorMessage(data, fallback: 'Tải hợp đồng thất bại'),
     );
   }
 

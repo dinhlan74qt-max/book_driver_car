@@ -341,7 +341,8 @@ class _RentalScreenState extends State<RentalScreen> {
                     final filter = _filters[i];
                     final isSelected = _selectedFilter == filter.statuses;
                     return TapScale(
-                      onTap: () => setState(() => _selectedFilter = filter.statuses),
+                      onTap: () =>
+                          setState(() => _selectedFilter = filter.statuses),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 250),
                         padding: const EdgeInsets.symmetric(
@@ -361,7 +362,9 @@ class _RentalScreenState extends State<RentalScreen> {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: AppColors.headlightAmber.withValues(alpha: 0.22),
+                                    color: AppColors.headlightAmber.withValues(
+                                      alpha: 0.22,
+                                    ),
                                     blurRadius: 14,
                                     offset: const Offset(0, 8),
                                   ),
@@ -440,59 +443,85 @@ class _RentalScreenState extends State<RentalScreen> {
                               child: Opacity(
                                 opacity: isDimmed ? 0.6 : 1,
                                 child: TapScale(
-                                  onTap: () => _openBookingDetail(context, booking),
+                                  onTap: () =>
+                                      _openBookingDetail(context, booking),
                                   child: Container(
                                     padding: const EdgeInsets.all(16),
                                     decoration: BoxDecoration(
                                       color: const Color(0xFFF7F6F1),
                                       borderRadius: BorderRadius.circular(24),
                                       border: Border.all(
-                                        color: statusColor.withValues(alpha: 0.20),
+                                        color: statusColor.withValues(
+                                          alpha: 0.20,
+                                        ),
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: const Color(0xFF0F172A).withValues(alpha: 0.10),
+                                          color: const Color(
+                                            0xFF0F172A,
+                                          ).withValues(alpha: 0.10),
                                           blurRadius: 18,
                                           offset: const Offset(0, 10),
                                         ),
                                       ],
                                     ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Row(
                                                     children: [
                                                       Container(
-                                                        padding: const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 5,
-                                                        ),
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 10,
+                                                              vertical: 5,
+                                                            ),
                                                         decoration: BoxDecoration(
-                                                          color: statusColor.withValues(alpha: 0.12),
-                                                          borderRadius: BorderRadius.circular(999),
+                                                          color: statusColor
+                                                              .withValues(
+                                                                alpha: 0.12,
+                                                              ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                999,
+                                                              ),
                                                         ),
                                                         child: Row(
-                                                          mainAxisSize: MainAxisSize.min,
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
                                                           children: [
                                                             Icon(
-                                                              _statusIcon(booking.status),
+                                                              _statusIcon(
+                                                                booking.status,
+                                                              ),
                                                               size: 14,
-                                                              color: statusColor,
+                                                              color:
+                                                                  statusColor,
                                                             ),
-                                                            const SizedBox(width: 4),
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
                                                             Text(
-                                                              _statusLabel(booking.status),
+                                                              _statusLabel(
+                                                                booking.status,
+                                                              ),
                                                               style: TextStyle(
-                                                                color: statusColor,
+                                                                color:
+                                                                    statusColor,
                                                                 fontSize: 12,
-                                                                fontWeight: FontWeight.w800,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
                                                               ),
                                                             ),
                                                           ],
@@ -502,8 +531,10 @@ class _RentalScreenState extends State<RentalScreen> {
                                                       Text(
                                                         booking.bookingCode,
                                                         style: const TextStyle(
-                                                          color: AppColors.textMuted,
-                                                          fontWeight: FontWeight.w700,
+                                                          color: AppColors
+                                                              .textMuted,
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                         ),
                                                       ),
                                                     ],
@@ -512,20 +543,25 @@ class _RentalScreenState extends State<RentalScreen> {
                                                   Text(
                                                     booking.vehicle.vehicleName,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: const TextStyle(
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.w800,
-                                                      color: AppColors.textPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      color:
+                                                          AppColors.textPrimary,
                                                     ),
                                                   ),
                                                   const SizedBox(height: 4),
                                                   Text(
                                                     _vehicleSubtitle(booking),
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: const TextStyle(
-                                                      color: AppColors.textSecondary,
+                                                      color: AppColors
+                                                          .textSecondary,
                                                     ),
                                                   ),
                                                 ],
@@ -1327,14 +1363,17 @@ class _BookingDetailSheet extends StatelessWidget {
                 ),
                 if (_isConfirmedStatus(booking.status) &&
                     (booking.vehicle.ownerName?.trim().isNotEmpty == true ||
-                        booking.vehicle.ownerPhone?.trim().isNotEmpty == true)) ...[
+                        booking.vehicle.ownerPhone?.trim().isNotEmpty ==
+                            true)) ...[
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppColors.border.withOpacity(0.8)),
+                      border: Border.all(
+                        color: AppColors.border.withOpacity(0.8),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: const Color(0xFF0F172A).withOpacity(0.03),
@@ -1374,12 +1413,14 @@ class _BookingDetailSheet extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        if (booking.vehicle.ownerName?.trim().isNotEmpty == true)
+                        if (booking.vehicle.ownerName?.trim().isNotEmpty ==
+                            true)
                           _DetailRow(
                             label: 'Họ và tên',
                             value: booking.vehicle.ownerName!,
                           ),
-                        if (booking.vehicle.ownerPhone?.trim().isNotEmpty == true)
+                        if (booking.vehicle.ownerPhone?.trim().isNotEmpty ==
+                            true)
                           Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.symmetric(
@@ -1413,7 +1454,9 @@ class _BookingDetailSheet extends StatelessWidget {
                                       vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.08),
+                                      color: AppColors.primary.withOpacity(
+                                        0.08,
+                                      ),
                                       borderRadius: BorderRadius.circular(999),
                                     ),
                                     child: Row(
@@ -1816,11 +1859,7 @@ class _LuxuryBackground extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF0C1017),
-            Color(0xFF151A24),
-            Color(0xFFF7F8FA),
-          ],
+          colors: [Color(0xFF0C1017), Color(0xFF151A24), Color(0xFFF7F8FA)],
           stops: [0.0, 0.42, 1.0],
         ),
       ),
@@ -1858,10 +1897,7 @@ class _LuxuryGlow extends StatelessWidget {
   final double size;
   final List<Color> colors;
 
-  const _LuxuryGlow({
-    required this.size,
-    required this.colors,
-  });
+  const _LuxuryGlow({required this.size, required this.colors});
 
   @override
   Widget build(BuildContext context) {
@@ -1972,7 +2008,10 @@ class _RentalHeroCard extends StatelessWidget {
             children: [
               _HeroStatChip(label: '$totalBookings', caption: 'Tổng đơn'),
               _HeroStatChip(label: '$activeBookings', caption: 'Đang đi'),
-              _HeroStatChip(label: '$confirmedBookings', caption: 'Đã xác nhận'),
+              _HeroStatChip(
+                label: '$confirmedBookings',
+                caption: 'Đã xác nhận',
+              ),
               _HeroStatChip(label: '$completedBookings', caption: 'Hoàn thành'),
             ],
           ),
@@ -2016,7 +2055,7 @@ class _HeroStatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(18),
@@ -2030,7 +2069,7 @@ class _HeroStatChip extends StatelessWidget {
             label,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 18,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -2039,7 +2078,7 @@ class _HeroStatChip extends StatelessWidget {
             caption,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.72),
-              fontSize: 11.5,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2091,7 +2130,11 @@ class _LuxuryMessageCard extends StatelessWidget {
               color: (actionColor ?? AppColors.primary).withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: actionColor ?? AppColors.primary, size: 38),
+            child: Icon(
+              icon,
+              color: actionColor ?? AppColors.primary,
+              size: 38,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -2107,10 +2150,7 @@ class _LuxuryMessageCard extends StatelessWidget {
           Text(
             description,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              height: 1.5,
-            ),
+            style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
           ),
           if (onAction != null && actionLabel != null) ...[
             const SizedBox(height: 18),

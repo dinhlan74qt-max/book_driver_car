@@ -3,6 +3,7 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:book_drive_car/features/home/presentation/view/booking_contract_flow.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
@@ -809,21 +810,35 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
               });
 
               try {
+                final bookingRemoteDataSource = sl<BookingRemoteDataSource>();
+                final verifiedUser = await bookingRemoteDataSource.checkVerified();
+
                 debugPrint(
                   '[BookingSubmit] vehicleId=$vehicleId start=${_selectedDateRange!.start.toIso8601String()} end=${_selectedDateRange!.end.toIso8601String()}',
                 );
 
-                final booking = await sl<BookingRemoteDataSource>()
-                    .createBooking(
-                      BookingRequestEntity(
+                final bookingResult =
+                    await Navigator.of(context).push<Object?>(
+                  MaterialPageRoute(
+                    builder: (_) => BookingContractScreen(
+                      car: car,
+                      request: BookingRequestEntity(
                         vehicleId: vehicleId,
                         startDate: _selectedDateRange!.start,
                         endDate: _selectedDateRange!.end,
                         note: '',
                       ),
-                    );
+                      renter: verifiedUser,
+                    ),
+                  ),
+                );
 
-                debugPrint('[BookingSubmit] success bookingId=${booking.id}');
+                if (bookingResult == null) {
+                  setModalState(() {
+                    isSubmittingBooking = false;
+                  });
+                  return;
+                }
 
                 if (!context.mounted) return;
                 Navigator.of(context).pop();

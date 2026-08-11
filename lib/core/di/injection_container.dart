@@ -44,9 +44,9 @@ Future<void> configureDependencies() async {
     sl.registerLazySingleton<Dio>(
       () => Dio(
         BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 30),
-          sendTimeout: const Duration(seconds: 30),
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 120),
+          sendTimeout: const Duration(seconds: 60),
           headers: const {'Accept': 'application/json'},
         ),
       ),
