@@ -29,9 +29,7 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
 
   @override
   Future<void> submitVerification(VerificationData data) async {
-    final formData = FormData();
-
-    // 1. File JSON chứa metadata thông tin cá nhân & GPLX (application/json)
+    // 1. Metadata thông tin cá nhân & GPLX dưới dạng JSON part (application/json)
     final verificationJson = {
       'fullName': data.fullName,
       'dob': data.dob,
@@ -48,17 +46,7 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
       'submittedAt': data.submittedAt?.toIso8601String(),
     };
 
-    formData.files.add(
-      MapEntry(
-        'verification', // File JSON payload
-        MultipartFile.fromString(
-          jsonEncode(verificationJson),
-          contentType: MediaType('application', 'json'),
-        ),
-      ),
-    );
-
-    // 2. Gửi các file ảnh (CCCD 2 mặt, GPLX 2 mặt, Selfie)
+    // 2. Gom toàn bộ file ảnh vào 1 List<MultipartFile> để gửi danh sách file lên Server
     final imagePaths = [
       if (data.cccdFrontImage != null && !data.cccdFrontImage!.startsWith('http')) data.cccdFrontImage!,
       if (data.cccdBackImage != null && !data.cccdBackImage!.startsWith('http')) data.cccdBackImage!,
@@ -67,22 +55,28 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
       if (data.selfieImage != null && !data.selfieImage!.startsWith('http')) data.selfieImage!,
     ];
 
+    final List<MultipartFile> imageFiles = [];
     for (final path in imagePaths) {
       try {
-        formData.files.add(
-          MapEntry(
-            'files', // File ảnh đính kèm
-            await MultipartFile.fromFile(
-              path,
-              filename: _fileNameOf(path),
-              contentType: _contentTypeOf(path),
-            ),
-          ),
+        final file = await MultipartFile.fromFile(
+          path,
+          filename: _fileNameOf(path),
+          contentType: _contentTypeOf(path),
         );
+        imageFiles.add(file);
       } catch (e) {
         debugPrint('[VerificationRemoteDataSource] Skip non-file image path: $path ($e)');
       }
     }
+
+    // 3. Đóng gói FormData với 1 part JSON và 1 List file ảnh
+    final formData = FormData.fromMap({
+      'verification': MultipartFile.fromString(
+        jsonEncode(verificationJson),
+        contentType: MediaType('application', 'json'),
+      ),
+      if (imageFiles.isNotEmpty) 'files': imageFiles,
+    });
 
     try {
       final token = await userLocalStorage.getToken();
@@ -92,14 +86,15 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
         },
       );
 
-      debugPrint('[VerificationRemoteDataSource] Submitting verification FormData to ${ApiConstants.verification} (JSON file + Image files)');
-      await dio.post(
+      debugPrint('[VerificationRemoteDataSource] Submitting verification FormData to ${ApiConstants.verification} (1 JSON file + ${imageFiles.length} image files in List)');
+      final response = await dio.post(
         ApiConstants.verification,
         data: formData,
         options: options,
       );
+      debugPrint('[VerificationRemoteDataSource] Response status: ${response.statusCode}');
     } catch (e) {
-      debugPrint('[VerificationRemoteDataSource] Endpoint result logged: $e');
+      debugPrint('[VerificationRemoteDataSource] Verification submission logged: $e');
     }
   }
 }
