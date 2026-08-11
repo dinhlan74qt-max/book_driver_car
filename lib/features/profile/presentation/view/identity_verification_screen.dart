@@ -69,18 +69,18 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     _cccdController = TextEditingController(text: d?.cccdNumber ?? '');
     _addressController = TextEditingController(text: d?.address ?? '');
 
-    _cccdFrontImage = d?.cccdFrontImage ?? 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600';
-    _cccdBackImage = d?.cccdBackImage ?? 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600';
+    _cccdFrontImage = d?.cccdFrontImage;
+    _cccdBackImage = d?.cccdBackImage;
 
     _licenseNumberController = TextEditingController(text: d?.licenseNumber ?? '');
     _licenseIssueDateController = TextEditingController(text: d?.licenseIssueDate ?? '');
     _licenseExpiryDateController = TextEditingController(text: d?.licenseExpiryDate ?? '15/12/2030');
     _selectedLicenseClass = d?.licenseClass ?? 'B2';
 
-    _licenseFrontImage = d?.licenseFrontImage ?? 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600';
-    _licenseBackImage = d?.licenseBackImage ?? 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600';
+    _licenseFrontImage = d?.licenseFrontImage;
+    _licenseBackImage = d?.licenseBackImage;
 
-    _selfieImage = d?.selfieImage ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600';
+    _selfieImage = d?.selfieImage;
 
     _emergencyNameController = TextEditingController(text: d?.emergencyContactName ?? '');
     _emergencyPhoneController = TextEditingController(text: d?.emergencyContactPhone ?? '');
@@ -540,12 +540,10 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   }
 
   Future<void> _chooseImage(Function(String path) onSelected) async {
-    final source = await showModalBottomSheet<ImageSource?>(
+    final result = await showModalBottomSheet<dynamic>(
       context: context,
       backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -567,28 +565,30 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
             ListTile(
               leading: const Icon(Icons.auto_awesome_rounded, color: AppColors.headlightAmber),
               title: const Text('Dùng ảnh mẫu sẵn (Demo)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.of(context).pop(null),
+              onTap: () => Navigator.of(context).pop('DEMO'),
             ),
           ],
         ),
       ),
     );
 
-    if (source == null) {
+    if (result == null) return;
+
+    if (result == 'DEMO') {
       onSelected('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600');
       return;
     }
 
-    try {
-      final picker = ImagePicker();
-      final XFile? file = await picker.pickImage(source: source, imageQuality: 80);
-      if (file != null) {
-        onSelected(file.path);
-      } else {
-        onSelected('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600');
+    if (result is ImageSource) {
+      try {
+        final picker = ImagePicker();
+        final XFile? file = await picker.pickImage(source: result, imageQuality: 80);
+        if (file != null) {
+          onSelected(file.path);
+        }
+      } catch (e) {
+        debugPrint('Error picking image: $e');
       }
-    } catch (_) {
-      onSelected('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=600');
     }
   }
 
@@ -614,6 +614,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         _buildImagePickerBox(
           imagePath: _cccdFrontImage,
           label: 'Chụp / Chọn mặt trước CCCD',
+          docIcon: Icons.badge_outlined,
+          hint: 'Chụp rõ mặt trước CCCD gắn chip',
           onPick: () => _chooseImage((path) => setState(() => _cccdFrontImage = path)),
         ),
         const SizedBox(height: 18),
@@ -622,6 +624,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         _buildImagePickerBox(
           imagePath: _cccdBackImage,
           label: 'Chụp / Chọn mặt sau CCCD',
+          docIcon: Icons.fingerprint_rounded,
+          hint: 'Chụp rõ mặt sau CCCD (phần chip & thông tin)',
           onPick: () => _chooseImage((path) => setState(() => _cccdBackImage = path)),
         ),
       ],
@@ -706,6 +710,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         _buildImagePickerBox(
           imagePath: _licenseFrontImage,
           label: 'Tải ảnh mặt trước GPLX',
+          docIcon: Icons.credit_card_rounded,
+          hint: 'Chụp mặt trước Giấy phép lái xe ô tô',
           onPick: () => _chooseImage((path) => setState(() => _licenseFrontImage = path)),
         ),
         const SizedBox(height: 14),
@@ -714,6 +720,8 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         _buildImagePickerBox(
           imagePath: _licenseBackImage,
           label: 'Tải ảnh mặt sau GPLX',
+          docIcon: Icons.drive_eta_rounded,
+          hint: 'Chụp mặt sau Giấy phép lái xe ô tô',
           onPick: () => _chooseImage((path) => setState(() => _licenseBackImage = path)),
         ),
       ],
@@ -723,8 +731,35 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   // ── BƯỚC 4: Chân dung (Selfie) ─────────────────────────────────────────────
   Widget _buildStep4Selfie() {
     Widget selfieDisplay;
-    if (_selfieImage == null || _selfieImage!.isEmpty) {
-      selfieDisplay = const Icon(Icons.camera_front_rounded, size: 60, color: Colors.white38);
+    final hasSelfie = _selfieImage != null && _selfieImage!.isNotEmpty;
+
+    if (!hasSelfie) {
+      selfieDisplay = Stack(
+        alignment: Alignment.center,
+        children: [
+          Icon(
+            Icons.account_circle_outlined,
+            size: 80,
+            color: AppColors.primary.withValues(alpha: 0.6),
+          ),
+          Positioned(
+            right: 28,
+            bottom: 24,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: const BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.camera_alt_rounded,
+                size: 14,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      );
     } else if (_selfieImage!.startsWith('http')) {
       selfieDisplay = Image.network(_selfieImage!, fit: BoxFit.cover);
     } else {
@@ -749,13 +784,25 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
         Center(
           child: Column(
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(100),
+              TapScale(
+                onTap: () => _chooseImage((path) {
+                  setState(() => _selfieImage = path);
+                  AppToast.showSuccess(context, 'Đã cập nhật ảnh chân dung!');
+                }),
                 child: Container(
                   width: 140,
                   height: 140,
-                  color: Colors.white10,
-                  child: selfieDisplay,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: hasSelfie ? 0.08 : 0.04),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: hasSelfie ? AppColors.primary : Colors.white24,
+                      width: hasSelfie ? 2 : 1.2,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: selfieDisplay,
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
@@ -765,7 +812,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
                   AppToast.showSuccess(context, 'Đã cập nhật ảnh chân dung!');
                 }),
                 icon: const Icon(Icons.camera_alt_rounded),
-                label: const Text('Chụp / Chọn ảnh chân dung'),
+                label: Text(hasSelfie ? 'Chụp lại ảnh chân dung' : 'Chụp / Chọn ảnh chân dung'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -941,34 +988,135 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     );
   }
 
-  Widget _buildImagePickerBox({required String? imagePath, required String label, required VoidCallback onPick}) {
+  Widget _buildImagePickerBox({
+    required String? imagePath,
+    required String label,
+    required VoidCallback onPick,
+    IconData? docIcon,
+    String? hint,
+  }) {
     Widget displayWidget;
-    if (imagePath == null || imagePath.isEmpty) {
-      displayWidget = Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    final hasImage = imagePath != null && imagePath.isNotEmpty;
+
+    if (!hasImage) {
+      displayWidget = Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(
+                    docIcon ?? Icons.badge_outlined,
+                    color: AppColors.primary.withValues(alpha: 0.85),
+                    size: 26,
+                  ),
+                  Positioned(
+                    right: 2,
+                    bottom: 2,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        size: 10,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    hint ?? 'Nhấn để chụp hoặc tải ảnh lên',
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.add_photo_alternate_rounded,
+              color: AppColors.primary,
+              size: 22,
+            ),
+          ],
+        ),
+      );
+    } else {
+      displayWidget = Stack(
+        fit: StackFit.expand,
         children: [
-          const Icon(Icons.add_a_photo_rounded, color: AppColors.primary, size: 32),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+          if (imagePath.startsWith('http'))
+            Image.network(imagePath, fit: BoxFit.cover)
+          else
+            Image.file(File(imagePath), fit: BoxFit.cover),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.edit_rounded, color: AppColors.primary, size: 12),
+                  SizedBox(width: 4),
+                  Text('Đổi ảnh', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          ),
         ],
       );
-    } else if (imagePath.startsWith('http')) {
-      displayWidget = Image.network(imagePath, fit: BoxFit.cover, width: double.infinity);
-    } else {
-      displayWidget = Image.file(File(imagePath), fit: BoxFit.cover, width: double.infinity);
     }
 
     return TapScale(
       onTap: onPick,
       child: Container(
-        height: 120,
+        height: 100,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: Colors.white.withValues(alpha: hasImage ? 0.08 : 0.04),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: imagePath != null ? AppColors.primary : Colors.white24, width: 1.2),
+          border: Border.all(
+            color: hasImage ? AppColors.primary : Colors.white24,
+            width: hasImage ? 1.4 : 1.0,
+          ),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(15),
           child: displayWidget,
         ),
       ),
