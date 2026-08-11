@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/features/profile/data/models/address_model.dart';
@@ -130,6 +130,7 @@ class VehicleRemoteDataSourceImpl implements VehicleRemoteDataSource {
         'request.contractPdfBytes.preview(first $previewCount bytes): $previewBytes',
       );
     }
+
     final vehicleJson = {
       'vehicleName': request.vehicleName,
       'vehicleType': request.vehicleType,

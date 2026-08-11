@@ -18,4 +18,5 @@ class ApiConstants {
   static const String checkVerified = "$baseUrl/api/users/checkverified";
   static const String contractUpload = "$baseUrl/api/contracts/upload";
   static const String withdraw = "$baseUrl/api/withdraw";
+  static const String verification = "$baseUrl/api/verification";
 }

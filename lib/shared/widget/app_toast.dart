@@ -40,7 +40,13 @@ class AppToast extends StatelessWidget {
   /// When null the X button still calls hideCurrentSnackBar automatically.
   final VoidCallback? onClose;
 
-  // ── Static convenience method ─────────────────────────────────────────────
+  static void showSuccess(BuildContext? context, String message) {
+    show(context, message: message, type: AppToastType.success);
+  }
+
+  static void showError(BuildContext? context, String message) {
+    show(context, message: message, type: AppToastType.error);
+  }
 
   static void show(
     BuildContext? context, {

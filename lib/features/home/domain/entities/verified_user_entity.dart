@@ -6,6 +6,7 @@ class VerifiedUserEntity {
   final String phone;
   final String? cccd;
   final AddressEntity? address;
+  final bool isCccdVerified;
 
   const VerifiedUserEntity({
     required this.fullname,
@@ -13,7 +14,10 @@ class VerifiedUserEntity {
     required this.phone,
     this.cccd,
     this.address,
+    this.isCccdVerified = false,
   });
+
+  bool get isVerified => isCccdVerified;
 
   String get addressText {
     final value = address;

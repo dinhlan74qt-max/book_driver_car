@@ -41,10 +41,16 @@ import 'package:book_drive_car/features/home/presentation/bloc/booking_bloc.dart
     as _i657;
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart'
     as _i310;
+import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart'
+    as _i950;
 import 'package:book_drive_car/features/profile/data/datasources/vehicle_remote_data_source.dart'
     as _i976;
+import 'package:book_drive_car/features/profile/data/repositories/owner_booking_repository_impl.dart'
+    as _i9;
 import 'package:book_drive_car/features/profile/data/repositories/vehicle_repository_impl.dart'
     as _i348;
+import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart'
+    as _i249;
 import 'package:book_drive_car/features/profile/domain/repositories/vehicle_repository.dart'
     as _i210;
 import 'package:book_drive_car/features/profile/domain/usecases/add_vehicle.dart'
@@ -55,6 +61,16 @@ import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_bl
     as _i21;
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_bloc.dart'
     as _i141;
+import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart'
+    as _i167;
+import 'package:book_drive_car/features/rental/data/datasources/rental_remote_data_source.dart'
+    as _i155;
+import 'package:book_drive_car/features/rental/data/repositories/rental_repository_impl.dart'
+    as _i29;
+import 'package:book_drive_car/features/rental/domain/repositories/rental_repository.dart'
+    as _i1067;
+import 'package:book_drive_car/features/rental/domain/usecases/get_renter_bookings.dart'
+    as _i407;
 import 'package:book_drive_car/features/wallet/data/datasources/wallet_remote_data_source.dart'
     as _i487;
 import 'package:book_drive_car/features/wallet/data/repositories/wallet_repository_impl.dart'
@@ -65,10 +81,14 @@ import 'package:book_drive_car/features/wallet/domain/usecases/deposit.dart'
     as _i419;
 import 'package:book_drive_car/features/wallet/domain/usecases/get_my_wallet.dart'
     as _i983;
+import 'package:book_drive_car/features/wallet/domain/usecases/withdraw.dart'
+    as _i972;
 import 'package:book_drive_car/features/wallet/presentation/bloc/deposit_bloc.dart'
     as _i1013;
 import 'package:book_drive_car/features/wallet/presentation/bloc/wallet_bloc.dart'
     as _i110;
+import 'package:book_drive_car/features/wallet/presentation/bloc/withdraw_bloc.dart'
+    as _i96;
 import 'package:dio/dio.dart' as _i361;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
@@ -96,6 +116,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1048.AuthRemoteDataSource>(
       () => _i1048.AuthRemoteDataSourceImpl(gh<_i519.Client>()),
     );
+    gh.lazySingleton<_i950.OwnerBookingRemoteDataSource>(
+      () => _i950.OwnerBookingRemoteDataSourceImpl(
+        gh<_i361.Dio>(),
+        gh<_i771.UserLocalStorage>(),
+      ),
+    );
     gh.lazySingleton<_i65.HomeRemoteDataSource>(
       () => _i65.HomeRemoteDataSourceImpl(
         gh<_i361.Dio>(),
@@ -117,8 +143,22 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i827.HomeRepository>(
       () => _i815.HomeRepositoryImpl(gh<_i65.HomeRemoteDataSource>()),
     );
+    gh.lazySingleton<_i249.OwnerBookingRepository>(
+      () => _i9.OwnerBookingRepositoryImpl(
+        gh<_i950.OwnerBookingRemoteDataSource>(),
+      ),
+    );
+    gh.lazySingleton<_i155.RentalRemoteDataSource>(
+      () => _i155.RentalRemoteDataSourceImpl(
+        gh<_i361.Dio>(),
+        gh<_i771.UserLocalStorage>(),
+      ),
+    );
     gh.factory<_i310.HomeCubit>(
       () => _i310.HomeCubit(gh<_i827.HomeRepository>()),
+    );
+    gh.factory<_i167.OwnerBookingCubit>(
+      () => _i167.OwnerBookingCubit(gh<_i249.OwnerBookingRepository>()),
     );
     gh.lazySingleton<_i579.WalletRepository>(
       () => _i392.WalletRepositoryImpl(gh<_i487.WalletRemoteDataSource>()),
@@ -147,6 +187,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i21.AddVehicleBloc>(
       () => _i21.AddVehicleBloc(gh<_i439.AddVehicle>()),
     );
+    gh.lazySingleton<_i1067.RentalRepository>(
+      () => _i29.RentalRepositoryImpl(gh<_i155.RentalRemoteDataSource>()),
+    );
     gh.factory<_i259.LoginBloc>(
       () => _i259.LoginBloc(gh<_i1030.Login>(), gh<_i771.UserLocalStorage>()),
     );
@@ -156,8 +199,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i983.GetMyWallet>(
       () => _i983.GetMyWallet(gh<_i579.WalletRepository>()),
     );
+    gh.factory<_i972.Withdraw>(
+      () => _i972.Withdraw(gh<_i579.WalletRepository>()),
+    );
+    gh.factory<_i407.GetRenterBookings>(
+      () => _i407.GetRenterBookings(gh<_i1067.RentalRepository>()),
+    );
     gh.factory<_i141.MyVehiclesBloc>(
       () => _i141.MyVehiclesBloc(gh<_i875.GetMyVehicles>()),
+    );
+    gh.factory<_i96.WithdrawBloc>(
+      () => _i96.WithdrawBloc(gh<_i972.Withdraw>()),
     );
     gh.factory<_i1013.DepositBloc>(
       () => _i1013.DepositBloc(gh<_i419.Deposit>()),
