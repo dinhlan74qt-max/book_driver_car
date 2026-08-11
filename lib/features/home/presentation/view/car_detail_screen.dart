@@ -8,6 +8,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_spec_grid.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_terms_card.dart';
+import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
+import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
+import 'package:book_drive_car/features/profile/presentation/view/identity_verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:intl/intl.dart';
@@ -732,7 +735,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                           ],
                         ),
                         child: ElevatedButton(
-                          onPressed: () => _showBookingBottomSheet(context),
+                          onPressed: () => _handleBookingTap(context),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.transparent,
                             shadowColor: Colors.transparent,
@@ -766,6 +769,78 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Kiểm tra Trạng thái Xác minh Danh tính trước khi Đặt Xe ──────────────────
+  Future<void> _handleBookingTap(BuildContext context) async {
+    final vData = await sl<VerificationLocalDataSource>().getVerificationData();
+    if (vData.status != VerificationStatus.verified) {
+      if (!context.mounted) return;
+      _showVerificationRequiredDialog(context, vData);
+      return;
+    }
+
+    if (vData.licenseExpiryDate != null && vData.licenseExpiryDate!.isNotEmpty) {
+      try {
+        final parts = vData.licenseExpiryDate!.split('/');
+        if (parts.length == 3) {
+          final expiry = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          if (expiry.isBefore(DateTime.now())) {
+            if (!context.mounted) return;
+            _showVerificationRequiredDialog(context, vData, isExpired: true);
+            return;
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!context.mounted) return;
+    _showBookingBottomSheet(context);
+  }
+
+  void _showVerificationRequiredDialog(BuildContext context, VerificationData vData, {bool isExpired = false}) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.warning_amber_rounded, color: AppColors.headlightAmber),
+            SizedBox(width: 8),
+            Text('Xác minh tài khoản', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        content: Text(
+          isExpired
+              ? 'Giấy phép lái xe của bạn đã hết hạn. Vui lòng cập nhật GPLX mới để tiếp tục đặt thuê xe.'
+              : 'Bạn cần hoàn thành Xác minh danh tính & Giấy phép lái xe (KYC) trước khi bắt đầu thuê xe trên hệ thống.',
+          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Để sau', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => IdentityVerificationScreen(initialData: vData),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Xác minh ngay', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
