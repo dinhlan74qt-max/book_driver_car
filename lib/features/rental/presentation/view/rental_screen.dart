@@ -1099,7 +1099,9 @@ class _BookingDetailSheet extends StatelessWidget {
     final status = booking.status.trim().toUpperCase();
     if (status == 'COMPLETED' ||
         status == 'CANCELLED' ||
-        status == 'REJECTED') {
+        status == 'REJECTED' ||
+        status == 'RENTING' ||
+        status == 'ONGOING') {
       return false;
     }
     return !_isAfterEndDate;
@@ -1117,8 +1119,11 @@ class _BookingDetailSheet extends StatelessWidget {
     if (status == 'PENDING') {
       return 'Đơn thuê chưa được xác nhận, vì vậy bạn sẽ không mất tiền nếu hủy đơn. Bạn có muốn tiếp tục hủy đơn thuê không?';
     }
-    if (status == 'APPROVED' || status == 'RENTING' || status == 'ONGOING') {
+    if (status == 'APPROVED') {
       return 'Đơn thuê đã xác nhận, nếu hủy bạn sẽ mất 10% số tiền. Bạn có muốn tiếp tục hủy đơn thuê không?';
+    }
+    if (status == 'RENTING' || status == 'ONGOING') {
+      return 'Đơn thuê đang ở trạng thái đang thuê nên bạn không thể hủy nữa. Vui lòng liên hệ chủ xe nếu cần hỗ trợ.';
     }
     return 'Bạn có muốn hủy đơn thuê này không?';
   }
@@ -1657,7 +1662,7 @@ class _BookingDetailSheet extends StatelessWidget {
                           size: 19,
                         ),
                         label: Text(
-                          _canCancelBooking ? 'Hủy đơn' : 'Đã quá hạn hủy',
+                          _canCancelBooking ? 'Hủy đơn' : 'Không thể hủy',
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.1,
