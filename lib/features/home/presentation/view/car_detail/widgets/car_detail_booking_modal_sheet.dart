@@ -87,6 +87,8 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
         '[BookingSubmit] vehicleId=$vehicleId start=${widget.selectedDateRange.start.toIso8601String()} end=${widget.selectedDateRange.end.toIso8601String()}',
       );
 
+      if (!mounted) return;
+
       final bookingResult = await Navigator.of(context).push<Object?>(
         MaterialPageRoute(
           builder: (_) => BookingContractScreen(
