@@ -373,7 +373,7 @@ class _CarImageState extends State<_CarImage> {
                             return CachedNetworkImage(
                               imageUrl: images[index],
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
+                              placeholder: (_, _) => Container(
                                 color: AppColors.primary.withValues(
                                   alpha: 0.08,
                                 ),
@@ -386,7 +386,7 @@ class _CarImageState extends State<_CarImage> {
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => Center(
+                              errorWidget: (_, _, _) => Center(
                                 child: _carIconFor(widget.car.imageIcon),
                               ),
                             );
@@ -395,7 +395,7 @@ class _CarImageState extends State<_CarImage> {
                       : CachedNetworkImage(
                           imageUrl: images.first,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(
+                          placeholder: (_, _) => Container(
                             color: AppColors.primary.withValues(alpha: 0.08),
                             alignment: Alignment.center,
                             child: const SizedBox(
@@ -404,7 +404,7 @@ class _CarImageState extends State<_CarImage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ),
-                          errorWidget: (_, __, ___) =>
+                          errorWidget: (_, _, _) =>
                               Center(child: _carIconFor(widget.car.imageIcon)),
                         ))
                 : Center(child: _carIconFor(widget.car.imageIcon)),
@@ -435,20 +435,20 @@ class _CarImageState extends State<_CarImage> {
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(images.length, (index) {
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    width: _currentIndex == index ? 14 : 5,
+                children: List.generate(
+                  images.length,
+                  (index) => Container(
+                    width: 5,
                     height: 5,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
                     decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color: _currentIndex == index
                           ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(999),
+                          : Colors.white.withValues(alpha: 0.4),
                     ),
-                  );
-                }),
+                  ),
+                ),
               ),
             ),
         ],
@@ -456,23 +456,19 @@ class _CarImageState extends State<_CarImage> {
     );
   }
 
-  Icon _carIconFor(String iconName) {
-    switch (iconName) {
-      case 'directions_car_filled':
+  Widget _carIconFor(String key) {
+    switch (key.toLowerCase()) {
+      case 'audi':
+      case 'bmw':
+      case 'mercedes':
+      case 'mazda':
+      case 'toyota':
+      case 'hyundai':
+      case 'kia':
+      case 'honda':
+      case 'ford':
         return const Icon(
-          Icons.directions_car_filled_rounded,
-          color: AppColors.primary,
-          size: 42,
-        );
-      case 'airport_shuttle':
-        return const Icon(
-          Icons.airport_shuttle_rounded,
-          color: AppColors.primary,
-          size: 42,
-        );
-      case 'electric_car':
-        return const Icon(
-          Icons.electric_car_rounded,
+          Icons.directions_car_rounded,
           color: AppColors.primary,
           size: 42,
         );
@@ -483,38 +479,6 @@ class _CarImageState extends State<_CarImage> {
           size: 42,
         );
     }
-  }
-}
-
-class _RatingBadge extends StatelessWidget {
-  final double rating;
-
-  const _RatingBadge({required this.rating});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
-          const SizedBox(width: 2),
-          Text(
-            rating.toStringAsFixed(1),
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
