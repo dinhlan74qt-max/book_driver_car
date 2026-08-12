@@ -1,6 +1,6 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/features/auth/presentation/view/login_screen.dart';
-import 'package:book_drive_car/features/home/presentation/view/home_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/home/home_screen.dart';
 import 'package:book_drive_car/features/onboarding/presentation/view/onboarding_screen.dart';
 import 'package:book_drive_car/shared/widget/bottom_navigation_bar.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';

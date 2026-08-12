@@ -5,10 +5,9 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
-import 'package:book_drive_car/features/home/presentation/view/car_detail_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/car_detail/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_search_sheet.dart';
-import 'package:book_drive_car/features/home/presentation/widget/city_search_suggestions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -79,8 +78,9 @@ class _SearchResultsContent extends StatelessWidget {
         model.isNotEmpty &&
         _normalize(model) != _normalize(kAllOption)) {
       final modelText = _normalize(car.model ?? '');
-      if (modelText.isEmpty || !modelText.contains(_normalize(model)))
+      if (modelText.isEmpty || !modelText.contains(_normalize(model))) {
         return false;
+      }
     }
 
     if (vehicleType != null &&
@@ -184,7 +184,7 @@ class _SearchResultsContent extends StatelessWidget {
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: cars.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final car = cars[index];
                   return CarCard(

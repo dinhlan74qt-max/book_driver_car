@@ -4,12 +4,12 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
-import 'package:book_drive_car/features/home/presentation/view/all_cars_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/search/all_cars_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_search_sheet.dart';
 import 'package:book_drive_car/features/home/presentation/widget/home_car_section.dart';
 import 'package:book_drive_car/features/home/presentation/widget/home_hero_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/home_info_pill.dart';
-import 'package:book_drive_car/features/home/presentation/view/search_results_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/search/search_results_screen.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -69,7 +69,7 @@ class _HomeScreenContentState extends State<_HomeScreenContent> {
   Future<void> _loadUserName() async {
     final user = await sl<UserLocalStorage>().getUser();
     if (mounted && user != null) {
-      setState(() => _userName = user.fullname ?? '');
+      setState(() => _userName = user.fullname);
     }
   }
 

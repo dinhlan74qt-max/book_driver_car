@@ -2,7 +2,7 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
-import 'package:book_drive_car/features/home/presentation/view/car_detail_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/car_detail/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

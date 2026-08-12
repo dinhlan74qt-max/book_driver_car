@@ -1,5 +1,5 @@
 import 'package:book_drive_car/features/rental/presentation/view/rental_screen.dart';
-import 'package:book_drive_car/features/home/presentation/view/home_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/home/home_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/profile_screen.dart';
 import 'package:book_drive_car/features/wallet/presentation/view/wallet_screen.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
