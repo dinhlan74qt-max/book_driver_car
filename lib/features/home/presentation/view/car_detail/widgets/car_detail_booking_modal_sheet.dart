@@ -3,6 +3,7 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
+import 'package:book_drive_car/features/home/presentation/view/booking_contract_flow.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -79,20 +80,32 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
     setState(() => _isSubmitting = true);
 
     try {
+      final bookingRemoteDataSource = sl<BookingRemoteDataSource>();
+      final verifiedUser = await bookingRemoteDataSource.checkVerified();
+
       debugPrint(
         '[BookingSubmit] vehicleId=$vehicleId start=${widget.selectedDateRange.start.toIso8601String()} end=${widget.selectedDateRange.end.toIso8601String()}',
       );
 
-      final booking = await sl<BookingRemoteDataSource>().createBooking(
-        BookingRequestEntity(
-          vehicleId: vehicleId,
-          startDate: widget.selectedDateRange.start,
-          endDate: widget.selectedDateRange.end,
-          note: _noteController.text.trim(),
+      final bookingResult = await Navigator.of(context).push<Object?>(
+        MaterialPageRoute(
+          builder: (_) => BookingContractScreen(
+            car: widget.car,
+            request: BookingRequestEntity(
+              vehicleId: vehicleId,
+              startDate: widget.selectedDateRange.start,
+              endDate: widget.selectedDateRange.end,
+              note: _noteController.text.trim(),
+            ),
+            renter: verifiedUser,
+          ),
         ),
       );
 
-      debugPrint('[BookingSubmit] success bookingId=${booking.id}');
+      if (bookingResult == null) {
+        if (mounted) setState(() => _isSubmitting = false);
+        return;
+      }
 
       if (!mounted) return;
       Navigator.of(context).pop();

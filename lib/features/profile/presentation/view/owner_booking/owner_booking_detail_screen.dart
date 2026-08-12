@@ -4,6 +4,8 @@ import 'package:book_drive_car/features/profile/domain/entities/owner_booking_st
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
+import 'package:book_drive_car/shared/widget/tap_scale.dart';
+import 'package:book_drive_car/features/profile/presentation/view/owner_booking_contract_approval_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -36,30 +38,20 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
   }
 
   Future<void> _handleApprove() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận duyệt đơn'),
-        content: Text('Bạn có đồng ý cho khách hàng ${_currentBooking.renterName} thuê xe ${_currentBooking.vehicleName} không?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Đồng ý duyệt'),
+    final cubit = context.read<OwnerBookingCubit>();
+    final approved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => BlocProvider.value(
+          value: cubit,
+          child: OwnerBookingContractApprovalScreen(
+            booking: _currentBooking,
           ),
-        ],
+        ),
       ),
     );
 
-    if (confirm != true || !mounted) return;
-
-    setState(() => _isProcessing = true);
-    final success = await context.read<OwnerBookingCubit>().approveBooking(_currentBooking.id);
     if (!mounted) return;
-    setState(() => _isProcessing = false);
-
-    if (success) {
+    if (approved == true) {
       setState(() {
         _currentBooking = _currentBooking.copyWith(status: BookingStatus.approved);
       });
@@ -68,13 +60,14 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
         message: 'Đã duyệt đơn ${_currentBooking.bookingCode} thành công',
         type: AppToastType.success,
       );
-    } else {
-      AppToast.show(
-        context,
-        message: 'Không thể duyệt đơn. Vui lòng thử lại!',
-        type: AppToastType.error,
-      );
+      return;
     }
+
+    AppToast.show(
+      context,
+      message: 'Chưa duyệt được đơn. Vui lòng kiểm tra lại file hợp đồng.',
+      type: AppToastType.warning,
+    );
   }
 
   Future<void> _handleReject() async {

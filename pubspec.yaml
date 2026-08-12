@@ -27,6 +27,9 @@ dependencies:
   permission_handler: ^11.3.1
   url_launcher: ^6.3.0
   cached_network_image: ^3.4.1
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  signature: ^6.3.0
 
 dev_dependencies:
   injectable_generator: 3.1.1
@@ -38,4 +41,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icons/
+    - assets/fonts/
     - assets/data/banks.json

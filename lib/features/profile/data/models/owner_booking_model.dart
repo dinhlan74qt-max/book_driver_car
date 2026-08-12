@@ -11,6 +11,7 @@ class OwnerBookingModel extends OwnerBookingEntity {
     required super.renterName,
     required super.renterPhone,
     super.renterAvatar,
+    super.contractImage,
     required super.startDate,
     required super.endDate,
     required super.totalDays,
@@ -76,6 +77,10 @@ class OwnerBookingModel extends OwnerBookingEntity {
         json['phone']?.toString() ??
         '0905 123 456';
 
+    final contractImage = json['contractImage']?.toString() ??
+        json['contractUrl']?.toString() ??
+        json['contractPdfUrl']?.toString();
+
     final totalDays = (json['totalDays'] as num?)?.toInt() ??
         (json['days'] as num?)?.toInt() ??
         (end.difference(start).inDays < 1 ? 1 : end.difference(start).inDays);
@@ -100,6 +105,7 @@ class OwnerBookingModel extends OwnerBookingEntity {
       renterName: renterName,
       renterPhone: renterPhone,
       renterAvatar: user?['avatar']?.toString() ?? json['renterAvatar']?.toString(),
+      contractImage: contractImage?.trim().isNotEmpty == true ? contractImage : null,
       startDate: start,
       endDate: end,
       totalDays: totalDays,
@@ -120,6 +126,7 @@ class OwnerBookingModel extends OwnerBookingEntity {
       'licensePlate': licensePlate,
       'renterName': renterName,
       'renterPhone': renterPhone,
+      'contractImage': contractImage,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'totalDays': totalDays,

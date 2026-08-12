@@ -1,6 +1,7 @@
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_state.dart';
+import 'dart:typed_data';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
@@ -47,6 +48,29 @@ class OwnerBookingCubit extends Cubit<OwnerBookingState> {
 
   Future<bool> approveBooking(String id) async {
     return _updateStatus(id, 'APPROVED');
+  }
+
+  Future<bool> approveBookingWithContract({
+    required String id,
+    required Uint8List contractPdfBytes,
+    required String contractPdfFileName,
+  }) async {
+    try {
+      final updated = await repository.approveBookingWithContract(
+        id: id,
+        contractPdfBytes: contractPdfBytes,
+        contractPdfFileName: contractPdfFileName,
+      );
+      if (state is OwnerBookingLoaded) {
+        final current = state as OwnerBookingLoaded;
+        final updatedList =
+            current.allBookings.map((e) => e.id == id ? updated : e).toList();
+        emit(current.copyWith(allBookings: updatedList));
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   Future<bool> rejectBooking(String id, {String? reason}) async {

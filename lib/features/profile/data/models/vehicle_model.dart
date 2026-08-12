@@ -21,6 +21,7 @@ class VehicleModel extends VehicleEntity {
     required super.description,
     required super.imageUrls,
     required super.address,
+    super.contractUrl,
   });
 
   factory VehicleModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +47,7 @@ class VehicleModel extends VehicleEntity {
       address: json['address'] != null
           ? AddressModel.fromJson(json['address'] as Map<String, dynamic>)
           : AddressModel(addressDetail: '', ward: '', district: '', city: ''),
+      contractUrl: json['contractUrl']?.toString(),
     );
   }
 }

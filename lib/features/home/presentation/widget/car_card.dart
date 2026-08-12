@@ -369,12 +369,16 @@ class _CarImageState extends State<_CarImage> {
                               imageUrl: images[index],
                               fit: BoxFit.cover,
                               placeholder: (_, __) => Container(
-                                color: AppColors.primary.withValues(alpha: 0.08),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.08,
+                                ),
                                 alignment: Alignment.center,
                                 child: const SizedBox(
                                   width: 22,
                                   height: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               ),
                               errorWidget: (_, __, ___) => Center(

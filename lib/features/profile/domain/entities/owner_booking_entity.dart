@@ -9,6 +9,7 @@ class OwnerBookingEntity {
   final String renterName;
   final String renterPhone;
   final String? renterAvatar;
+  final String? contractImage;
   final DateTime startDate;
   final DateTime endDate;
   final int totalDays;
@@ -27,6 +28,7 @@ class OwnerBookingEntity {
     required this.renterName,
     required this.renterPhone,
     this.renterAvatar,
+    this.contractImage,
     required this.startDate,
     required this.endDate,
     required this.totalDays,
@@ -46,6 +48,7 @@ class OwnerBookingEntity {
     String? renterName,
     String? renterPhone,
     String? renterAvatar,
+    String? contractImage,
     DateTime? startDate,
     DateTime? endDate,
     int? totalDays,
@@ -64,6 +67,7 @@ class OwnerBookingEntity {
       renterName: renterName ?? this.renterName,
       renterPhone: renterPhone ?? this.renterPhone,
       renterAvatar: renterAvatar ?? this.renterAvatar,
+      contractImage: contractImage ?? this.contractImage,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       totalDays: totalDays ?? this.totalDays,

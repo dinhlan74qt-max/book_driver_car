@@ -9,6 +9,7 @@ import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.d
 import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_bloc.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_event.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_state.dart';
+import 'package:book_drive_car/features/profile/presentation/view/vehicle_contract_flow.dart';
 import 'package:book_drive_car/features/profile/presentation/widget/vehicle_registration_form_sections.dart';
 import 'package:book_drive_car/features/profile/presentation/widget/vehicle_registration_widgets.dart';
 import 'package:book_drive_car/core/helper/validator_helper.dart';
@@ -798,7 +799,21 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
 
     try {
       final request = await _buildAddVehicleRequest();
-      _addVehicleBloc.add(AddVehicleSubmitted(request));
+      final contractPdfBytes = await Navigator.of(context).push<Uint8List>(
+        MaterialPageRoute(
+          builder: (_) => VehicleContractScreen(request: request),
+        ),
+      );
+
+      if (!mounted || contractPdfBytes == null || contractPdfBytes.isEmpty) {
+        return;
+      }
+
+      _addVehicleBloc.add(
+        AddVehicleSubmitted(
+          request.copyWith(contractPdfBytes: contractPdfBytes),
+        ),
+      );
     } catch (e) {
       debugPrint('VehicleRegistrationScreen _submitVehicle error: $e');
       if (!mounted) return;
@@ -806,9 +821,17 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
     }
   }
 
+  bool _isTimeoutFailure(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('timeout') ||
+        normalized.contains('thời gian chờ') ||
+        normalized.contains('dữ liệu đã được gửi đi');
+  }
+
   Widget _buildActionBar({required bool isSubmitting}) {
     final isLast = _currentStep == 3;
     final canProceed = _canProceedCurrentStep;
+    final buttonText = isLast ? 'Xem hợp đồng' : 'Tiếp tục';
 
     return SafeArea(
       top: false,
@@ -827,7 +850,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
                       color: Colors.white,
                     ),
                   )
-                : Text(isLast ? 'Lưu thông tin xe' : 'Tiếp tục'),
+                : Text(buttonText),
           ),
         ),
       ),
@@ -1100,6 +1123,12 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
               Navigator.of(context).pop(state.vehicle);
             }
           } else if (state is AddVehicleFailure) {
+            if (_isTimeoutFailure(state.error)) {
+              if (mounted) {
+                Navigator.of(context).pop('timeout');
+              }
+              return;
+            }
             debugPrint(
               'VehicleRegistrationScreen AddVehicleFailure: ${state.error}',
             );

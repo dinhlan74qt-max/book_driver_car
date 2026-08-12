@@ -45,13 +45,25 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
   }
 
   Future<void> _openRegistration() async {
-    final vehicle = await Navigator.of(context).push<VehicleEntity>(
+    final result = await Navigator.of(context).push<Object?>(
       MaterialPageRoute(builder: (_) => const VehicleRegistrationScreen()),
     );
 
     if (!mounted) return;
 
-    if (vehicle != null) {
+    if (result == 'timeout') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Dữ liệu đã được gửi đi nếu chưa hiển thị vui lòng nhập lại',
+          ),
+        ),
+      );
+      _myVehiclesBloc.add(const MyVehiclesRequested());
+      return;
+    }
+
+    if (result is VehicleEntity) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Xe đã được tạo, đang cập nhật danh sách...'),
