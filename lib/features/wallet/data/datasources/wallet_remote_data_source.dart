@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:book_drive_car/features/wallet/domain/entities/withdraw_request_entity.dart';
 import 'package:book_drive_car/shared/constants/api_constants.dart';
@@ -61,7 +61,14 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
 
       final data = response.data;
       if (response.statusCode == 200) {
-        return WalletModel.fromJson(data["data"]);
+        final raw = data is Map<String, dynamic>
+            ? (data["data"] ?? data)
+            : data;
+        if (raw is Map<String, dynamic>) {
+          return WalletModel.fromJson(raw);
+        }
+        // Nếu raw không phải Map, parse empty wallet
+        return WalletModel(id: 0, balance: 0);
       }
 
       final message = _extractErrorMessage(
@@ -108,7 +115,13 @@ class WalletRemoteDataSourceImpl implements WalletRemoteDataSource {
 
       final data = response.data;
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return DepositResultModel.fromJson(data["data"]);
+        final raw = data is Map<String, dynamic>
+            ? (data["data"] ?? data)
+            : data;
+        if (raw is Map<String, dynamic>) {
+          return DepositResultModel.fromJson(raw);
+        }
+        throw Exception('Kết quả nạp tiền không hợp lệ');
       }
 
       final message = _extractErrorMessage(
