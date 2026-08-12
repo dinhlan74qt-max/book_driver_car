@@ -1,5 +1,5 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/features/home/presentation/view/city_cars_result_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/search/city_cars_result_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/city_search_suggestions.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';

@@ -6,9 +6,9 @@ import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.d
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_bloc.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_event.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_state.dart';
-import 'package:book_drive_car/features/profile/presentation/view/owner_booking_list_screen.dart';
-import 'package:book_drive_car/features/profile/presentation/view/vehicle_detail_screen.dart';
-import 'package:book_drive_car/features/profile/presentation/view/vehicle_registration_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/owner_booking/owner_booking_list_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/vehicle_management/vehicle_detail_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/vehicle_management/vehicle_registration_screen.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';

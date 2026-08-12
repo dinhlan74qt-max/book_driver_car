@@ -32,8 +32,22 @@ class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   }
 
   List<CarModel> _parseCars(dynamic data) {
-    final List list = (data is Map) ? (data['data'] ?? []) : [];
-    return list.map((e) => CarModel.fromJson(e)).toList();
+    if (data is List) {
+      return data
+          .whereType<Map>()
+          .map((e) => CarModel.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+    if (data is Map) {
+      final list = data['data'];
+      if (list is List) {
+        return list
+            .whereType<Map>()
+            .map((e) => CarModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+    }
+    return [];
   }
 
   @override

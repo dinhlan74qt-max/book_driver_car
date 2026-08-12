@@ -81,18 +81,37 @@ class OwnerBookingModel extends OwnerBookingEntity {
         json['contractUrl']?.toString() ??
         json['contractPdfUrl']?.toString();
 
-    final totalDays = (json['totalDays'] as num?)?.toInt() ??
-        (json['days'] as num?)?.toInt() ??
-        (end.difference(start).inDays < 1 ? 1 : end.difference(start).inDays);
+    int safeInt(dynamic v, {int fallback = 0}) {
+      if (v == null) return fallback;
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      return int.tryParse(v.toString()) ?? fallback;
+    }
 
-    final pricePerDay = (vehicle?['pricePerDay'] as num?)?.toInt() ??
-        (json['pricePerDay'] as num?)?.toInt() ??
-        1200000;
+    final int diffDays = end.difference(start).inDays < 1 ? 1 : end.difference(start).inDays;
+    final int totalDays = (() {
+      final d = safeInt(json['totalDays']);
+      if (d > 0) return d;
+      final d2 = safeInt(json['days']);
+      return d2 > 0 ? d2 : diffDays;
+    })();
 
-    final totalPrice = (json['totalAmount'] as num?)?.toInt() ??
-        (json['totalPrice'] as num?)?.toInt() ??
-        (json['amount'] as num?)?.toInt() ??
-        (pricePerDay * totalDays);
+    final int pricePerDay = (() {
+      final p = safeInt(vehicle?['pricePerDay']);
+      if (p > 0) return p;
+      final p2 = safeInt(json['pricePerDay']);
+      return p2 > 0 ? p2 : 1200000;
+    })();
+
+    final int totalPrice = (() {
+      final t = safeInt(json['totalAmount']);
+      if (t > 0) return t;
+      final t2 = safeInt(json['totalPrice']);
+      if (t2 > 0) return t2;
+      final t3 = safeInt(json['amount']);
+      return t3 > 0 ? t3 : pricePerDay * totalDays;
+    })();
+
 
     return OwnerBookingModel(
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),

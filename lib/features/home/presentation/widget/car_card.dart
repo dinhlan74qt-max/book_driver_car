@@ -13,17 +13,13 @@ class CarCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final card = LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : width ?? double.infinity;
-        final isCompact = availableWidth < 330;
-        return _CardShell(
-          onTap: onTap,
-          child: isCompact ? _CompactCard(car: car) : _ExpandedCard(car: car),
-        );
-      },
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isCompact = width != null ? width! < 330 : screenWidth < 330;
+    final content = isCompact ? _CompactCard(car: car) : _ExpandedCard(car: car);
+
+    final card = _CardShell(
+      onTap: onTap,
+      child: content,
     );
 
     if (width == null) return card;
@@ -81,92 +77,90 @@ class _ExpandedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 140,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CarImage(car: car, width: 112),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          car.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 112,
+          height: 140,
+          child: _CarImage(car: car),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  car.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.place_outlined,
+                      size: 13,
+                      color: AppColors.textMuted,
+                    ),
+                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Text(
+                        car.location.isNotEmpty ? car.location : car.province,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.place_outlined,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          car.location.isNotEmpty ? car.location : car.province,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      _SpecChip(
-                        icon: Icons.apartment_outlined,
-                        label: car.brand,
-                        color: const Color(0xFF1B4F72),
-                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 5,
+                  runSpacing: 4,
+                  children: [
+                    _SpecChip(
+                      icon: Icons.apartment_outlined,
+                      label: car.brand,
+                      color: const Color(0xFF1B4F72),
+                    ),
+                    if (car.vehicleType.isNotEmpty)
                       _SpecChip(
                         icon: Icons.directions_car_outlined,
                         label: car.vehicleType,
                         color: const Color(0xFF1E8E5A),
                       ),
-                      _SpecChip(
-                        icon: Icons.people_alt_outlined,
-                        label: '${car.seats} chỗ',
-                        color: const Color(0xFFFF7A00),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      RichText(
+                    _SpecChip(
+                      icon: Icons.people_alt_outlined,
+                      label: '${car.seats} chỗ',
+                      color: const Color(0xFFFF7A00),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: RichText(
+                        overflow: TextOverflow.ellipsis,
                         text: TextSpan(
                           children: [
                             TextSpan(
                               text: CarCard._formatPrice(car.pricePerDay),
                               style: const TextStyle(
-                                fontSize: 16,
+                                fontSize: 15.5,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.primary,
                               ),
@@ -174,33 +168,33 @@ class _ExpandedCard extends StatelessWidget {
                             const TextSpan(
                               text: ' /ngày',
                               style: TextStyle(
-                                fontSize: 11.5,
+                                fontSize: 11,
                                 color: AppColors.textMuted,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                      child: const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 15,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -368,7 +362,7 @@ class _CarImageState extends State<_CarImage> {
                             return CachedNetworkImage(
                               imageUrl: images[index],
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
+                              placeholder: (_, _) => Container(
                                 color: AppColors.primary.withValues(
                                   alpha: 0.08,
                                 ),
@@ -381,7 +375,7 @@ class _CarImageState extends State<_CarImage> {
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => Center(
+                              errorWidget: (_, _, _) => Center(
                                 child: _carIconFor(widget.car.imageIcon),
                               ),
                             );
@@ -390,7 +384,7 @@ class _CarImageState extends State<_CarImage> {
                       : CachedNetworkImage(
                           imageUrl: images.first,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(
+                          placeholder: (_, _) => Container(
                             color: AppColors.primary.withValues(alpha: 0.08),
                             alignment: Alignment.center,
                             child: const SizedBox(
@@ -399,7 +393,7 @@ class _CarImageState extends State<_CarImage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ),
-                          errorWidget: (_, __, ___) =>
+                          errorWidget: (_, _, _) =>
                               Center(child: _carIconFor(widget.car.imageIcon)),
                         ))
                 : Center(child: _carIconFor(widget.car.imageIcon)),
@@ -430,20 +424,20 @@ class _CarImageState extends State<_CarImage> {
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(images.length, (index) {
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    width: _currentIndex == index ? 14 : 5,
+                children: List.generate(
+                  images.length,
+                  (index) => Container(
+                    width: 5,
                     height: 5,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
                     decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       color: _currentIndex == index
                           ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(999),
+                          : Colors.white.withValues(alpha: 0.4),
                     ),
-                  );
-                }),
+                  ),
+                ),
               ),
             ),
         ],
@@ -451,23 +445,19 @@ class _CarImageState extends State<_CarImage> {
     );
   }
 
-  Icon _carIconFor(String iconName) {
-    switch (iconName) {
-      case 'directions_car_filled':
+  Widget _carIconFor(String key) {
+    switch (key.toLowerCase()) {
+      case 'audi':
+      case 'bmw':
+      case 'mercedes':
+      case 'mazda':
+      case 'toyota':
+      case 'hyundai':
+      case 'kia':
+      case 'honda':
+      case 'ford':
         return const Icon(
-          Icons.directions_car_filled_rounded,
-          color: AppColors.primary,
-          size: 42,
-        );
-      case 'airport_shuttle':
-        return const Icon(
-          Icons.airport_shuttle_rounded,
-          color: AppColors.primary,
-          size: 42,
-        );
-      case 'electric_car':
-        return const Icon(
-          Icons.electric_car_rounded,
+          Icons.directions_car_rounded,
           color: AppColors.primary,
           size: 42,
         );
@@ -478,38 +468,6 @@ class _CarImageState extends State<_CarImage> {
           size: 42,
         );
     }
-  }
-}
-
-class _RatingBadge extends StatelessWidget {
-  final double rating;
-
-  const _RatingBadge({required this.rating});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.amber.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.star_rounded, size: 13, color: Colors.amber),
-          const SizedBox(width: 2),
-          Text(
-            rating.toStringAsFixed(1),
-            style: const TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

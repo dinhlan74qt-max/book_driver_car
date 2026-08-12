@@ -1,5 +1,4 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
@@ -337,7 +336,7 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                           ? CachedNetworkImage(
                               imageUrl: _currentBooking.vehicleImage,
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
+                              placeholder: (_, _) => Container(
                                 color: AppColors.primary.withValues(alpha: 0.08),
                                 alignment: Alignment.center,
                                 child: const SizedBox(
@@ -346,7 +345,7 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => Container(
+                              errorWidget: (_, _, _) => Container(
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
                               ),

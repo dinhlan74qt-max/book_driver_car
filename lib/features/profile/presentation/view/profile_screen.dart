@@ -5,9 +5,11 @@ import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
-import 'package:book_drive_car/features/profile/presentation/view/identity_verification_screen.dart';
-import 'package:book_drive_car/features/profile/presentation/view/owner_booking_list_screen.dart';
-import 'package:book_drive_car/features/profile/presentation/view/rental_management_screen.dart';
+import 'package:book_drive_car/shared/constants/api_constants.dart';
+import 'package:dio/dio.dart';
+import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/owner_booking/owner_booking_list_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/vehicle_management/rental_management_screen.dart';
 import 'package:book_drive_car/features/welcome/presentation/view/welcome_screen.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
@@ -45,19 +47,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final current = await verificationLocal.getVerificationData();
     VerificationData vData = current;
 
+    // Ưu tiên lấy trạng thái xác minh từ server (endpoint chuyên biệt)
     try {
-      final serverUser = await sl<BookingRemoteDataSource>().checkVerified();
-      vData = current.copyWith(
-        status: VerificationStatus.verified,
-        fullName: serverUser.fullname,
-        cccdNumber: serverUser.cccd ?? current.cccdNumber,
-        address: serverUser.addressText.isNotEmpty
-            ? serverUser.addressText
-            : current.address,
-      );
-      await verificationLocal.saveVerificationData(vData);
+      final serverStatus = await _fetchVerificationStatusFromServer();
+      if (serverStatus != null && serverStatus != current.status) {
+        vData = current.copyWith(status: serverStatus);
+        await verificationLocal.saveVerificationData(vData);
+      }
     } catch (_) {
-      // Giữ nguyên trạng thái local nếu server chưa phản hồi hoặc chưa xác thực.
+      // Nếu endpoint status không tồn tại → fallback: dùng checkVerified
+      try {
+        final serverUser = await sl<BookingRemoteDataSource>().checkVerified();
+        vData = current.copyWith(
+          status: VerificationStatus.verified,
+          fullName: serverUser.fullname,
+          cccdNumber: serverUser.cccd ?? current.cccdNumber,
+          address: serverUser.addressText.isNotEmpty
+              ? serverUser.addressText
+              : current.address,
+        );
+        await verificationLocal.saveVerificationData(vData);
+      } catch (_) {
+        // Giữ nguyên trạng thái local nếu không kết nối được server.
+      }
     }
 
     if (mounted) {
@@ -65,6 +77,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user = user;
         _verificationData = vData;
       });
+    }
+  }
+
+  /// Gọi GET /api/users/veri/status để lấy trạng thái xác minh hiện tại.
+  /// Trả về null nếu endpoint chưa tồn tại hoặc không hỗ trợ.
+  Future<VerificationStatus?> _fetchVerificationStatusFromServer() async {
+    try {
+      final dio = sl<Dio>();
+      final token = await sl<UserLocalStorage>().getToken();
+      final response = await dio.get(
+        ApiConstants.verificationStatus,
+        options: Options(
+          headers: token != null ? {'Authorization': 'Bearer $token'} : null,
+          validateStatus: (code) => code != null && code < 500,
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final raw = data is Map ? (data['data'] ?? data['status'] ?? data) : data;
+        final statusStr = raw is String ? raw : (raw is Map ? raw['status'] : null);
+        if (statusStr != null) {
+          return VerificationStatus.fromString(statusStr.toString());
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -82,6 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _showAccountDetail() async {
     final user = _user;
+    final vData = _verificationData; // snapshot tại thời điểm mở bottom sheet
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -95,22 +136,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (user != null) ...[
-                _InfoRow(label: 'Họ tên', value: user.fullname ?? '—'),
+                _InfoRow(label: 'Họ tên', value: user.fullname.isNotEmpty ? user.fullname : '—'),
                 _InfoRow(
                   label: 'Email',
                   value: user.email.isNotEmpty ? user.email : '—',
                 ),
                 _InfoRow(
                   label: 'Số điện thoại',
-                  value: user.phone?.isNotEmpty == true ? user.phone! : '—',
+                  value: user.phone.isNotEmpty ? user.phone : '—',
                 ),
                 if (user.cccd?.isNotEmpty == true)
                   _InfoRow(label: 'CCCD', value: user.cccd!),
-                _InfoRow(label: 'Vai trò', value: user.role ?? 'user'),
+                _InfoRow(label: 'Vai trò', value: user.role.isNotEmpty ? user.role : 'user'),
                 _InfoRow(
                   label: 'Trạng thái',
-                  value: 'Đã xác thực',
-                  valueColor: AppColors.success,
+                  value: vData.status.label,
+                  valueColor: vData.status.color,
                 ),
               ] else
                 const Text(

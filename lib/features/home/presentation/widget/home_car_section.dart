@@ -1,6 +1,6 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
-import 'package:book_drive_car/features/home/presentation/view/car_detail_screen.dart';
+import 'package:book_drive_car/features/home/presentation/view/car_detail/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/home_empty_state.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
