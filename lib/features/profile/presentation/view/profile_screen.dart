@@ -47,29 +47,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final current = await verificationLocal.getVerificationData();
     VerificationData vData = current;
 
-    // Ưu tiên lấy trạng thái xác minh từ server (endpoint chuyên biệt)
+    // 1. Kiểm tra trạng thái xác minh từ server qua checkVerified()
     try {
-      final serverStatus = await _fetchVerificationStatusFromServer();
-      if (serverStatus != null && serverStatus != current.status) {
-        vData = current.copyWith(status: serverStatus);
-        await verificationLocal.saveVerificationData(vData);
-      }
-    } catch (_) {
-      // Nếu endpoint status không tồn tại → fallback: dùng checkVerified
-      try {
-        final serverUser = await sl<BookingRemoteDataSource>().checkVerified();
+      final serverUser = await sl<BookingRemoteDataSource>().checkVerified();
+      if (serverUser.isVerified) {
         vData = current.copyWith(
           status: VerificationStatus.verified,
-          fullName: serverUser.fullname,
-          cccdNumber: serverUser.cccd ?? current.cccdNumber,
+          fullName: serverUser.fullname.isNotEmpty ? serverUser.fullname : current.fullName,
+          cccdNumber: serverUser.cccd?.isNotEmpty == true ? serverUser.cccd : current.cccdNumber,
           address: serverUser.addressText.isNotEmpty
               ? serverUser.addressText
               : current.address,
         );
         await verificationLocal.saveVerificationData(vData);
-      } catch (_) {
-        // Giữ nguyên trạng thái local nếu không kết nối được server.
       }
+    } catch (e) {
+      debugPrint('[ProfileScreen] checkVerified result: $e');
+      // 2. Thử kiểm tra endpoint status nếu server có endpoint riêng
+      try {
+        final serverStatus = await _fetchVerificationStatusFromServer();
+        if (serverStatus != null && serverStatus != current.status) {
+          vData = current.copyWith(status: serverStatus);
+          await verificationLocal.saveVerificationData(vData);
+        }
+      } catch (_) {}
     }
 
     if (mounted) {
@@ -109,15 +110,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openVerificationForm() async {
-    final result = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
             IdentityVerificationScreen(initialData: _verificationData),
       ),
     );
-    if (result == true) {
-      await _loadUser();
-    }
+    await _loadUser();
   }
 
   Future<void> _showAccountDetail() async {
@@ -386,11 +385,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const Positioned.fill(child: _LuxuryProfileBackground()),
           SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+            child: RefreshIndicator(
+              onRefresh: _loadUser,
+              color: AppColors.headlightAmber,
+              backgroundColor: const Color(0xFF151A24),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   _LuxuryProfileHero(
                     preset: preset,
                     userName: userName.isNotEmpty ? userName : 'Người dùng',
@@ -497,8 +501,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
 
     return Stack(

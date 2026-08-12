@@ -53,33 +53,64 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
     return fallback;
   }
 
-  VerifiedUserEntity _parseVerifiedUser(dynamic data) {
-    if (data is Map<String, dynamic>) {
-      final addressData = data['address'];
-      final isVerifiedRaw = data['isCccdVerified'];
-      final isVerified = isVerifiedRaw is bool
-          ? isVerifiedRaw
-          : isVerifiedRaw is String
-          ? isVerifiedRaw.trim().toLowerCase() == 'true'
-          : throw Exception('Server chưa trả về isCccdVerified trong data');
-      return VerifiedUserEntity(
-        fullname: data['fullname']?.toString() ?? '',
-        email: data['email']?.toString() ?? '',
-        phone: data['phone']?.toString() ?? '',
-        cccd: data['cccd']?.toString(),
-        isCccdVerified: isVerified,
-        address: addressData is Map<String, dynamic>
-            ? AddressEntity(
-                addressDetail: addressData['addressDetail']?.toString() ?? '',
-                ward: addressData['ward']?.toString() ?? '',
-                district: addressData['district']?.toString() ?? '',
-                city: addressData['city']?.toString() ?? '',
-              )
-            : null,
-      );
+  VerifiedUserEntity _parseVerifiedUser(dynamic rawData) {
+    if (rawData is! Map) {
+      throw Exception('Dữ liệu xác thực không hợp lệ');
+    }
+    final data = Map<String, dynamic>.from(rawData);
+    final userMap = data['user'] is Map ? Map<String, dynamic>.from(data['user']) : data;
+
+    bool parseBool(dynamic val) {
+      if (val == null) return false;
+      if (val is bool) return val;
+      if (val is num) return val == 1 || val > 0;
+      final s = val.toString().trim().toLowerCase();
+      return s == 'true' || s == '1' || s == 'verified' || s == 'approved' || s == 'active';
     }
 
-    throw Exception('Dữ liệu xác thực không hợp lệ');
+    bool isVerified = parseBool(userMap['isCccdVerified']) ||
+        parseBool(data['isCccdVerified']) ||
+        parseBool(userMap['isVerified']) ||
+        parseBool(data['isVerified']) ||
+        parseBool(userMap['is_cccd_verified']) ||
+        parseBool(data['is_cccd_verified']) ||
+        parseBool(userMap['is_verified']) ||
+        parseBool(data['is_verified']) ||
+        parseBool(userMap['verified']) ||
+        parseBool(data['verified']) ||
+        parseBool(userMap['cccdVerified']) ||
+        parseBool(data['cccdVerified']);
+
+    final statusStr = (userMap['status'] ?? data['status'] ?? userMap['verificationStatus'] ?? data['verificationStatus'] ?? userMap['cccdStatus'] ?? data['cccdStatus'])?.toString().trim().toUpperCase();
+    if (statusStr == 'APPROVED' || statusStr == 'VERIFIED' || statusStr == 'SUCCESS' || statusStr == 'ACTIVE' || statusStr == 'ĐÃ DUYỆT' || statusStr == 'ĐÃ XÁC MINH' || statusStr == 'DUYET') {
+      isVerified = true;
+    }
+
+    final cccd = userMap['cccd']?.toString() ?? data['cccd']?.toString() ?? userMap['cccdNumber']?.toString() ?? data['cccdNumber']?.toString();
+    if (cccd != null && cccd.trim().isNotEmpty && statusStr != 'REJECTED' && statusStr != 'PENDING' && statusStr != 'UNVERIFIED') {
+      if (userMap['isCccdVerified'] == null && data['isCccdVerified'] == null && userMap['isVerified'] == null && data['isVerified'] == null) {
+        isVerified = true;
+      }
+    }
+
+    final addressData = userMap['address'] ?? data['address'];
+    return VerifiedUserEntity(
+      fullname: userMap['fullname']?.toString() ?? userMap['fullName']?.toString() ?? data['fullname']?.toString() ?? data['fullName']?.toString() ?? '',
+      email: userMap['email']?.toString() ?? data['email']?.toString() ?? '',
+      phone: userMap['phone']?.toString() ?? data['phone']?.toString() ?? '',
+      cccd: cccd,
+      isCccdVerified: isVerified,
+      address: addressData is Map<String, dynamic>
+          ? AddressEntity(
+              addressDetail: addressData['addressDetail']?.toString() ?? '',
+              ward: addressData['ward']?.toString() ?? '',
+              district: addressData['district']?.toString() ?? '',
+              city: addressData['city']?.toString() ?? '',
+            )
+          : (addressData is String && addressData.isNotEmpty
+              ? AddressEntity(addressDetail: addressData, ward: '', district: '', city: '')
+              : null),
+    );
   }
 
   @override
