@@ -9,6 +9,7 @@ import 'package:book_drive_car/features/profile/presentation/view/owner_booking_
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class OwnerBookingDetailScreen extends StatefulWidget {
   final OwnerBookingEntity booking;
@@ -16,7 +17,8 @@ class OwnerBookingDetailScreen extends StatefulWidget {
   const OwnerBookingDetailScreen({super.key, required this.booking});
 
   @override
-  State<OwnerBookingDetailScreen> createState() => _OwnerBookingDetailScreenState();
+  State<OwnerBookingDetailScreen> createState() =>
+      _OwnerBookingDetailScreenState();
 }
 
 class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
@@ -37,15 +39,39 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
     return DateFormat('HH:mm - dd/MM/yyyy').format(dt);
   }
 
+  Future<void> _callRenterPhone() async {
+    final phone = _currentBooking.renterPhone.trim();
+    if (phone.isEmpty) {
+      AppToast.show(
+        context,
+        message: 'Không có số điện thoại của khách để gọi',
+        type: AppToastType.warning,
+      );
+      return;
+    }
+
+    final uri = Uri(scheme: 'tel', path: phone);
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+    );
+
+    if (!launched && mounted) {
+      AppToast.show(
+        context,
+        message: 'Không thể mở ứng dụng gọi điện',
+        type: AppToastType.error,
+      );
+    }
+  }
+
   Future<void> _handleApprove() async {
     final cubit = context.read<OwnerBookingCubit>();
     final approved = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => BlocProvider.value(
           value: cubit,
-          child: OwnerBookingContractApprovalScreen(
-            booking: _currentBooking,
-          ),
+          child: OwnerBookingContractApprovalScreen(booking: _currentBooking),
         ),
       ),
     );
@@ -53,7 +79,9 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
     if (!mounted) return;
     if (approved == true) {
       setState(() {
-        _currentBooking = _currentBooking.copyWith(status: BookingStatus.approved);
+        _currentBooking = _currentBooking.copyWith(
+          status: BookingStatus.approved,
+        );
       });
       AppToast.show(
         context,
@@ -93,7 +121,10 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -107,9 +138,11 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
 
     setState(() => _isProcessing = true);
     final success = await context.read<OwnerBookingCubit>().rejectBooking(
-          _currentBooking.id,
-          reason: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : null,
-        );
+      _currentBooking.id,
+      reason: reasonController.text.trim().isNotEmpty
+          ? reasonController.text.trim()
+          : null,
+    );
     if (!mounted) return;
     setState(() => _isProcessing = false);
 
@@ -117,7 +150,9 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
       setState(() {
         _currentBooking = _currentBooking.copyWith(
           status: BookingStatus.rejected,
-          note: reasonController.text.trim().isNotEmpty ? reasonController.text.trim() : _currentBooking.note,
+          note: reasonController.text.trim().isNotEmpty
+              ? reasonController.text.trim()
+              : _currentBooking.note,
         );
       });
       AppToast.show(
@@ -143,8 +178,8 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
 
   bool get _canMarkReturned {
     final today = DateUtils.dateOnly(DateTime.now());
-    final endDay = DateUtils.dateOnly(_currentBooking.endDate);
-    return !today.isBefore(endDay);
+    final startDay = DateUtils.dateOnly(_currentBooking.startDate);
+    return !today.isBefore(startDay);
   }
 
   Future<void> _handleMarkReceived() async {
@@ -174,19 +209,22 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
     if (confirm != true || !mounted) return;
 
     setState(() => _isProcessing = true);
-    final success = await context.read<OwnerBookingCubit>().markCustomerReceived(
-          _currentBooking.id,
-        );
+    final success = await context
+        .read<OwnerBookingCubit>()
+        .markCustomerReceived(_currentBooking.id);
     if (!mounted) return;
     setState(() => _isProcessing = false);
 
     if (success) {
       setState(() {
-        _currentBooking = _currentBooking.copyWith(status: BookingStatus.renting);
+        _currentBooking = _currentBooking.copyWith(
+          status: BookingStatus.renting,
+        );
       });
       AppToast.show(
         context,
-        message: 'Đã cập nhật khách đã nhận xe cho đơn ${_currentBooking.bookingCode}',
+        message:
+            'Đã cập nhật khách đã nhận xe cho đơn ${_currentBooking.bookingCode}',
         type: AppToastType.success,
       );
       return;
@@ -226,19 +264,22 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
     if (confirm != true || !mounted) return;
 
     setState(() => _isProcessing = true);
-    final success = await context.read<OwnerBookingCubit>().markCustomerReturned(
-          _currentBooking.id,
-        );
+    final success = await context
+        .read<OwnerBookingCubit>()
+        .markCustomerReturned(_currentBooking.id);
     if (!mounted) return;
     setState(() => _isProcessing = false);
 
     if (success) {
       setState(() {
-        _currentBooking = _currentBooking.copyWith(status: BookingStatus.completed);
+        _currentBooking = _currentBooking.copyWith(
+          status: BookingStatus.completed,
+        );
       });
       AppToast.show(
         context,
-        message: 'Đã cập nhật khách đã trả xe cho đơn ${_currentBooking.bookingCode}',
+        message:
+            'Đã cập nhật khách đã trả xe cho đơn ${_currentBooking.bookingCode}',
         type: AppToastType.success,
       );
       return;
@@ -305,7 +346,10 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                         const SizedBox(height: 3),
                         Text(
                           _getStatusDescription(status),
-                          style: TextStyle(fontSize: 12.5, color: Colors.black.withValues(alpha: 0.7)),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.black.withValues(alpha: 0.7),
+                          ),
                         ),
                       ],
                     ),
@@ -316,7 +360,10 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
             const SizedBox(height: 18),
 
             // ── 2. Thông Tin Xe Thuê ──────────────────────────────────────────
-            const _SectionHeader(title: 'Thông tin xe cho thuê', icon: Icons.directions_car_rounded),
+            const _SectionHeader(
+              title: 'Thông tin xe cho thuê',
+              icon: Icons.directions_car_rounded,
+            ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(16),
@@ -337,22 +384,32 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                               imageUrl: _currentBooking.vehicleImage,
                               fit: BoxFit.cover,
                               placeholder: (_, _) => Container(
-                                color: AppColors.primary.withValues(alpha: 0.08),
+                                color: AppColors.primary.withValues(
+                                  alpha: 0.08,
+                                ),
                                 alignment: Alignment.center,
                                 child: const SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 ),
                               ),
                               errorWidget: (_, _, _) => Container(
                                 color: AppColors.primary.withValues(alpha: 0.1),
-                                child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
+                                child: const Icon(
+                                  Icons.directions_car_filled_rounded,
+                                  color: AppColors.primary,
+                                ),
                               ),
                             )
                           : Container(
                               color: AppColors.primary.withValues(alpha: 0.1),
-                              child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
+                              child: const Icon(
+                                Icons.directions_car_filled_rounded,
+                                color: AppColors.primary,
+                              ),
                             ),
                     ),
                   ),
@@ -363,24 +420,39 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                       children: [
                         Text(
                           _currentBooking.vehicleName,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.amber.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             _currentBooking.licensePlate,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF7D5A00)),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF7D5A00),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'Đơn giá: ${_formatPrice(_currentBooking.pricePerDay)} đ/ngày',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -391,7 +463,10 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
             const SizedBox(height: 18),
 
             // ── 3. Thông Tin Khách Thuê ───────────────────────────────────────
-            const _SectionHeader(title: 'Thông tin người thuê', icon: Icons.person_rounded),
+            const _SectionHeader(
+              title: 'Thông tin người thuê',
+              icon: Icons.person_rounded,
+            ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(16),
@@ -406,8 +481,14 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        child: const Icon(Icons.person, color: AppColors.primary, size: 26),
+                        backgroundColor: AppColors.primary.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: const Icon(
+                          Icons.person,
+                          color: AppColors.primary,
+                          size: 26,
+                        ),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -416,12 +497,19 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                           children: [
                             Text(
                               _currentBooking.renterName,
-                              style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                              style: const TextStyle(
+                                fontSize: 15.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               _currentBooking.renterPhone,
-                              style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary),
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ],
                         ),
@@ -437,32 +525,42 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                         child: OutlinedButton.icon(
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Đang mở ứng dụng tin nhắn với ${_currentBooking.renterPhone}...')),
+                              SnackBar(
+                                content: Text(
+                                  'Đang mở ứng dụng tin nhắn với ${_currentBooking.renterPhone}...',
+                                ),
+                              ),
                             );
                           },
-                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+                          icon: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                          ),
                           label: const Text('Nhắn tin'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             side: const BorderSide(color: AppColors.primary),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Đang gọi cho khách: ${_currentBooking.renterPhone}...')),
-                            );
-                          },
-                          icon: const Icon(Icons.phone_in_talk_rounded, size: 16),
+                          onPressed: _callRenterPhone,
+                          icon: const Icon(
+                            Icons.phone_in_talk_rounded,
+                            size: 16,
+                          ),
                           label: const Text('Gọi điện'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
@@ -474,7 +572,10 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
             const SizedBox(height: 18),
 
             // ── 4. Thời Gian & Lịch Trình ─────────────────────────────────────
-            const _SectionHeader(title: 'Lịch trình thuê xe', icon: Icons.calendar_month_rounded),
+            const _SectionHeader(
+              title: 'Lịch trình thuê xe',
+              icon: Icons.calendar_month_rounded,
+            ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(16),
@@ -517,7 +618,10 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
             const SizedBox(height: 18),
 
             // ── 5. Chi Tiết Doanh Thu & Thanh Toán ────────────────────────────
-            const _SectionHeader(title: 'Chi tiết thanh toán', icon: Icons.receipt_long_rounded),
+            const _SectionHeader(
+              title: 'Chi tiết thanh toán',
+              icon: Icons.receipt_long_rounded,
+            ),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(16),
@@ -530,19 +634,27 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                 children: [
                   _PriceRow(
                     label: 'Đơn giá thuê (${_currentBooking.totalDays} ngày)',
-                    value: '${_formatPrice(_currentBooking.pricePerDay * _currentBooking.totalDays)} đ',
+                    value:
+                        '${_formatPrice(_currentBooking.pricePerDay * _currentBooking.totalDays)} đ',
                   ),
                   const SizedBox(height: 10),
                   const _PriceRow(label: 'Phí dịch vụ nền tảng', value: '0 đ'),
                   const SizedBox(height: 10),
-                  const _PriceRow(label: 'Bảo hiểm chuyến đi', value: 'Miễn phí'),
+                  const _PriceRow(
+                    label: 'Bảo hiểm chuyến đi',
+                    value: 'Miễn phí',
+                  ),
                   const Divider(height: 24, color: AppColors.border),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         'Tổng thực nhận',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       Text(
                         '${_formatPrice(_currentBooking.totalPrice)} đ',
@@ -680,7 +792,9 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                         size: 20,
                       ),
                 label: Text(
-                  _canMarkReceived ? 'Khách đã nhận xe' : 'Chỉ bật từ ngày nhận xe',
+                  _canMarkReceived
+                      ? 'Khách đã nhận xe'
+                      : 'Chờ đến nhận xe để checkin',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15.5,
@@ -753,7 +867,9 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                         size: 20,
                       ),
                 label: Text(
-                  _canMarkReturned ? 'Khách đã trả xe' : 'Chỉ bật từ ngày trả xe',
+                  _canMarkReturned
+                      ? 'Khách đã trả xe'
+                      : 'Chờ đến trả xe để checkout',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 15.5,
@@ -776,7 +892,7 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
             if (!_canMarkReturned) ...[
               const SizedBox(height: 8),
               const Text(
-                'Nút này chỉ hoạt động từ ngày trả xe trở đi.',
+                'Nút này chỉ hoạt động từ ngày nhận xe trở đi.',
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 12.5,
@@ -825,7 +941,11 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
         ),
       ],
     );
@@ -850,18 +970,27 @@ class _InfoRowItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      crossAxisAlignment: isMultiline
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
       children: [
         Icon(icon, size: 18, color: AppColors.textMuted),
         const SizedBox(width: 10),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
         const Spacer(),
         Flexible(
           flex: isMultiline ? 2 : 1,
           child: Text(
             value,
             textAlign: TextAlign.end,
-            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       ],
@@ -882,8 +1011,21 @@ class _PriceRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 13.5, color: AppColors.textSecondary)),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13.5,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
       ],
     );
   }
