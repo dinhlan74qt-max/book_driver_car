@@ -55,7 +55,17 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
       if (data.selfieImage != null && !data.selfieImage!.startsWith('http')) data.selfieImage!,
     ];
 
-    final List<MultipartFile> imageFiles = [];
+    final formData = FormData();
+    formData.files.add(
+      MapEntry(
+        'verification',
+        MultipartFile.fromString(
+          jsonEncode(verificationJson),
+          contentType: MediaType('application', 'json'),
+        ),
+      ),
+    );
+
     for (final path in imagePaths) {
       try {
         final file = await MultipartFile.fromFile(
@@ -63,20 +73,11 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
           filename: _fileNameOf(path),
           contentType: _contentTypeOf(path),
         );
-        imageFiles.add(file);
+        formData.files.add(MapEntry('files', file));
       } catch (e) {
         debugPrint('[VerificationRemoteDataSource] Skip non-file image path: $path ($e)');
       }
     }
-
-    // 3. Đóng gói FormData với 1 part JSON và 1 List file ảnh
-    final formData = FormData.fromMap({
-      'verification': MultipartFile.fromString(
-        jsonEncode(verificationJson),
-        contentType: MediaType('application', 'json'),
-      ),
-      if (imageFiles.isNotEmpty) 'files': imageFiles,
-    });
 
     try {
       final token = await userLocalStorage.getToken();
@@ -86,7 +87,7 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
         },
       );
 
-      debugPrint('[VerificationRemoteDataSource] Submitting verification FormData to ${ApiConstants.verification} (1 JSON file + ${imageFiles.length} image files in List)');
+      debugPrint('[VerificationRemoteDataSource] Submitting 1 single request to ${ApiConstants.verification} with 1 JSON part and ${formData.files.where((e) => e.key == 'files').length} image files in List "files"');
       final response = await dio.post(
         ApiConstants.verification,
         data: formData,
@@ -94,7 +95,7 @@ class VerificationRemoteDataSourceImpl implements VerificationRemoteDataSource {
       );
       debugPrint('[VerificationRemoteDataSource] Response status: ${response.statusCode}');
     } catch (e) {
-      debugPrint('[VerificationRemoteDataSource] Verification submission logged: $e');
+      debugPrint('[VerificationRemoteDataSource] Verification submission error: $e');
     }
   }
 }

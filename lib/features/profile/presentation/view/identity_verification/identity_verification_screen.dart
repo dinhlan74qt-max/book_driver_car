@@ -237,6 +237,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   }
 
   Future<void> _submitVerification() async {
+    if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
 
     final data = VerificationData(
