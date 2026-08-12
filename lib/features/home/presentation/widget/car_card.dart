@@ -81,24 +81,25 @@ class _ExpandedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 140,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _CarImage(car: car, width: 112),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 140),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _CarImage(car: car, width: 112),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
                           car.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -108,98 +109,102 @@ class _ExpandedCard extends StatelessWidget {
                             color: AppColors.textPrimary,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.place_outlined,
-                        size: 14,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          car.location.isNotEmpty ? car.location : car.province,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      _SpecChip(
-                        icon: Icons.apartment_outlined,
-                        label: car.brand,
-                        color: const Color(0xFF1B4F72),
-                      ),
-                      _SpecChip(
-                        icon: Icons.directions_car_outlined,
-                        label: car.vehicleType,
-                        color: const Color(0xFF1E8E5A),
-                      ),
-                      _SpecChip(
-                        icon: Icons.people_alt_outlined,
-                        label: '${car.seats} chỗ',
-                        color: const Color(0xFFFF7A00),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      RichText(
-                        text: TextSpan(
+                        const SizedBox(height: 3),
+                        Row(
                           children: [
-                            TextSpan(
-                              text: CarCard._formatPrice(car.pricePerDay),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
-                              ),
+                            const Icon(
+                              Icons.place_outlined,
+                              size: 13,
+                              color: AppColors.textMuted,
                             ),
-                            const TextSpan(
-                              text: ' /ngày',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: AppColors.textMuted,
+                            const SizedBox(width: 3),
+                            Expanded(
+                              child: Text(
+                                car.location.isNotEmpty ? car.location : car.province,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 5,
+                          runSpacing: 4,
+                          children: [
+                            _SpecChip(
+                              icon: Icons.apartment_outlined,
+                              label: car.brand,
+                              color: const Color(0xFF1B4F72),
+                            ),
+                            if (car.vehicleType.isNotEmpty)
+                              _SpecChip(
+                                icon: Icons.directions_car_outlined,
+                                label: car.vehicleType,
+                                color: const Color(0xFF1E8E5A),
+                              ),
+                            _SpecChip(
+                              icon: Icons.people_alt_outlined,
+                              label: '${car.seats} chỗ',
+                              color: const Color(0xFFFF7A00),
+                            ),
+                          ],
                         ),
-                        child: const Icon(
-                          Icons.arrow_forward_rounded,
-                          size: 16,
-                          color: AppColors.primary,
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: RichText(
+                            overflow: TextOverflow.ellipsis,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: CarCard._formatPrice(car.pricePerDay),
+                                  style: const TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                                const TextSpan(
+                                  text: ' /ngày',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 15,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
