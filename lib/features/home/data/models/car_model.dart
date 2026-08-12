@@ -24,6 +24,20 @@ class CarModel extends CarEntity {
   });
 
   factory CarModel.fromJson(Map<String, dynamic> json) {
+    int toInt(dynamic v, {int fallback = 0}) {
+      if (v is int) return v;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v) ?? fallback;
+      return fallback;
+    }
+
+    double toDouble(dynamic v, {double fallback = 0.0}) {
+      if (v is double) return v;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? fallback;
+      return fallback;
+    }
+
     // Lấy tất cả imageUrls
     final List<String> imageUrls = [];
     final rawImages = json['imageUrls'];
@@ -44,6 +58,9 @@ class CarModel extends CarEntity {
       final ward = address['ward']?.toString() ?? '';
       final city = address['city']?.toString() ?? '';
       fullLocation = [detail, ward, city].where((e) => e.isNotEmpty).join(', ');
+    } else if (address is String) {
+      fullLocation = address;
+      province = address;
     }
 
     return CarModel(
@@ -54,13 +71,13 @@ class CarModel extends CarEntity {
       province: province,
       imageIcon: imageIcon,
       imageUrls: imageUrls,
-      pricePerDay: (json['pricePerDay'] as num?)?.toInt() ?? 0,
-      distanceKm: (json['Distance'] as num?)?.toDouble() ?? 0.0,
-      seats: json['seatCount'] as int? ?? 4,
-      rating: 4.8,
+      pricePerDay: toInt(json['pricePerDay']),
+      distanceKm: toDouble(json['Distance']),
+      seats: toInt(json['seatCount'], fallback: 4),
+      rating: toDouble(json['rating'], fallback: 4.8),
       location: fullLocation,
       model: json['model']?.toString(),
-      year: (json['year'] as num?)?.toInt(),
+      year: json['year'] != null ? toInt(json['year']) : null,
       color: json['color']?.toString(),
       fuelType: json['fuelType']?.toString(),
       transmission: json['transmission']?.toString(),
