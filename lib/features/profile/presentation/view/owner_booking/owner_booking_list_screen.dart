@@ -1,6 +1,5 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
@@ -36,6 +35,23 @@ class _OwnerBookingListContent extends StatefulWidget {
 }
 
 class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() => _searchQuery = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   String _formatPrice(num price) {
     return NumberFormat.decimalPattern('vi_VN').format(price);
   }
@@ -65,9 +81,7 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
       body: BlocBuilder<OwnerBookingCubit, OwnerBookingState>(
         builder: (context, state) {
           if (state is OwnerBookingLoading || state is OwnerBookingInitial) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
+            return _buildShimmerLoading();
           }
 
           if (state is OwnerBookingError) {
@@ -87,8 +101,12 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () => context.read<OwnerBookingCubit>().fetchBookings(),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                      child: const Text('Thử lại', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Thử lại'),
                     ),
                   ],
                 ),
@@ -98,20 +116,72 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
 
           if (state is OwnerBookingLoaded) {
             var list = state.filteredBookings;
+
+            // Lọc theo xe nếu có
             if (widget.vehicleFilter != null) {
               list = list.where((e) => e.vehicleName.toLowerCase().contains(widget.vehicleFilter!.toLowerCase())).toList();
+            }
+
+            // Lọc theo ô tìm kiếm
+            if (_searchQuery.isNotEmpty) {
+              list = list.where((e) {
+                return e.bookingCode.toLowerCase().contains(_searchQuery) ||
+                    e.renterName.toLowerCase().contains(_searchQuery) ||
+                    e.renterPhone.toLowerCase().contains(_searchQuery) ||
+                    e.vehicleName.toLowerCase().contains(_searchQuery);
+              }).toList();
             }
 
             final pendingCount = state.countByStatus(BookingStatus.pending);
             final rejectedCount = state.countByStatus(BookingStatus.rejected);
             final cancelledCount = state.countByStatus(BookingStatus.cancelled);
+            final num totalRevenue = state.allBookings
+                .where((e) => e.status == BookingStatus.completed || e.status == BookingStatus.renting || e.status == BookingStatus.approved)
+                .fold(0, (sum, item) => sum + item.totalPrice);
 
             return Column(
               children: [
+                // ── KPI Summary Banner ──────────────────────────────────────────
+                _buildKpiBanner(
+                  totalBookings: state.allBookings.length,
+                  pendingCount: pendingCount,
+                  totalRevenue: totalRevenue,
+                ),
+
+                // ── Thanh tìm kiếm nhanh ─────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                      decoration: InputDecoration(
+                        hintText: 'Tìm theo mã đơn, khách hàng, tên xe...',
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                onPressed: () => _searchController.clear(),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ),
+
                 // ── Thanh lọc trạng thái (Filter Tabs) ──────────────────────────
                 Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  color: AppColors.background,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -173,12 +243,16 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                     child: list.isEmpty
                         ? _EmptyBookingState(
                             filter: state.filterStatus,
-                            onReset: () => context.read<OwnerBookingCubit>().filterByStatus(null),
+                            isSearching: _searchQuery.isNotEmpty,
+                            onReset: () {
+                              _searchController.clear();
+                              context.read<OwnerBookingCubit>().filterByStatus(null);
+                            },
                           )
                         : ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: list.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 14),
+                            separatorBuilder: (_, _) => const SizedBox(height: 14),
                             itemBuilder: (context, index) {
                               final booking = list[index];
                               return _BookingOrderCard(
@@ -209,6 +283,138 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
 
           return const SizedBox.shrink();
         },
+      ),
+    );
+  }
+
+  Widget _buildKpiBanner({
+    required int totalBookings,
+    required int pendingCount,
+    required num totalRevenue,
+  }) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildKpiItem(
+              label: 'Tổng đơn',
+              value: '$totalBookings',
+              icon: Icons.receipt_long_rounded,
+              iconColor: AppColors.primary,
+            ),
+          ),
+          Container(width: 1, height: 32, color: AppColors.border),
+          Expanded(
+            child: _buildKpiItem(
+              label: 'Chờ duyệt',
+              value: '$pendingCount',
+              icon: Icons.pending_actions_rounded,
+              iconColor: const Color(0xFFFFA000),
+              isAlert: pendingCount > 0,
+            ),
+          ),
+          Container(width: 1, height: 32, color: AppColors.border),
+          Expanded(
+            child: _buildKpiItem(
+              label: 'Ước tính thu',
+              value: '${_formatPrice(totalRevenue)} đ',
+              icon: Icons.account_balance_wallet_rounded,
+              iconColor: const Color(0xFF2E7D32),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKpiItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    bool isAlert = false,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 14, color: iconColor),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(fontSize: 11.5, color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: isAlert ? const Color(0xFFD32F2F) : AppColors.textPrimary,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (_, _) => Container(
+        height: 160,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(width: 100, height: 16, color: Colors.black12),
+                Container(width: 70, height: 16, color: Colors.black12),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(width: 60, height: 60, color: Colors.black12),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(width: double.infinity, height: 14, color: Colors.black12),
+                      const SizedBox(height: 8),
+                      Container(width: 120, height: 12, color: Colors.black12),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -366,7 +572,7 @@ class _BookingOrderCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: booking.vehicleImage,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: (_, _) => Container(
                               color: AppColors.primary.withValues(alpha: 0.08),
                               alignment: Alignment.center,
                               child: const SizedBox(
@@ -375,7 +581,7 @@ class _BookingOrderCard extends StatelessWidget {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
-                            errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, _, _) => Container(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
                             ),
@@ -519,9 +725,14 @@ class _BookingOrderCard extends StatelessWidget {
 
 class _EmptyBookingState extends StatelessWidget {
   final BookingStatus? filter;
+  final bool isSearching;
   final VoidCallback onReset;
 
-  const _EmptyBookingState({this.filter, required this.onReset});
+  const _EmptyBookingState({
+    this.filter,
+    this.isSearching = false,
+    required this.onReset,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -538,26 +749,38 @@ class _EmptyBookingState extends StatelessWidget {
                 color: AppColors.primary.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.receipt_long_outlined, size: 40, color: AppColors.primary),
+              child: Icon(
+                isSearching ? Icons.search_off_rounded : Icons.receipt_long_outlined,
+                size: 40,
+                color: AppColors.primary,
+              ),
             ),
             const SizedBox(height: 16),
             Text(
-              filter != null ? 'Chưa có đơn ở trạng thái "${filter!.label}"' : 'Chưa có đơn đặt thuê nào',
+              isSearching
+                  ? 'Không tìm thấy đơn hàng phù hợp'
+                  : (filter != null ? 'Chưa có đơn ở trạng thái "${filter!.label}"' : 'Chưa có đơn đặt thuê nào'),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Khi khách hàng đặt thuê xe của bạn, các đơn hàng sẽ xuất hiện tại đây.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+            Text(
+              isSearching
+                  ? 'Vui lòng thử tìm với từ khóa hoặc tên khách hàng khác.'
+                  : 'Khi khách hàng đặt thuê xe của bạn, các đơn hàng sẽ xuất hiện tại đây.',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
               textAlign: TextAlign.center,
             ),
-            if (filter != null) ...[
+            if (filter != null || isSearching) ...[
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: onReset,
-                style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary),
-                child: const Text('Xem tất cả đơn'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: Text(isSearching ? 'Xóa tìm kiếm' : 'Xem tất cả đơn'),
               ),
             ],
           ],
