@@ -1,10 +1,11 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
-import 'package:book_drive_car/features/auth/domain/repositories/auth_repository.dart';
-import 'package:book_drive_car/features/auth/presentation/view/login_screen.dart';
-import 'package:book_drive_car/shared/widget/app_toast.dart';
-import 'package:book_drive_car/shared/widget/bottom_navigation_bar.dart';
-import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/features/auth/domain/usecases/verify_otp.dart';
+import 'package:book_drive_car/features/auth/presentation/view/login_screen.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
+import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -21,7 +22,7 @@ class OtpScreen extends StatefulWidget {
 class _OtpScreenState extends State<OtpScreen> {
   static const int _otpLength = 6;
 
-  final AuthRepository _authRepository = sl<AuthRepository>();
+  final VerifyOtp _verifyOtp = sl<VerifyOtp>();
   final List<TextEditingController> _controllers = List.generate(
     _otpLength,
     (_) => TextEditingController(),
@@ -68,7 +69,7 @@ class _OtpScreenState extends State<OtpScreen> {
     setState(() => _isVerifying = true);
 
     try {
-      final message = await _authRepository.verifyOtp(
+      final message = await _verifyOtp(
         email: widget.email,
         otpCode: _otpValue,
       );
@@ -112,126 +113,191 @@ class _OtpScreenState extends State<OtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFFF5F8FC), Colors.white],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TapScale(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Container(
-                  padding: const EdgeInsets.all(22),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TapScale(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    gradient: LinearGradient(
-                      colors: [
-                        AppColors.primary.withOpacity(0.12),
-                        AppColors.accent.withOpacity(0.10),
-                      ],
-                    ),
-                  ),
-                  child: const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.sms_rounded,
-                        color: AppColors.primary,
-                        size: 30,
-                      ),
-                      SizedBox(height: 14),
-                      Text(
-                        'Nhập mã OTP',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Chúng tôi đã gửi mã xác nhận gồm 6 chữ số đến email của bạn.',
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          color: AppColors.textSecondary,
-                          height: 1.5,
-                        ),
+                    color: isDark ? AppColors.darkSurface : AppColors.surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFF17251F).withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    size: 18,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
                 ),
-                const SizedBox(height: 20),
-                _InfoRow(label: 'Email', value: widget.email),
-                _InfoRow(label: 'Số điện thoại', value: widget.phone),
-                const SizedBox(height: 12),
-                const Text(
-                  'Mã OTP',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 24),
+
+              // ── Brand Header Card (Ivory & Forest Green) ───────────────
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurface : AppColors.surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark ? Colors.black.withValues(alpha: 0.22) : const Color(0xFF17251F).withValues(alpha: 0.05),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: List.generate(_otpLength, (index) {
-                    return _OtpBox(
-                      controller: _controllers[index],
-                      focusNode: _focusNodes[index],
-                      onChanged: (value) => _onChanged(index, value),
-                    );
-                  }),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: isDark
+                              ? const [AppColors.darkPrimary, AppColors.darkAccent]
+                              : const [AppColors.primary, AppColors.accent],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.mark_email_read_rounded,
+                        color: isDark ? AppColors.darkBackground : Colors.white,
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Xác thực OTP',
+                      style: AppTypography.display.copyWith(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Mã xác nhận gồm 6 chữ số đã được gửi tới email của bạn.',
+                      style: AppTypography.body.copyWith(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkPrimaryContainer.withValues(alpha: 0.5)
+                            : AppColors.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.primary.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.email_outlined,
+                            size: 18,
+                            color: isDark ? AppColors.darkPrimary : AppColors.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              widget.email,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.titleSmall.copyWith(
+                                color: isDark ? AppColors.darkPrimary : AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 22),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isVerifying ? null : _verify,
-                    child: Text(
-                      _isVerifying ? 'Đang xác minh...' : 'Xác nhận OTP',
+              ),
+              const SizedBox(height: 32),
+
+              Text(
+                'Nhập 6 chữ số mã xác nhận',
+                style: AppTypography.label.copyWith(
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // ── Pin Input Boxes ────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(_otpLength, (index) {
+                  return _OtpBox(
+                    controller: _controllers[index],
+                    focusNode: _focusNodes[index],
+                    onChanged: (value) => _onChanged(index, value),
+                  );
+                }),
+              ),
+              const SizedBox(height: 32),
+
+              // ── Submit Button ──────────────────────────────────────────
+              AppButton(
+                text: 'Xác nhận OTP',
+                width: double.infinity,
+                isLoading: _isVerifying,
+                onPressed: _verify,
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+              ),
+              const SizedBox(height: 16),
+
+              Center(
+                child: TextButton(
+                  onPressed: _isVerifying
+                      ? null
+                      : () {
+                          AppToast.show(
+                            context,
+                            message: 'Đã gửi lại mã OTP vào hộp thư của bạn',
+                            type: AppToastType.info,
+                          );
+                        },
+                  child: Text(
+                    'Chưa nhận được mã? Gửi lại',
+                    style: AppTypography.label.copyWith(
+                      color: isDark ? AppColors.darkPrimary : AppColors.primary,
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Center(
-                  child: TextButton(
-                    onPressed: _isVerifying
-                        ? null
-                        : () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Chức năng gửi lại OTP sẽ thêm sau',
-                                ),
-                              ),
-                            );
-                          },
-                    child: const Text('Gửi lại mã OTP'),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -239,7 +305,7 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 }
 
-class _OtpBox extends StatelessWidget {
+class _OtpBox extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
@@ -251,83 +317,75 @@ class _OtpBox extends StatelessWidget {
   });
 
   @override
+  State<_OtpBox> createState() => _OtpBoxState();
+}
+
+class _OtpBoxState extends State<_OtpBox> {
+  bool _isFocused = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.focusNode.addListener(() {
+      if (mounted) {
+        setState(() => _isFocused = widget.focusNode.hasFocus);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 46,
-      height: 54,
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 48,
+      height: 56,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _isFocused
+              ? primaryColor
+              : (widget.controller.text.isNotEmpty
+                  ? primaryColor.withValues(alpha: 0.5)
+                  : borderColor),
+          width: _isFocused ? 2.0 : 1.0,
+        ),
+        boxShadow: _isFocused
+            ? [
+                BoxShadow(
+                  color: primaryColor.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      alignment: Alignment.center,
       child: TextField(
-        controller: controller,
-        focusNode: focusNode,
+        controller: widget.controller,
+        focusNode: widget.focusNode,
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
         maxLength: 1,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: const TextStyle(
-          fontSize: 20,
+        style: AppTypography.metricLarge.copyWith(
+          fontSize: 22,
           fontWeight: FontWeight.w800,
-          color: AppColors.textPrimary,
+          color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
         ),
-        decoration: InputDecoration(
+        decoration: const InputDecoration(
           counterText: '',
-          filled: true,
-          fillColor: Colors.white,
           contentPadding: EdgeInsets.zero,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
-          ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          filled: false,
         ),
-        onChanged: onChanged,
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _InfoRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
+        onChanged: widget.onChanged,
       ),
     );
   }

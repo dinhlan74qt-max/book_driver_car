@@ -22,27 +22,37 @@ class OwnerBookingOrderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = booking.status;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final surfaceSecondary = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
 
     return TapScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: surfaceColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: status == BookingStatus.pending
-                ? const Color(0xFFFFA000).withValues(alpha: 0.5)
-                : AppColors.border,
+                ? (isDark ? AppColors.darkAccent : AppColors.accent)
+                : borderColor,
             width: status == BookingStatus.pending ? 1.4 : 1.0,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
-              blurRadius: 14,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,14 +63,14 @@ class OwnerBookingOrderCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.receipt_rounded, size: 16, color: AppColors.textMuted),
+                    Icon(Icons.receipt_rounded, size: 16, color: textMuted),
                     const SizedBox(width: 6),
                     Text(
                       booking.bookingCode,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textSecondary,
+                        color: textSecondary,
                       ),
                     ),
                   ],
@@ -68,9 +78,9 @@ class OwnerBookingOrderCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: status.color.withValues(alpha: 0.12),
+                    color: status.color.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: status.color.withValues(alpha: 0.3)),
+                    border: Border.all(color: status.color.withValues(alpha: 0.35)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -91,7 +101,7 @@ class OwnerBookingOrderCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(height: 1, color: AppColors.border),
+            Divider(height: 1, color: borderColor),
             const SizedBox(height: 12),
 
             // Body: Ảnh xe + Thông tin xe + Khách thuê
@@ -99,7 +109,7 @@ class OwnerBookingOrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   child: SizedBox(
                     width: 76,
                     height: 76,
@@ -108,7 +118,7 @@ class OwnerBookingOrderCard extends StatelessWidget {
                             imageUrl: booking.vehicleImage,
                             fit: BoxFit.cover,
                             placeholder: (_, _) => Container(
-                              color: AppColors.primary.withValues(alpha: 0.08),
+                              color: primaryColor.withValues(alpha: 0.08),
                               alignment: Alignment.center,
                               child: const SizedBox(
                                 width: 16,
@@ -117,13 +127,13 @@ class OwnerBookingOrderCard extends StatelessWidget {
                               ),
                             ),
                             errorWidget: (_, _, _) => Container(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
+                              color: primaryColor.withValues(alpha: 0.1),
+                              child: Icon(Icons.directions_car_filled_rounded, color: primaryColor),
                             ),
                           )
                         : Container(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            child: const Icon(Icons.directions_car_filled_rounded, color: AppColors.primary),
+                            color: primaryColor.withValues(alpha: 0.1),
+                            child: Icon(Icons.directions_car_filled_rounded, color: primaryColor),
                           ),
                   ),
                 ),
@@ -134,10 +144,10 @@ class OwnerBookingOrderCard extends StatelessWidget {
                     children: [
                       Text(
                         booking.vehicleName,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: textPrimary,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -146,27 +156,27 @@ class OwnerBookingOrderCard extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.15),
+                          color: isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           booking.licensePlate,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
-                            color: Color(0xFF7D5A00),
+                            color: primaryColor,
                           ),
                         ),
                       ),
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.person_outline_rounded, size: 14, color: AppColors.textMuted),
+                          Icon(Icons.person_outline_rounded, size: 14, color: textMuted),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               '${booking.renterName} • ${booking.renterPhone}',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              style: TextStyle(fontSize: 12, color: textSecondary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -184,17 +194,17 @@ class OwnerBookingOrderCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.background,
+                color: surfaceSecondary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_today_rounded, size: 14, color: AppColors.primary),
+                  Icon(Icons.calendar_today_rounded, size: 14, color: primaryColor),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '${formatDate(booking.startDate)} - ${formatDate(booking.endDate)} (${booking.totalDays} ngày)',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textPrimary),
                     ),
                   ),
                 ],
@@ -209,13 +219,13 @@ class OwnerBookingOrderCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Tổng tiền thu về', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    Text('Tổng tiền thu về', style: TextStyle(fontSize: 11, color: textMuted)),
                     Text(
                       '${formatPrice(booking.totalPrice)} đ',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
+                        color: primaryColor,
                       ),
                     ),
                   ],
@@ -227,7 +237,7 @@ class OwnerBookingOrderCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         margin: const EdgeInsets.only(right: 6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFA000),
+                          color: isDark ? AppColors.darkAccent : AppColors.accent,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Text(
@@ -235,16 +245,16 @@ class OwnerBookingOrderCard extends StatelessWidget {
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white),
                         ),
                       ),
-                    const Text(
+                    Text(
                       'Xem chi tiết',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: primaryColor,
                       ),
                     ),
                     const SizedBox(width: 2),
-                    const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 12, color: primaryColor),
                   ],
                 ),
               ],

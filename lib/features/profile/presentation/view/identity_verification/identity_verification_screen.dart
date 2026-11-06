@@ -1,7 +1,7 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
-import 'package:book_drive_car/features/profile/data/datasources/verification_remote_data_source.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/widgets/step1_basic_info_section.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/widgets/step2_cccd_section.dart';
@@ -11,7 +11,9 @@ import 'package:book_drive_car/features/profile/presentation/view/identity_verif
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/widgets/step6_agreement_section.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/widgets/verification_image_picker_box.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/widgets/verification_step_indicator.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
+import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -262,12 +264,10 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     );
 
     try {
-      if (sl.isRegistered<VerificationRemoteDataSource>()) {
-        await sl<VerificationRemoteDataSource>().submitVerification(data);
-      }
+      await sl<VerificationRepository>().submitVerification(data);
     } catch (_) {}
 
-    await sl<VerificationLocalDataSource>().saveVerificationData(data);
+    await sl<VerificationRepository>().saveVerificationData(data);
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -278,13 +278,61 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final iconBg = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: bgColor,
       appBar: AppBar(
-        title: const Text('Xác thực danh tính (KYC)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
-        backgroundColor: const Color(0xFF1E293B),
-        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Xác Thực Danh Tính (KYC)',
+              style: AppTypography.headingMd.copyWith(
+                fontWeight: FontWeight.w700,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Bước ${_currentStep + 1}/6: ${VerificationStepIndicator.stepTitles[_currentStep]}',
+              style: AppTypography.bodySmall.copyWith(
+                color: textSecondary,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: surfaceColor,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: TapScale(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor),
+                ),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -303,60 +351,54 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
             ),
           ),
 
-          // ── Bottom Navigation Bar ─────────────────────────────────────────
+          // ── Sticky Bottom Dock ────────────────────────────────────────────
           Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E293B),
-              border: Border(top: BorderSide(color: Colors.white10)),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              border: Border(top: BorderSide(color: borderColor)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 if (_currentStep > 0)
                   Expanded(
-                    child: OutlinedButton(
+                    flex: 1,
+                    child: AppButton(
+                      text: 'Quay lại',
+                      variant: AppButtonVariant.outline,
+                      height: 48,
                       onPressed: () => setState(() => _currentStep--),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: const BorderSide(color: Colors.white30),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: const Text('Quay lại'),
                     ),
                   ),
                 if (_currentStep > 0) const SizedBox(width: 12),
                 Expanded(
+                  flex: _currentStep > 0 ? 2 : 1,
                   child: _currentStep < 5
-                      ? ElevatedButton(
+                      ? AppButton(
+                          text: 'Tiếp theo',
+                          variant: AppButtonVariant.primary,
+                          height: 48,
+                          icon: Icons.arrow_forward_rounded,
                           onPressed: _isStepValid(_currentStep)
                               ? () => setState(() => _currentStep++)
                               : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.white10,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: const Text('Tiếp theo', style: TextStyle(fontWeight: FontWeight.w800)),
                         )
-                      : ElevatedButton(
-                          onPressed: _isSubmitting || !_hasAgreedTerms ? null : _submitVerification,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.white10,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : const Text('Gửi hồ sơ xác minh', style: TextStyle(fontWeight: FontWeight.w800)),
+                      : AppButton(
+                          text: 'Gửi hồ sơ xác minh',
+                          variant: AppButtonVariant.primary,
+                          height: 48,
+                          icon: Icons.check_circle_outline_rounded,
+                          isLoading: _isSubmitting,
+                          onPressed: _isSubmitting || !_hasAgreedTerms
+                              ? null
+                              : _submitVerification,
                         ),
                 ),
               ],

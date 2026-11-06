@@ -35,7 +35,7 @@ import 'package:book_drive_car/features/home/domain/repositories/booking_reposit
     as _i7;
 import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart'
     as _i827;
-import 'package:book_drive_car/features/home/domain/usercases/create_booking.dart'
+import 'package:book_drive_car/features/home/domain/usecases/create_booking.dart'
     as _i862;
 import 'package:book_drive_car/features/home/presentation/bloc/booking_bloc.dart'
     as _i657;

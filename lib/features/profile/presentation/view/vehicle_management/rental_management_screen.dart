@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_bloc.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_event.dart';
@@ -9,6 +10,11 @@ import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_st
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking/owner_booking_list_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/vehicle_management/vehicle_detail_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/vehicle_management/vehicle_registration_screen.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_empty_state.dart';
+import 'package:book_drive_car/shared/widget/app_shimmer.dart';
+import 'package:book_drive_car/shared/widget/app_status_badge.dart';
+import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -55,8 +61,9 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Dữ liệu đã được gửi đi nếu chưa hiển thị vui lòng nhập lại',
+            'Dữ liệu đã được gửi đi, nếu chưa hiển thị vui lòng kéo để tải lại.',
           ),
+          behavior: SnackBarBehavior.floating,
         ),
       );
       _myVehiclesBloc.add(const MyVehiclesRequested());
@@ -66,7 +73,8 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
     if (result is VehicleEntity) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Xe đã được tạo, đang cập nhật danh sách...'),
+          content: Text('Đã tạo xe thành công, đang cập nhật danh sách...'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -108,7 +116,7 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
   }
 
   String? _vehicleLocation(VehicleEntity vehicle) {
-    final parts = <String>[
+    final parts = [
       vehicle.address.addressDetail,
       vehicle.address.ward,
       vehicle.address.district,
@@ -117,35 +125,6 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
 
     if (parts.isEmpty) return null;
     return parts.join(', ');
-  }
-
-  Color _statusColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'AVAILABLE':
-        return AppColors.success;
-      case 'PENDING':
-        return AppColors.accent;
-      case 'REJECTED':
-      case 'UNAVAILABLE':
-        return AppColors.danger;
-      default:
-        return AppColors.primary;
-    }
-  }
-
-  String _statusLabel(String status) {
-    switch (status.toUpperCase()) {
-      case 'AVAILABLE':
-        return 'Sẵn sàng';
-      case 'PENDING':
-        return 'Chờ duyệt';
-      case 'REJECTED':
-        return 'Từ chối';
-      case 'UNAVAILABLE':
-        return 'Không khả dụng';
-      default:
-        return status;
-    }
   }
 
   @override
@@ -169,425 +148,278 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                 !(_refreshCompleter?.isCompleted ?? true)) {
               _refreshCompleter?.complete();
             }
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(state.error)));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.error),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           }
         },
-        child: Scaffold(
-          backgroundColor: AppColors.background,
-          appBar: AppBar(
-            title: const Text(
-              'Đăng ký cho thuê xe',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            actions: [
-              TextButton.icon(
-                onPressed: () => _openBookingHistory(),
-                icon: const Icon(
-                  Icons.receipt_long_rounded,
-                  size: 18,
+        child: Builder(
+          builder: (context) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            final bgColor = isDark
+                ? AppColors.darkBackground
+                : AppColors.background;
+            final surfaceColor = isDark
+                ? AppColors.darkSurface
+                : AppColors.surface;
+            final borderColor = isDark
+                ? AppColors.darkBorder
+                : AppColors.border;
+            final primaryColor = isDark
+                ? AppColors.darkPrimary
+                : AppColors.primary;
+            final textPrimary = isDark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary;
+
+            return Scaffold(
+              backgroundColor: bgColor,
+              appBar: AppBar(
+                backgroundColor: surfaceColor,
+                elevation: 0,
+                scrolledUnderElevation: 0,
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                title: Text(
+                  'Quản lý đội xe cho thuê',
+                  style: AppTypography.titleLarge.copyWith(color: textPrimary),
+                ),
+                actions: [
+                  TapScale(
+                    onTap: () => _openBookingHistory(),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 4,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.darkPrimaryContainer
+                            : AppColors.primaryContainer.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.primary.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.receipt_long_rounded,
+                            size: 16,
+                            color: primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Đơn thuê',
+                            style: AppTypography.caption.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 14, left: 4),
+                    child: TapScale(
+                      onTap: _openRegistration,
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: primaryColor,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.add_rounded,
+                          color: isDark
+                              ? AppColors.darkBackground
+                              : Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              body: SafeArea(
+                child: RefreshIndicator(
                   color: AppColors.primary,
-                ),
-                label: const Text(
-                  'Quản lý đơn',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 12, left: 4),
-                child: TapScale(
-                  onTap: _openRegistration,
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          body: SafeArea(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: _refreshVehicles,
-              child: BlocBuilder<MyVehiclesBloc, MyVehiclesState>(
-                builder: (context, state) {
-                  final vehicles = state is MyVehiclesLoaded
-                      ? state.vehicles
-                      : _vehiclesCache;
-                  final bool initialLoading =
-                      state is MyVehiclesLoading && vehicles.isEmpty;
-                  final bool refreshing =
-                      state is MyVehiclesLoading && vehicles.isNotEmpty;
+                  onRefresh: _refreshVehicles,
+                  child: BlocBuilder<MyVehiclesBloc, MyVehiclesState>(
+                    builder: (context, state) {
+                      final vehicles = state is MyVehiclesLoaded
+                          ? state.vehicles
+                          : _vehiclesCache;
+                      final bool initialLoading =
+                          state is MyVehiclesLoading && vehicles.isEmpty;
+                      final bool refreshing =
+                          state is MyVehiclesLoading && vehicles.isNotEmpty;
 
-                  final totalCount = vehicles.length;
-                  final availableCount = vehicles
-                      .where(
-                        (vehicle) =>
-                            vehicle.status.toUpperCase() == 'AVAILABLE',
-                      )
-                      .length;
-                  final pendingCount = vehicles
-                      .where(
-                        (vehicle) => vehicle.status.toUpperCase() == 'PENDING',
-                      )
-                      .length;
-                  final blockedCount = vehicles.where((vehicle) {
-                    final status = vehicle.status.toUpperCase();
-                    return status == 'REJECTED' || status == 'UNAVAILABLE';
-                  }).length;
+                      final totalCount = vehicles.length;
+                      final availableCount = vehicles
+                          .where((v) => v.status.toUpperCase() == 'AVAILABLE')
+                          .length;
+                      final pendingCount = vehicles
+                          .where((v) => v.status.toUpperCase() == 'PENDING')
+                          .length;
+                      final blockedCount = vehicles.where((v) {
+                        final s = v.status.toUpperCase();
+                        return s == 'REJECTED' || s == 'UNAVAILABLE';
+                      }).length;
 
-                  return Stack(
-                    children: [
-                      const Positioned.fill(child: _LuxuryBackground()),
-                      ListView(
+                      return ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                         children: [
                           if (refreshing) ...[
-                            const SizedBox(height: 4),
                             const ClipRRect(
                               borderRadius: BorderRadius.all(
                                 Radius.circular(999),
                               ),
-                              child: LinearProgressIndicator(minHeight: 2.5),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          _HeroPanel(
-                            totalCount: totalCount,
-                            availableCount: availableCount,
-                            pendingCount: pendingCount,
-                            blockedCount: blockedCount,
-                            onAddVehicle: _openRegistration,
-                          ),
-                          const SizedBox(height: 18),
-                          if (initialLoading)
-                            const _LoadingCard(
-                              label: 'Đang tải danh sách xe của bạn...',
-                            )
-                          else if (_errorMessage != null && vehicles.isEmpty)
-                            _EmptyStateCard(
-                              icon: Icons.error_outline_rounded,
-                              title: 'Không tải được danh sách xe',
-                              description: _errorMessage!,
-                              buttonLabel: 'Thử lại',
-                              onPressed: _refreshVehicles,
-                              accent: AppColors.danger,
-                            )
-                          else if (vehicles.isEmpty)
-                            _EmptyStateCard(
-                              icon: Icons.directions_car_filled_rounded,
-                              title: 'Chưa có xe nào được đăng ký',
-                              description:
-                                  'Hãy tạo chiếc xe đầu tiên để bắt đầu quản lý lịch thuê, trạng thái và hồ sơ xe của bạn.',
-                              buttonLabel: 'Đăng ký xe mới',
-                              onPressed: _openRegistration,
-                              accent: AppColors.primary,
-                            )
-                          else ...[
-                            _SectionHeader(
-                              title: 'Danh sách xe của bạn',
-                              trailing: '$totalCount xe',
-                            ),
-                            const SizedBox(height: 12),
-                            ...vehicles.map(
-                              (vehicle) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: TapScale(
-                                  onTap: () => _openVehicleDetail(vehicle),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(26),
-                                      border: Border.all(
-                                        color: AppColors.border.withValues(
-                                          alpha: 0.78,
-                                        ),
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF0F172A,
-                                          ).withValues(alpha: 0.05),
-                                          blurRadius: 18,
-                                          offset: const Offset(0, 10),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Container(
-                                              width: 60,
-                                              height: 60,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(18),
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                  colors: [
-                                                    AppColors.primary
-                                                        .withValues(
-                                                          alpha: 0.12,
-                                                        ),
-                                                    AppColors.accent.withValues(
-                                                      alpha: 0.12,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              child: const Icon(
-                                                Icons.directions_car_rounded,
-                                                color: AppColors.primary,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    vehicle.vehicleName,
-                                                    style: const TextStyle(
-                                                      fontSize: 16.5,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      color:
-                                                          AppColors.textPrimary,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    _vehicleSubtitle(vehicle),
-                                                    style: const TextStyle(
-                                                      color: AppColors
-                                                          .textSecondary,
-                                                      fontSize: 12.5,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    vehicle
-                                                            .licensePlate
-                                                            .isNotEmpty
-                                                        ? vehicle.licensePlate
-                                                        : 'Chưa có biển số',
-                                                    style: const TextStyle(
-                                                      color: AppColors
-                                                          .textSecondary,
-                                                      fontSize: 12.5,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                    vertical: 6,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: _statusColor(
-                                                  vehicle.status,
-                                                ).withValues(alpha: 0.12),
-                                                borderRadius:
-                                                    BorderRadius.circular(999),
-                                              ),
-                                              child: Text(
-                                                _statusLabel(vehicle.status),
-                                                style: TextStyle(
-                                                  color: _statusColor(
-                                                    vehicle.status,
-                                                  ),
-                                                  fontSize: 11.5,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 14),
-                                        Wrap(
-                                          spacing: 8,
-                                          runSpacing: 8,
-                                          children: [
-                                            _InfoChip(
-                                              label: '${vehicle.seatCount} chỗ',
-                                            ),
-                                            _InfoChip(
-                                              label: vehicle.transmission,
-                                            ),
-                                            _InfoChip(label: vehicle.fuelType),
-                                            _InfoChip(
-                                              label:
-                                                  '${_formatPrice(vehicle.pricePerDay)} đ/ngày',
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        Text(
-                                          vehicle.description,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: AppColors.textSecondary,
-                                            height: 1.45,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        if (_vehicleLocation(vehicle) != null)
-                                          Row(
-                                            children: [
-                                              const Icon(
-                                                Icons.place_outlined,
-                                                size: 16,
-                                                color: AppColors.textSecondary,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Expanded(
-                                                child: Text(
-                                                  _vehicleLocation(vehicle)!,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    color:
-                                                        AppColors.textSecondary,
-                                                    fontSize: 12.5,
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              const Icon(
-                                                Icons.chevron_right_rounded,
-                                                color: AppColors.textMuted,
-                                              ),
-                                            ],
-                                          ),
-                                        const SizedBox(height: 6),
-                                        const Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Text(
-                                            'Chạm để xem chi tiết',
-                                            style: TextStyle(
-                                              color: AppColors.textMuted,
-                                              fontSize: 11.5,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              child: LinearProgressIndicator(
+                                minHeight: 2.5,
+                                valueColor: AlwaysStoppedAnimation(
+                                  AppColors.primary,
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 12),
+                          ],
+
+                          // Hero KPI Card
+                          StaggeredFadeIn(
+                            index: 0,
+                            child: _RentalFleetHero(
+                              totalCount: totalCount,
+                              availableCount: availableCount,
+                              pendingCount: pendingCount,
+                              blockedCount: blockedCount,
+                              onAddVehicle: _openRegistration,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+
+                          if (initialLoading)
+                            Column(
+                              children: List.generate(
+                                3,
+                                (_) => const Padding(
+                                  padding: EdgeInsets.only(bottom: 12),
+                                  child: AppShimmer(
+                                    width: double.infinity,
+                                    height: 160,
+                                    borderRadius: 20,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else if (_errorMessage != null && vehicles.isEmpty)
+                            AppEmptyState(
+                              icon: Icons.error_outline_rounded,
+                              title: 'Không tải được danh sách xe',
+                              subtitle: _errorMessage!,
+                              buttonText: 'Thử lại',
+                              onButtonPressed: _refreshVehicles,
+                            )
+                          else if (vehicles.isEmpty)
+                            AppEmptyState(
+                              icon: Icons.directions_car_filled_rounded,
+                              title: 'Chưa có xe nào được đăng ký',
+                              subtitle:
+                                  'Hãy tạo hồ sơ chiếc xe đầu tiên để bắt đầu nhận đơn và quản lý doanh thu cho thuê.',
+                              buttonText: 'Đăng ký xe ngay',
+                              onButtonPressed: _openRegistration,
+                            )
+                          else ...[
+                            StaggeredFadeIn(
+                              index: 1,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'Danh sách xe sở hữu',
+                                    style: AppTypography.titleLarge,
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(999),
+                                      border: Border.all(
+                                        color: AppColors.border,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '$totalCount xe',
+                                      style: AppTypography.caption.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ...vehicles.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final vehicle = entry.value;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: StaggeredFadeIn(
+                                  index: 2 + index,
+                                  child: _VehicleFleetCard(
+                                    vehicle: vehicle,
+                                    subtitle: _vehicleSubtitle(vehicle),
+                                    location: _vehicleLocation(vehicle),
+                                    priceFormatted: _formatPrice(
+                                      vehicle.pricePerDay,
+                                    ),
+                                    onTap: () => _openVehicleDetail(vehicle),
+                                  ),
+                                ),
+                              );
+                            }),
                           ],
                         ],
-                      ),
-                    ],
-                  );
-                },
+                      );
+                    },
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _LuxuryBackground extends StatelessWidget {
-  const _LuxuryBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFF7F8FA), Color(0xFFF3F4F7), Color(0xFFF7F8FA)],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -70,
-            child: _GlowOrb(
-              size: 240,
-              colors: [
-                AppColors.primary.withValues(alpha: 0.10),
-                Colors.transparent,
-              ],
-            ),
-          ),
-          Positioned(
-            top: 180,
-            left: -90,
-            child: _GlowOrb(
-              size: 190,
-              colors: [
-                AppColors.accent.withValues(alpha: 0.08),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  final double size;
-  final List<Color> colors;
-
-  const _GlowOrb({required this.size, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: colors),
-      ),
-    );
-  }
-}
-
-class _HeroPanel extends StatelessWidget {
+class _RentalFleetHero extends StatelessWidget {
   final int totalCount;
   final int availableCount;
   final int pendingCount;
   final int blockedCount;
   final VoidCallback onAddVehicle;
 
-  const _HeroPanel({
+  const _RentalFleetHero({
     required this.totalCount,
     required this.availableCount,
     required this.pendingCount,
@@ -597,24 +429,26 @@ class _HeroPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF0F141B),
-            const Color(0xFF16202B),
-            AppColors.primary.withValues(alpha: 0.95),
-          ],
+          colors: isDark
+              ? const [Color(0xFF06111C), Color(0xFF0B1F33), Color(0xFF13324F)]
+              : const [Color(0xFF082236), AppColors.primary, Color(0xFF1B4F72)],
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.20),
-            blurRadius: 26,
-            offset: const Offset(0, 16),
+            color: (isDark ? Colors.black : AppColors.primary).withValues(
+              alpha: 0.28,
+            ),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
           ),
         ],
       ),
@@ -622,101 +456,85 @@ class _HeroPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                width: 52,
-                height: 52,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(18),
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.10),
+                    color: Colors.white.withValues(alpha: 0.18),
                   ),
                 ),
-                child: const Icon(
-                  Icons.directions_car_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Quản lý xe cho thuê',
-                      style: TextStyle(
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 14,
+                      color: AppColors.accentWarm,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Trung tâm đối tác CarNow',
+                      style: AppTypography.dataLabel.copyWith(
                         color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Theo dõi hồ sơ xe, trạng thái đăng ký và mở rộng đội xe của bạn trong một giao diện sang hơn.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.74),
-                        height: 1.45,
+                        fontSize: 11,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HeroStatChip(label: '$totalCount', caption: 'Xe của bạn'),
-              _HeroStatChip(label: '$availableCount', caption: 'Đang mở'),
-              _HeroStatChip(label: '$pendingCount', caption: 'Chờ duyệt'),
-              _HeroStatChip(label: '$blockedCount', caption: 'Tạm ẩn'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: TapScale(
-              onTap: onAddVehicle,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 15,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_rounded, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text(
-                      'Đăng ký xe mới',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
-                ),
+              const Icon(
+                Icons.directions_car_rounded,
+                color: Colors.white,
+                size: 24,
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
-            'Danh sách xe được lấy trực tiếp từ server. Kéo xuống để làm mới hoặc mở từng thẻ để xem chi tiết.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.68),
-              fontSize: 12.5,
-              height: 1.45,
+            'Quản lý xe & Lợi nhuận',
+            style: AppTypography.display.copyWith(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Theo dõi trạng thái duyệt xe, biểu phí theo ngày và cập nhật thông tin phương tiện.',
+            style: AppTypography.body.copyWith(
+              color: Colors.white.withValues(alpha: 0.8),
+              height: 1.4,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              _HeroMetricTile(label: '$totalCount', caption: 'Tổng xe'),
+              const SizedBox(width: 8),
+              _HeroMetricTile(label: '$availableCount', caption: 'Khả dụng'),
+              const SizedBox(width: 8),
+              _HeroMetricTile(label: '$pendingCount', caption: 'Chờ duyệt'),
+              const SizedBox(width: 8),
+              _HeroMetricTile(label: '$blockedCount', caption: 'Tạm ẩn'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          AppButton(
+            text: 'Đăng ký thêm xe mới',
+            height: 48,
+            width: double.infinity,
+            variant: AppButtonVariant.secondary,
+            icon: const Icon(Icons.add_rounded, size: 20),
+            onPressed: onAddVehicle,
           ),
         ],
       ),
@@ -724,229 +542,230 @@ class _HeroPanel extends StatelessWidget {
   }
 }
 
-class _HeroStatChip extends StatelessWidget {
+class _HeroMetricTile extends StatelessWidget {
   final String label;
   final String caption;
 
-  const _HeroStatChip({required this.label, required this.caption});
+  const _HeroMetricTile({required this.label, required this.caption});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: AppTypography.priceLarge.copyWith(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.70),
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
+            const SizedBox(height: 2),
+            Text(
+              caption,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.caption.copyWith(
+                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.72),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String title;
-  final String trailing;
+class _VehicleFleetCard extends StatelessWidget {
+  final VehicleEntity vehicle;
+  final String subtitle;
+  final String? location;
+  final String priceFormatted;
+  final VoidCallback onTap;
 
-  const _SectionHeader({required this.title, required this.trailing});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ),
-        Text(
-          trailing,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EmptyStateCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String description;
-  final String buttonLabel;
-  final VoidCallback onPressed;
-  final Color accent;
-
-  const _EmptyStateCard({
-    required this.icon,
-    required this.title,
-    required this.description,
-    required this.buttonLabel,
-    required this.onPressed,
-    required this.accent,
+  const _VehicleFleetCard({
+    required this.vehicle,
+    required this.subtitle,
+    required this.location,
+    required this.priceFormatted,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.9)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            width: 78,
-            height: 78,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.10),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: accent, size: 36),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary, height: 1.5),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accent,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+    final iconBg = isDark
+        ? AppColors.darkPrimaryContainer
+        : AppColors.primaryContainer.withValues(alpha: 0.6);
+
+    return TapScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
+          boxShadow: isDark ? null : AppColors.shadowSm,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.darkBorder
+                          : AppColors.primary.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.directions_car_filled_rounded,
+                    color: primaryColor,
+                    size: 26,
+                  ),
                 ),
-              ),
-              child: Text(
-                buttonLabel,
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        vehicle.vehicleName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.titleMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: AppTypography.caption.copyWith(
+                          color: textSecondary,
+                        ),
+                      ),
+                      if (vehicle.licensePlate.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          'Biển số: ${vehicle.licensePlate}',
+                          style: AppTypography.dataLabel.copyWith(
+                            color: textPrimary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                AppStatusBadge.fromStatus(vehicle.status),
+              ],
             ),
-          ),
-        ],
+            Divider(height: 20, color: borderColor),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    _FleetChip(label: '${vehicle.seatCount} chỗ'),
+                    const SizedBox(width: 6),
+                    _FleetChip(label: vehicle.transmission),
+                    const SizedBox(width: 6),
+                    _FleetChip(label: vehicle.fuelType),
+                  ],
+                ),
+                Text(
+                  '$priceFormatted đ/ngày',
+                  style: AppTypography.priceMedium.copyWith(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            if (location != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 14, color: textMuted),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      location!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.caption.copyWith(
+                        color: textSecondary,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, size: 16, color: textMuted),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _LoadingCard extends StatelessWidget {
+class _FleetChip extends StatelessWidget {
   final String label;
 
-  const _LoadingCard({required this.label});
+  const _FleetChip({required this.label});
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chipBg = isDark
+        ? AppColors.darkSurfaceSecondary
+        : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
+
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.9)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          const SizedBox(
-            width: 44,
-            height: 44,
-            child: CircularProgressIndicator(strokeWidth: 3),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final String label;
-
-  const _InfoChip({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border),
+        color: chipBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: borderColor),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 12,
+        style: AppTypography.caption.copyWith(
+          fontSize: 11,
           fontWeight: FontWeight.w600,
+          color: textSecondary,
         ),
       ),
     );

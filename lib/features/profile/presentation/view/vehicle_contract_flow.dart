@@ -2,8 +2,11 @@ import 'dart:typed_data';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
 import 'package:book_drive_car/features/profile/domain/entities/add_vehicle_request_entity.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
@@ -551,131 +554,250 @@ class _VehicleContractScreenState extends State<VehicleContractScreen> {
   @override
   Widget build(BuildContext context) {
     final sections = _sections();
+    final confirmedCount = _confirmedItems.where((item) => item).length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0ECE3),
+      backgroundColor: AppColors.surfacePrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfacePrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: TapScale(
+              onTap: () => Navigator.of(context).pop(),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSecondary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Thỏa Thuận Đăng Ký Xe',
+              style: AppTypography.headingMd.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${widget.request.brand} ${widget.request.model} • ${widget.request.licensePlate}',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.primary),
+              )
             : Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  // Progress indicator
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    color: AppColors.surfaceSecondary,
                     child: Row(
                       children: [
-                        TapScale(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            size: 26,
-                            color: Colors.black,
+                        Icon(
+                          _allConfirmed
+                              ? Icons.check_circle_rounded
+                              : Icons.fact_check_outlined,
+                          size: 18,
+                          color: _allConfirmed
+                              ? AppColors.success
+                              : AppColors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _allConfirmed
+                                ? 'Đã xác nhận đầy đủ 8/8 điều khoản'
+                                : 'Đã xác nhận $confirmedCount/8 điều khoản bắt buộc',
+                            style: AppTypography.labelMedium.copyWith(
+                              color: _allConfirmed
+                                  ? AppColors.success
+                                  : AppColors.textPrimary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
                       child: Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 850),
                           child: Container(
-                            color: Colors.white,
-                            padding: const EdgeInsets.fromLTRB(44, 38, 44, 44),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceSecondary,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Center(
                                   child: Column(
                                     children: [
-                                      const Text(
-                                        'THỎA THUẬN ĐĂNG KÝ XE CHO THUÊ TRÊN NỀN TẢNG',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 19,
-                                          fontWeight: FontWeight.w800,
-                                          height: 1.35,
-                                          letterSpacing: 0.2,
-                                          color: Colors.black,
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.1),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          'HỢP ĐỒNG ĐIỆN TỬ',
+                                          style: AppTypography.caption.copyWith(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.5,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(height: 10),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'THỎA THUẬN ĐĂNG KÝ XE CHO THUÊ TRÊN NỀN TẢNG',
+                                        textAlign: TextAlign.center,
+                                        style: AppTypography.headingMd.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          height: 1.35,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
                                       Text(
                                         'Ngày lập: $_todayText',
-                                        style: const TextStyle(fontSize: 12.5),
+                                        style: AppTypography.bodySmall.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 28),
+                                const SizedBox(height: 24),
                                 for (final section in sections) ...[
                                   _PaperSectionWidget(section: section),
-                                  const SizedBox(height: 18),
+                                  const SizedBox(height: 16),
                                 ],
-                                _ConfirmationChecklist(
-                                  items: const [
-                                    'Tôi đã kiểm tra và xác nhận thông tin phương tiện là chính xác.',
-
-                                    'Tôi xác nhận mình có quyền hợp pháp để đăng ký phương tiện cho thuê.',
-
-                                    'Tôi xác nhận các giấy tờ cung cấp cho Nền tảng là chính xác.',
-
-                                    'Tôi đã đọc và hiểu các điều khoản của Thỏa thuận đăng ký xe.',
-
-                                    'Tôi đồng ý với mức phí dịch vụ Nền tảng 5% trên giá trị tiền thuê xe theo chính sách áp dụng.',
-
-                                    'Tôi hiểu rằng việc đăng ký xe không tự động tạo ra hợp đồng thuê xe với Người thuê.',
-
-                                    'Tôi đồng ý để Nền tảng hiển thị thông tin và hình ảnh của phương tiện nhằm phục vụ hoạt động cho thuê.',
-
-                                    'Tôi đồng ý cung cấp các thông tin cần thiết để Nền tảng quản lý phương tiện và giao dịch.',
-                                  ],
-                                  values: _confirmedItems,
-                                  onChanged: (index, value) {
-                                    setState(() {
-                                      _confirmedItems[index] = value;
-                                    });
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                                const Text(
-                                  'CHỦ XE',
-                                  style: TextStyle(
-                                    fontSize: 12.8,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
-                                  ),
-                                ),
                                 const SizedBox(height: 8),
-                                Text('Họ và tên: ${_ownerName()}'),
-                                const SizedBox(height: 18),
-                                const Text('Chữ ký:'),
-                                const SizedBox(height: 10),
                                 Container(
-                                  height: 88,
-                                  width: double.infinity,
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      bottom: BorderSide(
-                                        color: Colors.black,
-                                        width: 1,
-                                      ),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfacePrimary,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppColors.borderLight,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 22),
-                                const Text(
-                                  'NỀN TẢNG',
-                                  style: TextStyle(
-                                    fontSize: 12.8,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.black,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.assignment_turned_in_outlined,
+                                            size: 20,
+                                            color: AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Cam kết của Chủ xe',
+                                            style: AppTypography.labelLarge
+                                                .copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      _ConfirmationChecklist(
+                                        items: const [
+                                          'Tôi đã kiểm tra và xác nhận thông tin phương tiện là chính xác.',
+                                          'Tôi xác nhận mình có quyền hợp pháp để đăng ký phương tiện cho thuê.',
+                                          'Tôi xác nhận các giấy tờ cung cấp cho Nền tảng là chính xác.',
+                                          'Tôi đã đọc và hiểu các điều khoản của Thỏa thuận đăng ký xe.',
+                                          'Tôi đồng ý với mức phí dịch vụ Nền tảng 5% trên giá trị tiền thuê xe theo chính sách áp dụng.',
+                                          'Tôi hiểu rằng việc đăng ký xe không tự động tạo ra hợp đồng thuê xe với Người thuê.',
+                                          'Tôi đồng ý để Nền tảng hiển thị thông tin và hình ảnh của phương tiện nhằm phục vụ hoạt động cho thuê.',
+                                          'Tôi đồng ý cung cấp các thông tin cần thiết để Nền tảng quản lý phương tiện và giao dịch.',
+                                        ],
+                                        values: _confirmedItems,
+                                        onChanged: (index, value) {
+                                          setState(() {
+                                            _confirmedItems[index] = value;
+                                          });
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                const Text('Book Drive Car'),
+                                const SizedBox(height: 20),
+                                Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfacePrimary,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.borderLight,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.info_outline,
+                                        size: 18,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          'Sau khi chọn đủ các cam kết trên, bạn sẽ tiến hành ký tên điện tử ở bước tiếp theo.',
+                                          style: AppTypography.bodySmall
+                                              .copyWith(
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -683,56 +805,45 @@ class _VehicleContractScreenState extends State<VehicleContractScreen> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Text(
-                      _allConfirmed
-                          ? 'Hoàn thành!, bạn có thể ký hợp đồng.'
-                          : 'Vui lòng chọn đủ xác nhận của chủ xe.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.black.withValues(alpha: 0.65),
+
+                  // Sticky Bottom Dock
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfacePrimary,
+                      border: const Border(
+                        top: BorderSide(color: AppColors.borderLight),
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
+                        ),
+                      ],
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                     child: Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
+                          flex: 1,
+                          child: AppButton(
+                            text: 'Hủy',
+                            variant: AppButtonVariant.outline,
+                            height: 48,
                             onPressed: () => Navigator.of(context).pop(),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.black,
-                              side: const BorderSide(color: Colors.black26),
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.zero,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: const Text('Hủy'),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: ElevatedButton(
+                          flex: 2,
+                          child: AppButton(
+                            text: 'Tiếp tục Ký Thỏa Thuận',
+                            variant: AppButtonVariant.primary,
+                            height: 48,
+                            icon: Icons.draw_rounded,
                             onPressed: _allConfirmed
                                 ? _goToSignatureScreen
                                 : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.black,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: Colors.black26,
-                              disabledForegroundColor: Colors.white70,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.zero,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: const Text(
-                              'Ký hợp đồng',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
                           ),
                         ),
                       ],
@@ -1067,198 +1178,311 @@ class _VehicleSignatureScreenState extends State<VehicleSignatureScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F1E7),
+      backgroundColor: AppColors.surfacePrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfacePrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: TapScale(
+              onTap: _isUploading ? null : () => Navigator.of(context).pop(),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSecondary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Ký Xác Nhận Thỏa Thuận',
+              style: AppTypography.headingMd.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Chủ xe: ${widget.ownerName}',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Row(
-                children: [
-                  TapScale(
-                    onTap: _isUploading
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      size: 26,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 850),
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.fromLTRB(30, 28, 30, 30),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Center(
-                            child: Column(
-                              children: [
-                                const Text(
-                                  'THỎA THUẬN ĐĂNG KÝ XE CHO THUÊ TRÊN NỀN TẢNG',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 19,
-                                    fontWeight: FontWeight.w800,
-                                    height: 1.35,
-                                    letterSpacing: 0.2,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Text(
-                                  'Ngày lập: ${widget.registrationDateText}',
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ],
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Vehicle summary banner
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceSecondary,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.borderLight),
                           ),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'Ký trực tiếp bên dưới để hoàn tất hợp đồng.',
-                            style: TextStyle(
-                              fontSize: 12.2,
-                              height: 1.45,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Container(
-                            width: double.infinity,
-                            height: 260,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: Colors.black, width: 1),
-                            ),
-                            child: Column(
-                              children: [
-                                Expanded(
-                                  child: Signature(
-                                    controller: _signatureController,
-                                    backgroundColor: Colors.white,
-                                  ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: Colors.black12,
-                                        width: 1,
+                                child: const Icon(
+                                  Icons.directions_car_rounded,
+                                  color: AppColors.primary,
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${widget.request.brand} ${widget.request.model}',
+                                      style: AppTypography.labelLarge.copyWith(
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Expanded(
-                                        child: Text(
-                                          'Vẽ chữ ký trong vùng trắng.',
-                                          style: TextStyle(fontSize: 11.5),
-                                        ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'Biển số: ${widget.request.licensePlate} • Ngày: ${widget.registrationDateText}',
+                                      style: AppTypography.bodySmall.copyWith(
+                                        color: AppColors.textSecondary,
                                       ),
-                                      TextButton(
-                                        onPressed: _isUploading
-                                            ? null
-                                            : _signatureController.clear,
-                                        child: const Text('Xóa chữ ký'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Signature Pad Card
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceSecondary,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.draw_rounded,
+                                        size: 20,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Chữ ký chủ xe (Bên A)',
+                                        style:
+                                            AppTypography.labelLarge.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ],
                                   ),
+                                  TapScale(
+                                    onTap: _isUploading
+                                        ? null
+                                        : _signatureController.clear,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfacePrimary,
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: AppColors.borderLight,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.refresh_rounded,
+                                            size: 15,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Ký lại',
+                                            style:
+                                                AppTypography.caption.copyWith(
+                                              color: AppColors.textPrimary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Vui lòng vẽ chữ ký tay trực tiếp vào khung trắng dưới đây:',
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
                                 ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 14),
+                              Container(
+                                width: double.infinity,
+                                height: 240,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: AppColors.borderLight,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: Stack(
+                                  children: [
+                                    Positioned(
+                                      left: 24,
+                                      right: 24,
+                                      bottom: 40,
+                                      child: Container(
+                                        height: 1,
+                                        color: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 18,
+                                      bottom: 14,
+                                      child: Text(
+                                        'Ký tên tại đây',
+                                        style: AppTypography.caption.copyWith(
+                                          color: Colors.grey.shade400,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                    Signature(
+                                      controller: _signatureController,
+                                      backgroundColor: Colors.transparent,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.verified_user_outlined,
+                                    size: 16,
+                                    color: AppColors.success,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Chữ ký được mã hóa và nhúng vào văn bản thỏa thuận pháp lý điện tử.',
+                                      style: AppTypography.caption.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'CHỦ XE',
-                            style: TextStyle(
-                              fontSize: 12.8,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text('Họ và tên: ${widget.ownerName}'),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'NỀN TẢNG',
-                            style: TextStyle(
-                              fontSize: 12.8,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text('Book Drive Car'),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+
+            // Sticky Bottom Dock
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfacePrimary,
+                border: const Border(
+                  top: BorderSide(color: AppColors.borderLight),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(color: Colors.black26),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Hủy'),
+                    flex: 1,
+                    child: AppButton(
+                      text: 'Hủy',
+                      variant: AppButtonVariant.outline,
+                      height: 48,
+                      onPressed: _isUploading
+                          ? null
+                          : () => Navigator.of(context).pop(),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
+                    flex: 2,
+                    child: AppButton(
+                      text: 'Xác nhận & Hoàn tất',
+                      variant: AppButtonVariant.primary,
+                      height: 48,
+                      icon: Icons.check_circle_outline_rounded,
+                      isLoading: _isUploading,
                       onPressed: _confirmSignature,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.black26,
-                        disabledForegroundColor: Colors.white70,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: _isUploading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Ký hợp đồng',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
                     ),
                   ),
                 ],
@@ -1294,58 +1518,74 @@ class _PaperSectionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle(
-      style: const TextStyle(color: Colors.black, fontSize: 12.2, height: 1.45),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            section.title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          section.title,
+          style: AppTypography.labelLarge.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
-          if (section.paragraphs.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...section.paragraphs.map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(text),
-              ),
-            ),
-          ],
-          if (section.lines.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...section.lines.map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(text),
-              ),
-            ),
-          ],
-          if (section.tableRows.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _PaperTable(rows: section.tableRows),
-          ],
-          if (section.bullets.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...section.bullets.map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('•  ', style: TextStyle(height: 1.45)),
-                    Expanded(child: Text(text)),
-                  ],
+        ),
+        if (section.paragraphs.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ...section.paragraphs.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textPrimary,
+                  height: 1.45,
                 ),
               ),
             ),
-          ],
+          ),
         ],
-      ),
+        if (section.lines.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ...section.lines.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textPrimary,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (section.tableRows.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _PaperTable(rows: section.tableRows),
+        ],
+        if (section.bullets.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ...section.bullets.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•  ', style: TextStyle(height: 1.45)),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textPrimary,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1357,20 +1597,30 @@ class _PaperTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Table(
-      columnWidths: const {0: FlexColumnWidth(2.6), 1: FlexColumnWidth(4.4)},
-      border: TableBorder.all(color: Colors.black, width: 0.6),
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: rows
-          .map(
-            (row) => TableRow(
-              children: [
-                _PaperCell(text: row[0], bold: true),
-                _PaperCell(text: row[1]),
-              ],
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Table(
+        columnWidths: const {0: FlexColumnWidth(2.6), 1: FlexColumnWidth(4.4)},
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        children: rows.asMap().entries.map((entry) {
+          final isEven = entry.key % 2 == 0;
+          return TableRow(
+            decoration: BoxDecoration(
+              color: isEven
+                  ? AppColors.surfacePrimary
+                  : AppColors.surfaceSecondary,
             ),
-          )
-          .toList(),
+            children: [
+              _PaperCell(text: entry.value[0], bold: true),
+              _PaperCell(text: entry.value[1]),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -1384,13 +1634,13 @@ class _PaperCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 10.8,
-          height: 1.35,
+        style: AppTypography.bodySmall.copyWith(
+          fontSize: 11,
           fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+          color: bold ? AppColors.textPrimary : AppColors.textSecondary,
         ),
       ),
     );
@@ -1413,33 +1663,67 @@ class _ConfirmationChecklist extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: List.generate(items.length, (index) {
+        final isChecked = values[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: InkWell(
-            onTap: () => onChanged(index, !values[index]),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Checkbox(
-                  value: values[index],
-                  onChanged: (checked) => onChanged(index, checked ?? false),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Material(
+            color: isChecked
+                ? AppColors.primary.withValues(alpha: 0.05)
+                : AppColors.surfaceSecondary,
+            borderRadius: BorderRadius.circular(10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () => onChanged(index, !isChecked),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
                 ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      items[index],
-                      style: const TextStyle(
-                        fontSize: 12.2,
-                        height: 1.35,
-                        color: Colors.black,
-                      ),
-                    ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isChecked
+                        ? AppColors.primary.withValues(alpha: 0.4)
+                        : AppColors.borderLight,
                   ),
                 ),
-              ],
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Checkbox(
+                        value: isChecked,
+                        activeColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        onChanged: (checked) =>
+                            onChanged(index, checked ?? false),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          items[index],
+                          style: AppTypography.bodySmall.copyWith(
+                            color: isChecked
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                            fontWeight: isChecked
+                                ? FontWeight.w600
+                                : FontWeight.w400,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         );

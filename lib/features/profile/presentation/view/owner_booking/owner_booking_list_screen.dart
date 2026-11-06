@@ -1,5 +1,6 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_status.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_state.dart';
@@ -9,6 +10,7 @@ import 'package:book_drive_car/features/profile/presentation/view/owner_booking/
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking/widgets/owner_booking_kpi_banner.dart';
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking/widgets/owner_booking_order_card.dart';
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking/widgets/owner_booking_shimmer_loading.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -66,19 +68,32 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
   Widget build(BuildContext context) {
     final title = widget.vehicleFilter != null
         ? 'Lịch sử thuê: ${widget.vehicleFilter}'
-        : 'Quản lý đơn đặt xe';
+        : 'Quản lý đơn khách đặt';
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+          style: AppTypography.titleLarge.copyWith(color: textPrimary),
         ),
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
+        scrolledUnderElevation: 0,
+        backgroundColor: surfaceColor,
+        foregroundColor: textPrimary,
         centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: BlocBuilder<OwnerBookingCubit, OwnerBookingState>(
         builder: (context, state) {
@@ -98,17 +113,12 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                     Text(
                       state.message,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style: AppTypography.body,
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
+                    const SizedBox(height: 18),
+                    AppButton(
+                      text: 'Thử lại',
                       onPressed: () => context.read<OwnerBookingCubit>().fetchBookings(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Thử lại'),
                     ),
                   ],
                 ),
@@ -158,28 +168,31 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
 
                 // ── Thanh tìm kiếm nhanh ─────────────────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                   child: Container(
-                    height: 44,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
+                      boxShadow: isDark ? null : AppColors.shadowSm,
                     ),
                     child: TextField(
                       controller: _searchController,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                      style: AppTypography.bodyLarge.copyWith(color: textPrimary),
                       decoration: InputDecoration(
-                        hintText: 'Tìm theo mã đơn, khách hàng, tên xe...',
-                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primary, size: 20),
+                        hintText: 'Tìm theo mã đơn, người thuê, tên xe...',
+                        hintStyle: AppTypography.body.copyWith(color: textMuted),
+                        prefixIcon: Icon(Icons.search_rounded, color: primaryColor, size: 20),
                         suffixIcon: _searchQuery.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 18),
+                                icon: Icon(Icons.clear_rounded, size: 18, color: textMuted),
                                 onPressed: () => _searchController.clear(),
                               )
                             : null,
                         border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -188,7 +201,7 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
 
                 // ── Thanh lọc trạng thái (Filter Tabs) ──────────────────────────
                 Container(
-                  color: AppColors.background,
+                  color: bgColor,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -204,7 +217,7 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                         OwnerBookingFilterChip(
                           label: 'Chờ duyệt ($pendingCount)',
                           isSelected: state.filterStatus == BookingStatus.pending,
-                          badgeColor: pendingCount > 0 ? const Color(0xFFFFA000) : null,
+                          badgeColor: pendingCount > 0 ? AppColors.accentWarm : null,
                           onTap: () => context.read<OwnerBookingCubit>().filterByStatus(BookingStatus.pending),
                         ),
                         const SizedBox(width: 8),

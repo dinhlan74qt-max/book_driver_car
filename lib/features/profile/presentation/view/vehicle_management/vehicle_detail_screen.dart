@@ -1,5 +1,7 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -96,9 +98,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
+                      AppColors.luxuryNavy,
                       AppColors.asphalt,
-                      AppColors.asphalt.withBlue(40),
-                      AppColors.primary.withOpacity(0.92),
+                      AppColors.primary.withValues(alpha: 0.92),
                     ],
                   ),
                 ),
@@ -113,10 +115,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                             width: 44,
                             height: 44,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.12),
+                              color: Colors.white.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.12),
+                                color: Colors.white.withValues(alpha: 0.12),
                               ),
                             ),
                             child: const Icon(
@@ -132,11 +134,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     const SizedBox(height: 14),
                     Text(
                       vehicle.vehicleName,
-                      style: const TextStyle(
+                      style: AppTypography.headingLg.copyWith(
                         color: Colors.white,
-                        fontSize: 24,
                         fontWeight: FontWeight.w900,
-                        height: 1.08,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -290,15 +290,14 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 18),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Quay lại danh sách'),
-                      ),
+                    const SizedBox(height: 20),
+                    AppButton(
+                      text: 'Quay lại danh sách',
+                      variant: AppButtonVariant.outline,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -342,10 +341,10 @@ class _GalleryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: AppColors.border.withOpacity(0.9)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.9)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.08),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, 12),
           ),
@@ -404,7 +403,7 @@ class _GalleryCard extends StatelessWidget {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.22),
+                            Colors.black.withValues(alpha: 0.22),
                           ],
                         ),
                       ),
@@ -530,7 +529,7 @@ class _ImageLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.52),
+        color: Colors.black.withValues(alpha: 0.52),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -589,9 +588,9 @@ class _ArrowButton extends StatelessWidget {
         width: 38,
         height: 38,
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.38),
+          color: Colors.black.withValues(alpha: 0.38),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withOpacity(0.18)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
         ),
         child: Icon(icon, color: Colors.white),
       ),
@@ -612,20 +611,33 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
+    final iconBg = isDark
+        ? AppColors.darkPrimaryContainer
+        : AppColors.primary.withValues(alpha: 0.08);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: AppColors.border.withOpacity(0.9)),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        border: Border.all(color: borderColor),
+        boxShadow: isDark
+            ? null
+            : [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                  blurRadius: 18,
+                  offset: const Offset(0, 10),
+                ),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -636,18 +648,19 @@ class _SectionCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
+                  color: iconBg,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: AppColors.primary, size: 20),
+                child: Icon(icon, color: primaryColor, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
+                    color: textPrimary,
                   ),
                 ),
               ),
@@ -670,11 +683,22 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rowBg = isDark
+        ? AppColors.darkSurfaceSecondary
+        : AppColors.surfaceSecondary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: rowBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -682,10 +706,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: textSecondary, fontSize: 13),
             ),
           ),
           const SizedBox(width: 12),
@@ -694,7 +715,7 @@ class _DetailRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: valueColor ?? AppColors.textPrimary,
+                color: valueColor ?? textPrimary,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w700,
               ),
@@ -717,9 +738,9 @@ class _TopChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -765,9 +786,9 @@ class _StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
+        color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.24)),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
       ),
       child: Text(
         status,
@@ -788,16 +809,24 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chipBg = isDark
+        ? AppColors.darkSurfaceSecondary
+        : AppColors.surfaceSecondary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: chipBg,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
+        style: TextStyle(
+          color: textPrimary,
           fontSize: 11.5,
           fontWeight: FontWeight.w600,
         ),

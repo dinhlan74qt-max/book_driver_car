@@ -1,6 +1,7 @@
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
-import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -36,7 +37,7 @@ class CarCard extends StatelessWidget {
         buffer.write('.');
       }
     }
-    return '${buffer.toString()} VND';
+    return '${buffer.toString()}đ';
   }
 }
 
@@ -48,18 +49,25 @@ class _CardShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return TapScale(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color.fromARGB(255, 233, 231, 231),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+          color: isDark ? AppColors.darkSurface : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.22)
+                  : const Color(0xFF17251F).withValues(alpha: 0.05),
               blurRadius: 16,
-              offset: const Offset(0, 8),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -77,17 +85,19 @@ class _ExpandedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 112,
+          width: 124,
           height: 140,
           child: _CarImage(car: car),
         ),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
@@ -96,60 +106,60 @@ class _ExpandedCard extends StatelessWidget {
                   car.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15.5,
+                  style: AppTypography.titleMedium.copyWith(
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(
-                      Icons.place_outlined,
-                      size: 13,
-                      color: AppColors.textMuted,
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                     ),
-                    const SizedBox(width: 3),
+                    const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         car.location.isNotEmpty ? car.location : car.province,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          color: AppColors.textSecondary,
+                        style: AppTypography.caption.copyWith(
+                          fontSize: 12,
+                          color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Wrap(
-                  spacing: 5,
+                  spacing: 6,
                   runSpacing: 4,
                   children: [
                     _SpecChip(
-                      icon: Icons.apartment_outlined,
+                      icon: Icons.directions_car_filled_outlined,
                       label: car.brand,
-                      color: const Color(0xFF1B4F72),
+                      color: isDark ? AppColors.darkPrimary : AppColors.primary,
                     ),
                     if (car.vehicleType.isNotEmpty)
                       _SpecChip(
-                        icon: Icons.directions_car_outlined,
+                        icon: Icons.electric_car_outlined,
                         label: car.vehicleType,
-                        color: const Color(0xFF1E8E5A),
+                        color: isDark ? AppColors.darkSuccess : AppColors.success,
                       ),
                     _SpecChip(
-                      icon: Icons.people_alt_outlined,
+                      icon: Icons.airline_seat_recline_normal_rounded,
                       label: '${car.seats} chỗ',
-                      color: const Color(0xFFFF7A00),
+                      color: isDark ? AppColors.darkAccent : AppColors.accent,
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Flexible(
@@ -159,17 +169,17 @@ class _ExpandedCard extends StatelessWidget {
                           children: [
                             TextSpan(
                               text: CarCard._formatPrice(car.pricePerDay),
-                              style: const TextStyle(
-                                fontSize: 15.5,
+                              style: AppTypography.priceMedium.copyWith(
+                                fontSize: 16,
+                                color: isDark ? AppColors.darkPrimary : AppColors.primary,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
                               ),
                             ),
-                            const TextSpan(
+                            TextSpan(
                               text: ' /ngày',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textMuted,
+                              style: AppTypography.caption.copyWith(
+                                color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                                fontSize: 12,
                               ),
                             ),
                           ],
@@ -177,15 +187,16 @@ class _ExpandedCard extends StatelessWidget {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.all(6),
+                      width: 32,
+                      height: 32,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.08),
+                        color: isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.arrow_forward_rounded,
-                        size: 15,
-                        color: AppColors.primary,
+                        size: 16,
+                        color: isDark ? AppColors.darkPrimary : AppColors.primary,
                       ),
                     ),
                   ],
@@ -206,61 +217,68 @@ class _CompactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(height: 112, child: _CarImage(car: car, height: 112)),
+        SizedBox(height: 130, child: _CarImage(car: car, height: 130)),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                car.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.titleMedium.copyWith(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 13,
+                    color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 3),
                   Expanded(
                     child: Text(
-                      car.name,
+                      car.location.isNotEmpty ? car.location : car.province,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                      style: AppTypography.caption.copyWith(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 3),
-              Text(
-                car.location.isNotEmpty ? car.location : car.province,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
                   _SpecChip(
-                    icon: Icons.apartment_outlined,
+                    icon: Icons.directions_car_filled_outlined,
                     label: car.brand,
-                    color: const Color(0xFF1B4F72),
+                    color: isDark ? AppColors.darkPrimary : AppColors.primary,
                   ),
                   _SpecChip(
-                    icon: Icons.people_alt_outlined,
+                    icon: Icons.airline_seat_recline_normal_rounded,
                     label: '${car.seats} chỗ',
-                    color: const Color(0xFFFF7A00),
+                    color: isDark ? AppColors.darkAccent : AppColors.accent,
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -271,17 +289,17 @@ class _CompactCard extends StatelessWidget {
                         children: [
                           TextSpan(
                             text: CarCard._formatPrice(car.pricePerDay),
-                            style: const TextStyle(
-                              fontSize: 15,
+                            style: AppTypography.priceMedium.copyWith(
+                              fontSize: 15.5,
+                              color: isDark ? AppColors.darkPrimary : AppColors.primary,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
                             ),
                           ),
-                          const TextSpan(
+                          TextSpan(
                             text: ' /ngày',
-                            style: TextStyle(
+                            style: AppTypography.caption.copyWith(
                               fontSize: 11,
-                              color: AppColors.textMuted,
+                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
                             ),
                           ),
                         ],
@@ -289,15 +307,16 @@ class _CompactCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
+                      color: isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_forward_rounded,
-                      size: 16,
-                      color: AppColors.primary,
+                      size: 15,
+                      color: isDark ? AppColors.darkPrimary : AppColors.primary,
                     ),
                   ),
                 ],
@@ -326,11 +345,14 @@ class _CarImageState extends State<_CarImage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final images = widget.car.imageUrls.where((url) => url.isNotEmpty).toList();
     if (images.isEmpty && widget.car.imageIcon.isNotEmpty) {
       images.add(widget.car.imageIcon);
     }
     final hasNetworkImages = images.any((e) => e.startsWith('http'));
+
+    final placeholderColor = isDark ? const Color(0xFF1B2C24) : const Color(0xFFEEF0E8);
 
     return SizedBox(
       width: widget.width,
@@ -340,63 +362,62 @@ class _CarImageState extends State<_CarImage> {
         children: [
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primary.withValues(alpha: 0.12),
-                  AppColors.accent.withValues(alpha: 0.18),
-                ],
-              ),
+              color: placeholderColor,
             ),
             child: hasNetworkImages
                 ? (images.length > 1
-                      ? PageView.builder(
-                          itemCount: images.length,
-                          onPageChanged: (index) {
-                            setState(() {
-                              _currentIndex = index;
-                            });
-                          },
-                          itemBuilder: (context, index) {
-                            return CachedNetworkImage(
-                              imageUrl: images[index],
-                              fit: BoxFit.cover,
-                              placeholder: (_, _) => Container(
-                                color: AppColors.primary.withValues(
-                                  alpha: 0.08,
-                                ),
-                                alignment: Alignment.center,
-                                child: const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                    ? PageView.builder(
+                        itemCount: images.length,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentIndex = index;
+                          });
+                        },
+                        itemBuilder: (context, index) {
+                          return CachedNetworkImage(
+                            imageUrl: images[index],
+                            fit: BoxFit.cover,
+                            placeholder: (_, _) => Container(
+                              color: placeholderColor,
+                              alignment: Alignment.center,
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation(
+                                    isDark ? AppColors.darkPrimary : AppColors.primary,
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, _, _) => Center(
-                                child: _carIconFor(widget.car.imageIcon),
+                            ),
+                            errorWidget: (_, _, _) => Center(
+                              child: _carIconFor(widget.car.imageIcon, isDark),
+                            ),
+                          );
+                        },
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: images.first,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => Container(
+                          color: placeholderColor,
+                          alignment: Alignment.center,
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(
+                                isDark ? AppColors.darkPrimary : AppColors.primary,
                               ),
-                            );
-                          },
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: images.first,
-                          fit: BoxFit.cover,
-                          placeholder: (_, _) => Container(
-                            color: AppColors.primary.withValues(alpha: 0.08),
-                            alignment: Alignment.center,
-                            child: const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
                             ),
                           ),
-                          errorWidget: (_, _, _) =>
-                              Center(child: _carIconFor(widget.car.imageIcon)),
-                        ))
-                : Center(child: _carIconFor(widget.car.imageIcon)),
+                        ),
+                        errorWidget: (_, _, _) =>
+                            Center(child: _carIconFor(widget.car.imageIcon, isDark)),
+                      ))
+                : Center(child: _carIconFor(widget.car.imageIcon, isDark)),
           ),
           Positioned(
             left: 8,
@@ -404,15 +425,18 @@ class _CarImageState extends State<_CarImage> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.65),
-                borderRadius: BorderRadius.circular(999),
+                color: isDark
+                    ? AppColors.darkSurface.withValues(alpha: 0.85)
+                    : AppColors.textPrimary.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                widget.car.brand,
-                style: const TextStyle(
+                widget.car.brand.toUpperCase(),
+                style: AppTypography.dataLabel.copyWith(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
@@ -445,29 +469,12 @@ class _CarImageState extends State<_CarImage> {
     );
   }
 
-  Widget _carIconFor(String key) {
-    switch (key.toLowerCase()) {
-      case 'audi':
-      case 'bmw':
-      case 'mercedes':
-      case 'mazda':
-      case 'toyota':
-      case 'hyundai':
-      case 'kia':
-      case 'honda':
-      case 'ford':
-        return const Icon(
-          Icons.directions_car_rounded,
-          color: AppColors.primary,
-          size: 42,
-        );
-      default:
-        return const Icon(
-          Icons.directions_car_filled_outlined,
-          color: AppColors.primary,
-          size: 42,
-        );
-    }
+  Widget _carIconFor(String key, bool isDark) {
+    return Icon(
+      Icons.directions_car_filled_rounded,
+      color: isDark ? AppColors.darkPrimary : AppColors.primary,
+      size: 40,
+    );
   }
 }
 
@@ -480,34 +487,32 @@ class _SpecChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chipColor = color ?? AppColors.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final chipColor = color ?? (isDark ? AppColors.darkPrimary : AppColors.primary);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: chipColor.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: chipColor.withValues(alpha: 0.12)),
+        color: chipColor.withValues(alpha: isDark ? 0.16 : 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: chipColor.withValues(alpha: isDark ? 0.3 : 0.15),
+          width: 0.8,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: chipColor.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(icon, size: 11, color: chipColor),
-          ),
-          const SizedBox(width: 5),
+          Icon(icon, size: 12, color: chipColor),
+          const SizedBox(width: 4),
           Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: AppTypography.caption.copyWith(
               fontSize: 11,
               fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
             ),
           ),
         ],

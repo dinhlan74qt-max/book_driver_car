@@ -1,5 +1,6 @@
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class HomeInfoPill extends StatelessWidget {
   final String label;
@@ -13,18 +14,23 @@ class HomeInfoPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1B2030),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+          color: isDark ? AppColors.darkSurface : AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? AppColors.darkBorder : AppColors.border,
+            width: 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.30),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+              color: isDark ? Colors.black.withValues(alpha: 0.18) : const Color(0xFF17251F).withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -36,10 +42,10 @@ class HomeInfoPill extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 19,
+              style: AppTypography.metricLarge.copyWith(
+                fontSize: 18,
+                color: isDark ? AppColors.darkPrimary : AppColors.primary,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
               ),
             ),
             const SizedBox(height: 2),
@@ -47,10 +53,10 @@ class HomeInfoPill extends StatelessWidget {
               caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
+              style: AppTypography.caption.copyWith(
+                fontSize: 11.5,
+                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                 fontWeight: FontWeight.w500,
-                color: Colors.white.withValues(alpha: 0.75),
               ),
             ),
           ],

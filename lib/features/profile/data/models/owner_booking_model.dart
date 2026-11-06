@@ -10,6 +10,8 @@ class OwnerBookingModel extends OwnerBookingEntity {
     required super.licensePlate,
     required super.renterName,
     required super.renterPhone,
+    super.renterEmail,
+    super.addressText,
     super.renterAvatar,
     super.contractImage,
     required super.startDate,
@@ -113,6 +115,23 @@ class OwnerBookingModel extends OwnerBookingEntity {
     })();
 
 
+    final renterEmail = user?['email']?.toString() ??
+        json['renterEmail']?.toString() ??
+        json['email']?.toString() ??
+        '';
+
+    final addressText = json['addressText']?.toString() ??
+        json['address']?.toString() ??
+        json['pickupAddress']?.toString() ??
+        (vehicle?['address'] is Map
+            ? [
+                vehicle?['address']?['addressDetail'],
+                vehicle?['address']?['ward'],
+                vehicle?['address']?['district'],
+                vehicle?['address']?['city'],
+              ].where((e) => e != null && e.toString().trim().isNotEmpty).join(', ')
+            : vehicle?['address']?.toString() ?? '');
+
     return OwnerBookingModel(
       id: json['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString(),
       bookingCode: json['bookingCode']?.toString() ??
@@ -123,6 +142,8 @@ class OwnerBookingModel extends OwnerBookingEntity {
       licensePlate: licensePlate,
       renterName: renterName,
       renterPhone: renterPhone,
+      renterEmail: renterEmail,
+      addressText: addressText,
       renterAvatar: user?['avatar']?.toString() ?? json['renterAvatar']?.toString(),
       contractImage: contractImage?.trim().isNotEmpty == true ? contractImage : null,
       startDate: start,
