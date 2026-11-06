@@ -17,12 +17,21 @@ class CarDetailReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: borderColor),
+        boxShadow: isDark ? null : AppColors.shadowSm,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,32 +42,32 @@ class CarDetailReviewCard extends StatelessWidget {
               Row(
                 children: [
                   CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    radius: 18,
+                    backgroundColor: primaryColor.withValues(alpha: 0.15),
                     child: Text(
                       name[0],
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: TextStyle(
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: primaryColor,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          fontSize: 13,
+                        style: TextStyle(
+                          fontSize: 13.5,
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                          color: textPrimary,
                         ),
                       ),
                       Text(
                         date,
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        style: TextStyle(fontSize: 11.5, color: textMuted),
                       ),
                     ],
                   ),
@@ -66,27 +75,27 @@ class CarDetailReviewCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                  const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                  const SizedBox(width: 3),
+                  const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
+                  const SizedBox(width: 4),
                   Text(
                     rating.toStringAsFixed(1),
-                    style: const TextStyle(
-                      fontSize: 12.5,
+                    style: TextStyle(
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: textPrimary,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Text(
             comment,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              height: 1.4,
+            style: TextStyle(
+              fontSize: 13.5,
+              color: textSecondary,
+              height: 1.45,
             ),
           ),
         ],

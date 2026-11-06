@@ -12,4 +12,9 @@ class RentalRepositoryImpl implements RentalRepository {
   Future<List<RentalListItemEntity>> getRenterBookings() async {
     return await remoteDataSource.getRenterBookings();
   }
+
+  @override
+  Future<void> cancelBooking(int bookingId, {String? reason}) async {
+    return await remoteDataSource.cancelBooking(bookingId, reason: reason);
+  }
 }

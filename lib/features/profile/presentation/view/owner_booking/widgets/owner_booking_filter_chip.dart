@@ -18,6 +18,12 @@ class OwnerBookingFilterChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
     return TapScale(
       onTap: onTap,
       child: AnimatedContainer(
@@ -25,13 +31,13 @@ class OwnerBookingFilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.primary
-              : (badgeColor != null ? badgeColor!.withValues(alpha: 0.12) : AppColors.background),
+              ? primaryColor
+              : (badgeColor != null ? badgeColor!.withValues(alpha: 0.15) : surfaceColor),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? AppColors.primary
-                : (badgeColor ?? AppColors.border),
+                ? primaryColor
+                : (badgeColor ?? borderColor),
             width: isSelected ? 1.2 : 1.0,
           ),
         ),
@@ -41,8 +47,8 @@ class OwnerBookingFilterChip extends StatelessWidget {
             fontSize: 12.5,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
             color: isSelected
-                ? Colors.white
-                : (badgeColor ?? AppColors.textPrimary),
+                ? (isDark ? AppColors.darkBackground : Colors.white)
+                : (badgeColor ?? textPrimary),
           ),
         ),
       ),

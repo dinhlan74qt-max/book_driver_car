@@ -125,6 +125,9 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
       data: formData,
       options: Options(
         headers: authHeader != null ? {'Authorization': authHeader} : null,
+        connectTimeout: const Duration(seconds: 20),
+        sendTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
         validateStatus: (_) => true,
       ),
     );

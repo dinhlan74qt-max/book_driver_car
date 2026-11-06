@@ -2,12 +2,16 @@ import 'dart:async';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_search_sheet.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_empty_state.dart';
+import 'package:book_drive_car/shared/widget/app_shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -115,22 +119,40 @@ class _SearchResultsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: Text(
           _title,
-          style: const TextStyle(fontWeight: FontWeight.w800),
+          style: AppTypography.titleLarge.copyWith(color: textPrimary),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.textPrimary,
+        backgroundColor: surfaceColor,
+        foregroundColor: textPrimary,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: BlocBuilder<HomeCubit, HomeState>(
         builder: (context, state) {
           if (state is HomeLoading || state is HomeInitial) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.headlightAmber),
+            return ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: 4,
+              separatorBuilder: (_, __) => const SizedBox(height: 14),
+              itemBuilder: (_, __) => const AppShimmer(
+                width: double.infinity,
+                height: 140,
+                borderRadius: 20,
+              ),
             );
           }
 
@@ -146,23 +168,19 @@ class _SearchResultsContent extends StatelessWidget {
                       size: 48,
                       color: AppColors.danger,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     Text(
                       state.message,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textSecondary),
+                      style: AppTypography.body.copyWith(color: textPrimary),
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
+                    const SizedBox(height: 20),
+                    AppButton(
+                      text: 'Thử lại',
                       onPressed: () => _runSearchForFilter(
                         context.read<HomeCubit>(),
                         filter,
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.headlightAmber,
-                        foregroundColor: Colors.black,
-                      ),
-                      child: const Text('Thử lại'),
                     ),
                   ],
                 ),
@@ -173,18 +191,25 @@ class _SearchResultsContent extends StatelessWidget {
           if (state is HomeLoaded) {
             final cars = _applyLocalFilters(state.cars);
             if (cars.isEmpty) {
-              return _EmptySearchState(filter: filter);
+              final label = filter.locationLabel ?? 'khu vực đã chọn';
+              return AppEmptyState(
+                icon: Icons.directions_car_filled_rounded,
+                title: 'Không tìm thấy xe phù hợp',
+                subtitle: 'Hiện chưa có xe nào khớp với bộ lọc tại $label. Bạn hãy thử đổi tiêu chí tìm kiếm khác.',
+                buttonText: 'Quay lại',
+                onButtonPressed: () => Navigator.of(context).pop(),
+              );
             }
 
             return RefreshIndicator(
-              color: AppColors.headlightAmber,
+              color: primaryColor,
               onRefresh: () =>
                   _runSearchForFilter(context.read<HomeCubit>(), filter),
               child: ListView.separated(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: cars.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 14),
                 itemBuilder: (context, index) {
                   final car = cars[index];
                   return CarCard(
@@ -202,75 +227,6 @@ class _SearchResultsContent extends StatelessWidget {
 
           return const SizedBox.shrink();
         },
-      ),
-    );
-  }
-}
-
-class _EmptySearchState extends StatelessWidget {
-  final CarSearchFilter filter;
-
-  const _EmptySearchState({required this.filter});
-
-  @override
-  Widget build(BuildContext context) {
-    final label = filter.locationLabel ?? 'khu vực đã chọn';
-
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.directions_car_filled_rounded,
-                  color: AppColors.primary,
-                  size: 38,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Không có xe phù hợp',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Hiện chưa có xe nào khớp với bộ lọc tại $label. Bạn hãy thử đổi thành phố, hãng hoặc dòng xe khác.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

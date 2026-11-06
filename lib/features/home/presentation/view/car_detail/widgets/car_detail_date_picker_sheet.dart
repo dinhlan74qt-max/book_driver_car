@@ -1,11 +1,11 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
+import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:flutter/material.dart';
 
 class CarDetailDatePickerSheet extends StatefulWidget {
   final int vehicleId;
-  final BookingRemoteDataSource bookingRemoteDataSource;
+  final BookingRepository bookingRepository;
   final DateTime initialStart;
   final DateTime initialEnd;
   final DateTime minDate;
@@ -22,7 +22,7 @@ class CarDetailDatePickerSheet extends StatefulWidget {
   const CarDetailDatePickerSheet({
     super.key,
     required this.vehicleId,
-    required this.bookingRemoteDataSource,
+    required this.bookingRepository,
     required this.initialStart,
     required this.initialEnd,
     required this.hasInitialSelection,
@@ -65,7 +65,7 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
 
   Future<void> _loadBlockedRanges() async {
     try {
-      final ranges = await widget.bookingRemoteDataSource.getBookedRanges(
+      final ranges = await widget.bookingRepository.getBookedRanges(
         widget.vehicleId,
       );
       if (!mounted) return;
@@ -379,14 +379,21 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final bgColor = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
 
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(maxHeight: size.height * 0.88),
         child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -400,7 +407,7 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
                         width: 44,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: AppColors.border,
+                          color: borderColor,
                           borderRadius: BorderRadius.circular(99),
                         ),
                       ),
@@ -408,13 +415,13 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Chọn ngày thuê xe',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                              color: textPrimary,
                             ),
                           ),
                         ),
@@ -423,19 +430,19 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
                               ? () => _moveMonth(-1)
                               : null,
                           icon: const Icon(Icons.chevron_left_rounded),
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                         Text(
                           widget.monthLabel(_focusedMonth),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
+                            color: textPrimary,
                           ),
                         ),
                         IconButton(
                           onPressed: _canGoNext ? () => _moveMonth(1) : null,
                           icon: const Icon(Icons.chevron_right_rounded),
-                          color: AppColors.primary,
+                          color: primaryColor,
                         ),
                       ],
                     ),
@@ -446,9 +453,9 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.background,
+                        color: bgColor,
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.border),
+                        border: Border.all(color: borderColor),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

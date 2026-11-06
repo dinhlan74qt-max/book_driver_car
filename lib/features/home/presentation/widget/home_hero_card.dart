@@ -1,9 +1,8 @@
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:book_drive_car/core/utils/responsive_utils.dart';
-
 
 class HomeHeroCard extends StatelessWidget {
   final String userName;
@@ -21,43 +20,53 @@ class HomeHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final greeting = userName.isNotEmpty ? 'Xin chào, $userName' : 'Xin chào!';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final greeting = userName.isNotEmpty ? 'Xin chào, $userName' : 'Xin chào bạn';
 
     return Container(
-      padding: EdgeInsets.all(context.isSmallPhone ? 16 : 20),
+      padding: EdgeInsets.all(context.isSmallPhone ? 18 : 22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF11161F),
-            Color(0xFF1A2230),
-            Color(0xFF0F1722),
-          ],
+          colors: isDark
+              ? const [
+                  Color(0xFF06111C),
+                  Color(0xFF0B1F33),
+                  Color(0xFF13324F),
+                ]
+              : const [
+                  Color(0xFF082236),
+                  AppColors.primary,
+                  Color(0xFF1B4F72),
+                ],
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : Colors.white.withValues(alpha: 0.12),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.38),
-            blurRadius: 26,
-            offset: const Offset(0, 14),
+            color: (isDark ? Colors.black : AppColors.primary).withValues(alpha: isDark ? 0.45 : 0.25),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Stack(
         children: [
           Positioned(
-            right: -10,
-            top: -12,
+            right: -20,
+            top: -20,
             child: Container(
-              width: 120,
-              height: 120,
+              width: 140,
+              height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.headlightAmber.withValues(alpha: 0.22),
+                    AppColors.accent.withValues(alpha: 0.22),
                     Colors.transparent,
                   ],
                 ),
@@ -73,83 +82,113 @@ class HomeHeroCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          Icons.workspace_premium_rounded,
+                        const Icon(
+                          Icons.verified_rounded,
                           size: 14,
-                          color: AppColors.headlightAmber,
+                          color: AppColors.accent,
                         ),
-                        SizedBox(width: 6),
+                        const SizedBox(width: 6),
                         Text(
-                          'Premium Drive',
-                          style: TextStyle(
+                          'CarNow Premium',
+                          style: AppTypography.dataLabel.copyWith(
                             color: Colors.white,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 11,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.notifications_none_rounded,
-                    color: Colors.white70,
-                    size: 22,
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.notifications_none_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 18),
               Text(
                 greeting,
-                style: GoogleFonts.playfairDisplay(
+                style: AppTypography.display.copyWith(
                   color: Colors.white,
                   fontSize: context.isSmallPhone ? 22 : 26,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.72),
-                  fontSize: 13,
+                style: AppTypography.body.copyWith(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 13.5,
                   height: 1.4,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               TapScale(
                 onTap: onSearchTap,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
+                    color: isDark ? AppColors.darkSurface : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                    border: Border.all(
+                      color: isDark ? AppColors.darkBorder : AppColors.border,
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.10),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.search_rounded, color: AppColors.headlightAmber),
+                      Icon(
+                        Icons.search_rounded,
+                        color: isDark ? AppColors.darkPrimary : AppColors.primary,
+                        size: 22,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           searchPlaceholder,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13.5,
+                          style: AppTypography.body.copyWith(
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                            fontSize: 14,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Icon(
-                        Icons.tune_rounded,
-                        color: Colors.white70,
-                        size: 20,
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.tune_rounded,
+                          color: isDark ? AppColors.darkPrimary : AppColors.primary,
+                          size: 18,
+                        ),
                       ),
                     ],
                   ),

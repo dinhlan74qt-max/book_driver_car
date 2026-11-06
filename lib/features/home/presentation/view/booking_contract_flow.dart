@@ -1,12 +1,16 @@
 import 'dart:typed_data';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
-import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
+import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/verified_user_entity.dart';
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -717,7 +721,7 @@ class _BookingContractScreenState extends State<BookingContractScreen> {
         contractPdfBytes: pdfBytes,
         contractPdfFileName: fileName,
       );
-      final booking = await sl<BookingRemoteDataSource>().createBooking(
+      final booking = await sl<BookingRepository>().createBooking(
         bookingRequest,
       );
 
@@ -731,6 +735,14 @@ class _BookingContractScreenState extends State<BookingContractScreen> {
         '[BookingContractScreen][_submitContract] stackTrace=$st',
       );
       if (!mounted) return;
+      final isTimeout = e is DioException &&
+          (e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.connectionTimeout);
+      if (isTimeout) {
+        Navigator.of(context).pop('timeout');
+        return;
+      }
       AppToast.show(
         context,
         message: e.toString().replaceFirst('Exception: ', ''),
@@ -746,30 +758,65 @@ class _BookingContractScreenState extends State<BookingContractScreen> {
   @override
   Widget build(BuildContext context) {
     final contractSections = _contractSections();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surfacePrimary;
+    final paperColor = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.borderLight;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F1E7),
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: TapScale(
+              onTap: _isSubmitting ? null : () => Navigator.of(context).pop(),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: borderColor),
+                ),
+                child: Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Hợp Đồng Thuê Xe',
+              style: AppTypography.headingMd.copyWith(
+                fontWeight: FontWeight.w700,
+                color: textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${_vehicleName()} • ${_formatCurrency(widget.car.pricePerDay * _rentalDays())} đ',
+              style: AppTypography.bodySmall.copyWith(
+                color: textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Row(
-                children: [
-                  TapScale(
-                    onTap: _isSubmitting
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      size: 26,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -777,208 +824,259 @@ class _BookingContractScreenState extends State<BookingContractScreen> {
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 860),
                     child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.fromLTRB(28, 28, 28, 30),
+                      decoration: BoxDecoration(
+                        color: paperColor,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: borderColor),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.fromLTRB(22, 24, 22, 28),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Center(
+                          Center(
                             child: Column(
                               children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    'HỢP ĐỒNG ĐIỆN TỬ - CARNOW',
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
                                 Text(
                                   'HỢP ĐỒNG CHO THUÊ XE',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 20,
+                                  style: AppTypography.headingMd.copyWith(
                                     fontWeight: FontWeight.w800,
                                     height: 1.35,
-                                    letterSpacing: 0.2,
-                                    color: Colors.black,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Ngày ký: ${_todayText()}',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Ngày ký: ${_todayText()}',
-                            style: const TextStyle(
-                              fontSize: 12.4,
-                              color: Colors.black87,
+                          const SizedBox(height: 18),
+
+                          // Transaction Summary Box
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfacePrimary,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: AppColors.borderLight),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.info_outline_rounded,
+                                      size: 18,
+                                      color: AppColors.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Tóm tắt giao dịch',
+                                      style: AppTypography.labelMedium.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                _uiMetaLine('Người thuê', widget.renter.fullname),
+                                _uiMetaLine('Phương tiện', _vehicleName()),
+                                _uiMetaLine(
+                                  'Biển số',
+                                  widget.car.licensePlate?.trim().isNotEmpty == true
+                                      ? widget.car.licensePlate!
+                                      : 'Chưa cập nhật',
+                                ),
+                                _uiMetaLine(
+                                  'Thời gian thuê',
+                                  '${_formatDateTime(widget.request.startDate)} - ${_formatDateTime(widget.request.endDate)}',
+                                ),
+                                _uiMetaLine(
+                                  'Tổng dự kiến',
+                                  '${_formatCurrency(widget.car.pricePerDay * _rentalDays())} VNĐ (${_rentalDays()} ngày)',
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 18),
-                          Text(
-                            'Hôm nay, ngày ${_todayText()}, thông qua nền tảng BOOK DRIVE CAR, các bên thống nhất ký kết hợp đồng cho thuê xe với các thông tin sau:',
-                            style: const TextStyle(
-                              fontSize: 12.2,
-                              height: 1.45,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          _uiMetaLine('Người thuê', widget.renter.fullname),
-                          _uiMetaLine('Xe', _vehicleName()),
-                          _uiMetaLine(
-                            'Biển số',
-                            widget.car.licensePlate?.trim().isNotEmpty == true
-                                ? widget.car.licensePlate!
-                                : 'Chưa cập nhật',
-                          ),
-                          _uiMetaLine(
-                            'Thời gian thuê',
-                            '${_formatDateTime(widget.request.startDate)} - ${_formatDateTime(widget.request.endDate)}',
-                          ),
-                          const SizedBox(height: 18),
+
                           ...contractSections.expand(
                             (section) => [
                               _FlutterContractSectionView(section: section),
                               const SizedBox(height: 14),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'XÁC NHẬN VÀ KÝ KẾT HỢP ĐỒNG',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          const Text(
-                            'Bên A và Bên B xác nhận đã đọc, hiểu và đồng ý với toàn bộ nội dung của Hợp đồng này.',
-                            style: TextStyle(
-                              fontSize: 12.2,
-                              height: 1.45,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
+
+                          // Signature pad card
                           Container(
-                            width: double.infinity,
-                            height: 260,
+                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              border: Border.all(color: Colors.black, width: 1),
+                              color: AppColors.surfacePrimary,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.borderLight),
                             ),
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Expanded(
-                                  child: Signature(
-                                    controller: _renterSignatureController,
-                                    backgroundColor: Colors.white,
-                                  ),
-                                ),
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: Colors.black12,
-                                        width: 1,
-                                      ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.draw_rounded,
+                                          size: 20,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Chữ ký Người thuê (Bên B)',
+                                          style: AppTypography.labelLarge.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Expanded(
-                                        child: Text(
-                                          'Ký của người thuê xe.',
-                                          style: TextStyle(fontSize: 11.5),
+                                    TapScale(
+                                      onTap: _isSubmitting
+                                          ? null
+                                          : _renterSignatureController.clear,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surfaceSecondary,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: AppColors.borderLight,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.refresh_rounded,
+                                              size: 15,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Ký lại',
+                                              style: AppTypography.caption.copyWith(
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      TextButton(
-                                        onPressed: _isSubmitting
-                                            ? null
-                                            : _renterSignatureController.clear,
-                                        child: const Text('Xóa chữ ký'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Vẽ chữ ký của bạn vào khung bên dưới để xác nhận thỏa thuận thuê:',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  width: double.infinity,
+                                  height: 220,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: AppColors.borderLight,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Stack(
+                                    children: [
+                                      Positioned(
+                                        left: 20,
+                                        right: 20,
+                                        bottom: 36,
+                                        child: Container(
+                                          height: 1,
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 16,
+                                        bottom: 12,
+                                        child: Text(
+                                          'Ký tại đây',
+                                          style: AppTypography.caption.copyWith(
+                                            color: Colors.grey.shade400,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+                                      Signature(
+                                        controller: _renterSignatureController,
+                                        backgroundColor: Colors.transparent,
                                       ),
                                     ],
                                   ),
                                 ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.verified_user_outlined,
+                                      size: 16,
+                                      color: AppColors.success,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Chữ ký được mã hóa và tự động gắn vào file PDF hợp đồng gửi cho chủ xe duyệt.',
+                                        style: AppTypography.caption.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'BÊN A - CHỦ XE',
-                                      style: TextStyle(
-                                        fontSize: 12.8,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Text(
-                                      'Họ và tên: .....................................',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      height: 80,
-                                      width: double.infinity,
-                                      decoration: const BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Colors.black,
-                                            width: 1,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'BÊN B - NGƯỜI THUÊ',
-                                      style: TextStyle(
-                                        fontSize: 12.8,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Họ và tên: ${widget.renter.fullname}',
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      height: 80,
-                                      width: double.infinity,
-                                      decoration: const BoxDecoration(
-                                        border: Border(
-                                          bottom: BorderSide(
-                                            color: Colors.black,
-                                            width: 1,
-                                          ),
-                                        ),
-                                      ),
-                                      child: const Center(
-                                        child: Text(
-                                          'Chữ ký người thuê sẽ được chèn vào PDF khi xác nhận',
-                                          textAlign: TextAlign.center,
-                                          style: TextStyle(fontSize: 10.5),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
                           ),
                         ],
                       ),
@@ -987,61 +1085,46 @@ class _BookingContractScreenState extends State<BookingContractScreen> {
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Text(
-                'Vui lòng ký hợp đồng để hoàn tất việc đặt xe.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black.withValues(alpha: 0.65),
+
+            // Sticky Bottom Dock
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfacePrimary,
+                border: const Border(
+                  top: BorderSide(color: AppColors.borderLight),
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(color: Colors.black26),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Hủy'),
+                    flex: 1,
+                    child: AppButton(
+                      text: 'Hủy',
+                      variant: AppButtonVariant.outline,
+                      height: 48,
+                      onPressed: _isSubmitting
+                          ? null
+                          : () => Navigator.of(context).pop(),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitContract,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.black26,
-                        disabledForegroundColor: Colors.white70,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Ký hợp đồng',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
+                    flex: 2,
+                    child: AppButton(
+                      text: 'Ký & Xác nhận Đặt xe',
+                      variant: AppButtonVariant.primary,
+                      height: 48,
+                      icon: Icons.verified_rounded,
+                      isLoading: _isSubmitting,
+                      onPressed: _submitContract,
                     ),
                   ),
                 ],
@@ -1077,58 +1160,74 @@ class _FlutterContractSectionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTextStyle(
-      style: const TextStyle(color: Colors.black, fontSize: 12.2, height: 1.45),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            section.title,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.1,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          section.title,
+          style: AppTypography.labelLarge.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
           ),
-          if (section.paragraphs.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...section.paragraphs.map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(text),
-              ),
-            ),
-          ],
-          if (section.lines.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...section.lines.map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(text),
-              ),
-            ),
-          ],
-          if (section.tableRows.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _FlutterContractTable(rows: section.tableRows),
-          ],
-          if (section.bullets.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            ...section.bullets.map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('•  ', style: TextStyle(height: 1.45)),
-                    Expanded(child: Text(text)),
-                  ],
+        ),
+        if (section.paragraphs.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ...section.paragraphs.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textPrimary,
+                  height: 1.45,
                 ),
               ),
             ),
-          ],
+          ),
         ],
-      ),
+        if (section.lines.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ...section.lines.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                text,
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textPrimary,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+        ],
+        if (section.tableRows.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _FlutterContractTable(rows: section.tableRows),
+        ],
+        if (section.bullets.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          ...section.bullets.map(
+            (text) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•  ', style: TextStyle(height: 1.45)),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textPrimary,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -1140,20 +1239,30 @@ class _FlutterContractTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Table(
-      columnWidths: const {0: FlexColumnWidth(2.6), 1: FlexColumnWidth(4.4)},
-      border: TableBorder.all(color: Colors.black, width: 0.6),
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: rows
-          .map(
-            (row) => TableRow(
-              children: [
-                _FlutterContractCell(text: row[0], bold: true),
-                _FlutterContractCell(text: row[1]),
-              ],
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Table(
+        columnWidths: const {0: FlexColumnWidth(2.6), 1: FlexColumnWidth(4.4)},
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        children: rows.asMap().entries.map((entry) {
+          final isEven = entry.key % 2 == 0;
+          return TableRow(
+            decoration: BoxDecoration(
+              color: isEven
+                  ? AppColors.surfacePrimary
+                  : AppColors.surfaceSecondary,
             ),
-          )
-          .toList(),
+            children: [
+              _FlutterContractCell(text: entry.value[0], bold: true),
+              _FlutterContractCell(text: entry.value[1]),
+            ],
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -1167,13 +1276,13 @@ class _FlutterContractCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       child: Text(
         text,
-        style: TextStyle(
-          fontSize: 10.8,
-          height: 1.35,
+        style: AppTypography.bodySmall.copyWith(
+          fontSize: 11,
           fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+          color: bold ? AppColors.textPrimary : AppColors.textSecondary,
         ),
       ),
     );

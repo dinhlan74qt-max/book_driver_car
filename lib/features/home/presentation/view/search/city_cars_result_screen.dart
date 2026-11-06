@@ -1,9 +1,14 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_state.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/car_detail_screen.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_card.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_empty_state.dart';
+import 'package:book_drive_car/shared/widget/app_shimmer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -21,330 +26,234 @@ class CityCarsResultScreen extends StatelessWidget {
   }
 }
 
-class _CityCarsResultContent extends StatelessWidget {
+class _CityCarsResultContent extends StatefulWidget {
   final String cityName;
 
   const _CityCarsResultContent({required this.cityName});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      body: Stack(
-        children: [
-          const Positioned.fill(child: _LuxuryResultBackground()),
-          SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Row(
-                    children: [
-                      _HeaderIconButton(
-                        icon: Icons.arrow_back_rounded,
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Kết quả tìm kiếm',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              cityName,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.72),
-                                fontSize: 12.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _HeaderIconButton(
-                        icon: Icons.search_rounded,
-                        onTap: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: BlocBuilder<HomeCubit, HomeState>(
-                    builder: (context, state) {
-                      if (state is HomeLoading || state is HomeInitial) {
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.headlightAmber,
-                          ),
-                        );
-                      }
-
-                      if (state is HomeError) {
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  size: 48,
-                                  color: AppColors.danger,
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  state.message,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: () => context
-                                      .read<HomeCubit>()
-                                      .searchCarsByCity(cityName),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.headlightAmber,
-                                    foregroundColor: Colors.black,
-                                  ),
-                                  child: const Text('Thử lại'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-
-                      if (state is HomeLoaded) {
-                        final cars = state.cars;
-                        if (cars.isEmpty) {
-                          return _EmptyCityState(
-                            cityName: cityName,
-                            onSearchAgain: () {
-                              Navigator.of(context).pop();
-                            },
-                          );
-                        }
-
-                        return RefreshIndicator(
-                          color: AppColors.headlightAmber,
-                          onRefresh: () =>
-                              context.read<HomeCubit>().searchCarsByCity(cityName),
-                          child: ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                            itemCount: cars.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 12),
-                            itemBuilder: (context, index) {
-                              final car = cars[index];
-                              return CarCard(
-                                car: car,
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => CarDetailScreen(car: car),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      }
-
-                      return const SizedBox.shrink();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  State<_CityCarsResultContent> createState() => _CityCarsResultContentState();
 }
 
-class _EmptyCityState extends StatelessWidget {
-  final String cityName;
-  final VoidCallback onSearchAgain;
+class _CityCarsResultContentState extends State<_CityCarsResultContent> {
+  String _selectedFilter = 'Tất cả';
 
-  const _EmptyCityState({
-    required this.cityName,
-    required this.onSearchAgain,
-  });
+  List<CarEntity> _filterCars(List<CarEntity> cars) {
+    if (_selectedFilter == 'Tự động') {
+      return cars.where((c) => (c.transmission ?? '').toLowerCase().contains('tự động') || (c.transmission ?? '').toLowerCase().contains('auto')).toList();
+    }
+    if (_selectedFilter == '7 chỗ') {
+      return cars.where((c) => c.seats >= 7).toList();
+    }
+    if (_selectedFilter == '4-5 chỗ') {
+      return cars.where((c) => c.seats <= 5).toList();
+    }
+    return cars;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Container(
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.06),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final surfaceColor = isDark ? AppColors.darkSurface : Colors.white;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      appBar: AppBar(
+        backgroundColor: surfaceColor,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Column(
+          children: [
+            Text(
+              'Xe tại ${widget.cityName}',
+              style: AppTypography.titleLarge.copyWith(
+                fontWeight: FontWeight.w800,
+                color: textPrimary,
               ),
-            ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'Địa điểm nhận xe',
+              style: AppTypography.caption.copyWith(color: textSecondary),
+            ),
+          ],
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search_rounded, color: primaryColor),
+            onPressed: () => Navigator.of(context).pop(),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
+        ],
+      ),
+      body: SafeArea(
+        child: BlocBuilder<HomeCubit, HomeState>(
+          builder: (context, state) {
+            if (state is HomeLoading || state is HomeInitial) {
+              return ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: 4,
+                separatorBuilder: (_, __) => const SizedBox(height: 14),
+                itemBuilder: (_, __) => const AppShimmer(
+                  width: double.infinity,
+                  height: 140,
+                  borderRadius: 20,
                 ),
-                child: const Icon(
-                  Icons.directions_car_filled_rounded,
-                  color: AppColors.primary,
-                  size: 38,
+              );
+            }
+
+            if (state is HomeError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: AppEmptyState(
+                    title: 'Không tải được danh sách xe',
+                    subtitle: state.message,
+                    icon: Icons.error_outline_rounded,
+                    buttonText: 'Thử lại',
+                    onButtonPressed: () => context.read<HomeCubit>().searchCarsByCity(widget.cityName),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Không có xe ở thành phố này',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Hiện tại chưa có xe nào được đăng ở $cityName. Bạn có thể thử một thành phố khác.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: onSearchAgain,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.headlightAmber,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              );
+            }
+
+            if (state is HomeLoaded) {
+              final allCars = state.cars;
+              final filteredCars = _filterCars(allCars);
+
+              if (allCars.isEmpty) {
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: AppEmptyState(
+                      title: 'Chưa có xe tại ${widget.cityName}',
+                      subtitle: 'Hiện chưa có chủ xe nào cho thuê xe tại khu vực này. Bạn hãy thử tìm kiếm các thành phố lân cận nhé.',
+                      icon: Icons.directions_car_outlined,
+                      buttonText: 'Tìm thành phố khác',
+                      onButtonPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
-                  child: const Text(
-                    'Tìm thành phố khác',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
+                );
+              }
+
+              return RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () => context.read<HomeCubit>().searchCarsByCity(widget.cityName),
+                child: Column(
+                  children: [
+                    // Filter bar
+                    Container(
+                      color: surfaceColor,
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: ['Tất cả', 'Tự động', '4-5 chỗ', '7 chỗ'].map((filter) {
+                            final isSelected = _selectedFilter == filter;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: ChoiceChip(
+                                label: Text(
+                                  filter,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                    fontSize: 12.5,
+                                    color: isSelected
+                                        ? (isDark ? AppColors.darkBackground : Colors.white)
+                                        : textSecondary,
+                                  ),
+                                ),
+                                selected: isSelected,
+                                selectedColor: primaryColor,
+                                backgroundColor: bgColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(999),
+                                  side: BorderSide(
+                                    color: isSelected ? primaryColor : borderColor,
+                                  ),
+                                ),
+                                onSelected: (selected) {
+                                  if (selected) {
+                                    setState(() => _selectedFilter = filter);
+                                  }
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+
+                    // Results Header
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Tìm thấy ${filteredCars.length} xe',
+                            style: AppTypography.titleSmall.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          const Icon(Icons.sort_rounded, size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Giá tốt nhất',
+                            style: AppTypography.caption.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Cars List
+                    Expanded(
+                      child: filteredCars.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  'Không có xe nào khớp bộ lọc "$_selectedFilter"',
+                                  style: AppTypography.bodyMedium,
+                                ),
+                              ),
+                            )
+                          : ListView.separated(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
+                              itemCount: filteredCars.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 14),
+                              itemBuilder: (context, index) {
+                                final car = filteredCars[index];
+                                return CarCard(
+                                  car: car,
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => CarDetailScreen(car: car),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
+              );
+            }
+
+            return const SizedBox.shrink();
+          },
         ),
-      ),
-    );
-  }
-}
-
-class _LuxuryResultBackground extends StatelessWidget {
-  const _LuxuryResultBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0C1017), Color(0xFF151A24), Color(0xFFF7F8FA)],
-          stops: [0.0, 0.4, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: -90,
-            right: -70,
-            child: _GlowOrb(
-              size: 220,
-              colors: [
-                AppColors.headlightAmber.withValues(alpha: 0.20),
-                Colors.transparent,
-              ],
-            ),
-          ),
-          Positioned(
-            top: 160,
-            left: -70,
-            child: _GlowOrb(
-              size: 180,
-              colors: [
-                AppColors.pageAccents[2].withValues(alpha: 0.15),
-                Colors.transparent,
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  final double size;
-  final List<Color> colors;
-
-  const _GlowOrb({required this.size, required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(colors: colors),
-      ),
-    );
-  }
-}
-
-class _HeaderIconButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _HeaderIconButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        child: Icon(icon, color: Colors.white),
       ),
     );
   }

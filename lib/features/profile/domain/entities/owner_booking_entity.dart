@@ -8,6 +8,8 @@ class OwnerBookingEntity {
   final String licensePlate;
   final String renterName;
   final String renterPhone;
+  final String renterEmail;
+  final String addressText;
   final String? renterAvatar;
   final String? contractImage;
   final DateTime startDate;
@@ -27,6 +29,8 @@ class OwnerBookingEntity {
     required this.licensePlate,
     required this.renterName,
     required this.renterPhone,
+    this.renterEmail = '',
+    this.addressText = '',
     this.renterAvatar,
     this.contractImage,
     required this.startDate,
@@ -47,6 +51,8 @@ class OwnerBookingEntity {
     String? licensePlate,
     String? renterName,
     String? renterPhone,
+    String? renterEmail,
+    String? addressText,
     String? renterAvatar,
     String? contractImage,
     DateTime? startDate,
@@ -66,6 +72,8 @@ class OwnerBookingEntity {
       licensePlate: licensePlate ?? this.licensePlate,
       renterName: renterName ?? this.renterName,
       renterPhone: renterPhone ?? this.renterPhone,
+      renterEmail: renterEmail ?? this.renterEmail,
+      addressText: addressText ?? this.addressText,
       renterAvatar: renterAvatar ?? this.renterAvatar,
       contractImage: contractImage ?? this.contractImage,
       startDate: startDate ?? this.startDate,

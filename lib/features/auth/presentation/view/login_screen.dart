@@ -1,13 +1,14 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/auth/presentation/bloc/login_bloc.dart';
 import 'package:book_drive_car/features/auth/presentation/bloc/login_event.dart';
 import 'package:book_drive_car/features/auth/presentation/bloc/login_state.dart';
-import 'package:book_drive_car/features/auth/presentation/bloc/send_otp_state.dart';
-import 'package:book_drive_car/shared/widget/app_toast.dart';
-import 'package:book_drive_car/shared/widget/tap_scale.dart';
-import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/shared/widget/bottom_navigation_bar.dart';
 import 'package:book_drive_car/features/auth/presentation/view/register_screen.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
+import 'package:book_drive_car/shared/widget/bottom_navigation_bar.dart';
+import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -35,15 +36,15 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim().isEmpty) {
       AppToast.show(
         context,
-        message: 'Vui lòng nhập email và mật khẩu',
+        message: 'Vui lòng nhập đầy đủ email và mật khẩu',
         type: AppToastType.warning,
       );
       return;
     }
     context.read<LoginBloc>().add(
       LoginSubmitted(
-        email: _emailController.text,
-        password: _passwordController.text,
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       ),
     );
   }
@@ -57,16 +58,15 @@ class _LoginScreenState extends State<LoginScreen> {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position:
-                  Tween<Offset>(
-                    begin: const Offset(0.08, 0),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: animation,
-                      curve: Curves.easeOutCubic,
-                    ),
-                  ),
+              position: Tween<Offset>(
+                begin: const Offset(0.06, 0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
+              ),
               child: child,
             ),
           );
@@ -78,6 +78,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return BlocProvider(
       create: (context) => sl<LoginBloc>(),
       child: BlocConsumer<LoginBloc, LoginState>(
@@ -104,158 +107,222 @@ class _LoginScreenState extends State<LoginScreen> {
           final isLoading = state is LoginLoading;
 
           return Scaffold(
-            body: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFF5F8FC), Colors.white],
-                ),
-              ),
-              child: SafeArea(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+            backgroundColor: theme.scaffoldBackgroundColor,
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (Navigator.of(context).canPop())
                       TapScale(
                         onTap: () => Navigator.of(context).pop(),
                         child: Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: isDark ? AppColors.darkSurface : AppColors.surface,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_back_rounded,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-                      Container(
-                        padding: const EdgeInsets.all(22),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          gradient: LinearGradient(
-                            colors: [
-                              AppColors.primary.withOpacity(0.12),
-                              AppColors.accent.withOpacity(0.10),
+                            border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFF17251F).withValues(alpha: 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
                             ],
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Icon(
-                              Icons.key_rounded,
-                              color: AppColors.primary,
-                              size: 30,
-                            ),
-                            SizedBox(height: 14),
-                            Text(
-                              'Chào mừng trở lại',
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Đăng nhập để tiếp tục quản lý xe, đơn thuê và ví của bạn.',
-                              style: TextStyle(
-                                fontSize: 14.5,
-                                color: AppColors.textSecondary,
-                                height: 1.5,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Email',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Nhập email của bạn',
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Mật khẩu',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscure,
-                        decoration: InputDecoration(
-                          hintText: 'Nhập mật khẩu',
-                          suffixIcon: IconButton(
-                            onPressed: () =>
-                                setState(() => _obscure = !_obscure),
-                            icon: Icon(
-                              _obscure
-                                  ? Icons.visibility_rounded
-                                  : Icons.visibility_off_rounded,
-                            ),
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 18,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 14),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: const Text('Quên mật khẩu?'),
-                        ),
-                      ),
+                      )
+                    else
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : () => _login(context),
-                          child: isLoading
-                              ? const CircularProgressIndicator()
-                              : const Text("Đăng nhập"),
-                        ),
+                    const SizedBox(height: 24),
+
+                    // ── Brand Header Card (Ivory & Forest Green) ───────────────
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : AppColors.surface,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
+                        boxShadow: [
+                          BoxShadow(
+                            color: isDark ? Colors.black.withValues(alpha: 0.22) : const Color(0xFF17251F).withValues(alpha: 0.05),
+                            blurRadius: 16,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Bạn chưa có tài khoản? ',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.of(context).pushReplacement(
-                                MaterialPageRoute(
-                                  builder: (_) => const RegisterScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              'Đăng ký ngay',
-                              style: TextStyle(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w700,
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: isDark
+                                    ? const [AppColors.darkPrimary, AppColors.darkAccent]
+                                    : const [AppColors.primary, AppColors.accent],
                               ),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Icon(
+                              Icons.key_rounded,
+                              color: isDark ? AppColors.darkBackground : Colors.white,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Chào mừng trở lại',
+                            style: AppTypography.display.copyWith(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Đăng nhập để tiếp tục quản lý hành trình và chiếc xe của bạn.',
+                            style: AppTypography.body.copyWith(
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 28),
+
+                    // ── Form Inputs ────────────────────────────────────────────
+                    Text(
+                      'Địa chỉ Email',
+                      style: AppTypography.label.copyWith(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      style: AppTypography.bodyLarge.copyWith(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'name@example.com',
+                        prefixIcon: Icon(
+                          Icons.mail_outline_rounded,
+                          size: 20,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    Text(
+                      'Mật khẩu',
+                      style: AppTypography.label.copyWith(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: _obscure,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _login(context),
+                      style: AppTypography.bodyLarge.copyWith(
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Nhập mật khẩu của bạn',
+                        prefixIcon: Icon(
+                          Icons.lock_outline_rounded,
+                          size: 20,
+                          color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                        ),
+                        suffixIcon: IconButton(
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            size: 20,
+                            color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () {
+                          AppToast.show(
+                            context,
+                            message: 'Tính năng khôi phục mật khẩu đang được hỗ trợ qua email hỗ trợ!',
+                            type: AppToastType.info,
+                          );
+                        },
+                        child: Text(
+                          'Quên mật khẩu?',
+                          style: AppTypography.label.copyWith(
+                            color: isDark ? AppColors.darkPrimary : AppColors.primary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // ── Submit Button ──────────────────────────────────────────
+                    AppButton(
+                      text: 'Đăng nhập',
+                      width: double.infinity,
+                      isLoading: isLoading,
+                      onPressed: () => _login(context),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 20),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // ── Register Navigation ────────────────────────────────────
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Chưa có tài khoản? ',
+                          style: AppTypography.body.copyWith(
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                          ),
+                        ),
+                        TapScale(
+                          onTap: () {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'Đăng ký ngay',
+                            style: AppTypography.label.copyWith(
+                              color: isDark ? AppColors.darkAccent : AppColors.accent,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),

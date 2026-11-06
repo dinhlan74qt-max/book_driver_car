@@ -2,17 +2,26 @@
 import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_remote_data_source.dart';
+import 'package:book_drive_car/features/profile/data/repositories/verification_repository_impl.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
 import 'package:book_drive_car/features/profile/data/repositories/owner_booking_repository_impl.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/owner_booking_repository.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
 import 'package:book_drive_car/features/home/data/datasources/home_remote_data_source.dart';
 import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
+import 'package:book_drive_car/features/home/data/repositories/booking_repository_impl.dart';
+import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
+import 'package:book_drive_car/features/home/domain/usecases/create_booking.dart';
+import 'package:book_drive_car/features/home/presentation/bloc/booking_bloc.dart';
 import 'package:book_drive_car/features/home/data/repositories/home_repository_impl.dart';
 import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart';
 import 'package:book_drive_car/features/home/presentation/bloc/home_cubit.dart';
+import 'package:book_drive_car/features/auth/domain/repositories/auth_repository.dart';
+import 'package:book_drive_car/features/auth/domain/usecases/verify_otp.dart';
 import 'package:book_drive_car/features/rental/data/datasources/rental_remote_data_source.dart';
 import 'package:book_drive_car/features/rental/data/repositories/rental_repository_impl.dart';
 import 'package:book_drive_car/features/rental/domain/repositories/rental_repository.dart';
+import 'package:book_drive_car/features/rental/domain/usecases/cancel_booking.dart';
 import 'package:book_drive_car/features/rental/domain/usecases/get_renter_bookings.dart';
 import 'package:book_drive_car/features/profile/data/datasources/vehicle_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/repositories/vehicle_repository_impl.dart';
@@ -64,6 +73,24 @@ Future<void> configureDependencies() async {
   if (!sl.isRegistered<BookingRemoteDataSource>()) {
     sl.registerLazySingleton<BookingRemoteDataSource>(
       () => BookingRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
+    );
+  }
+
+  if (!sl.isRegistered<BookingRepository>()) {
+    sl.registerLazySingleton<BookingRepository>(
+      () => BookingRepositoryImpl(sl<BookingRemoteDataSource>()),
+    );
+  }
+
+  if (!sl.isRegistered<CreateBooking>()) {
+    sl.registerFactory<CreateBooking>(
+      () => CreateBooking(sl<BookingRepository>()),
+    );
+  }
+
+  if (!sl.isRegistered<BookingBloc>()) {
+    sl.registerFactory<BookingBloc>(
+      () => BookingBloc(sl<CreateBooking>()),
     );
   }
 
@@ -165,6 +192,18 @@ Future<void> configureDependencies() async {
     );
   }
 
+  if (!sl.isRegistered<CancelBooking>()) {
+    sl.registerFactory<CancelBooking>(
+      () => CancelBooking(sl<RentalRepository>()),
+    );
+  }
+
+  if (!sl.isRegistered<VerifyOtp>()) {
+    sl.registerFactory<VerifyOtp>(
+      () => VerifyOtp(sl<AuthRepository>()),
+    );
+  }
+
   // Owner Booking Management feature
   if (!sl.isRegistered<OwnerBookingRemoteDataSource>()) {
     sl.registerLazySingleton<OwnerBookingRemoteDataSource>(
@@ -194,6 +233,18 @@ Future<void> configureDependencies() async {
   if (!sl.isRegistered<VerificationRemoteDataSource>()) {
     sl.registerLazySingleton<VerificationRemoteDataSource>(
       () => VerificationRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
+    );
+  }
+
+  if (!sl.isRegistered<VerificationRepository>()) {
+    sl.registerLazySingleton<VerificationRepository>(
+      () => VerificationRepositoryImpl(
+        localDataSource: sl<VerificationLocalDataSource>(),
+        remoteDataSource: sl<VerificationRemoteDataSource>(),
+        dio: sl<Dio>(),
+        userLocalStorage: sl<UserLocalStorage>(),
+        bookingRepository: sl<BookingRepository>(),
+      ),
     );
   }
 }

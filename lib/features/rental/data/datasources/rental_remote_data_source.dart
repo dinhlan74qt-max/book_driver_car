@@ -9,6 +9,7 @@ import 'package:injectable/injectable.dart';
 
 abstract class RentalRemoteDataSource {
   Future<List<RentalListItemModel>> getRenterBookings();
+  Future<void> cancelBooking(int bookingId, {String? reason});
 }
 
 @LazySingleton(as: RentalRemoteDataSource)
@@ -83,6 +84,31 @@ class RentalRemoteDataSourceImpl implements RentalRemoteDataSource {
       debugPrint('[RentalRemoteDataSource] Unexpected error: $e');
       debugPrintStack(stackTrace: st);
       throw Exception(_extractMessage(e) ?? 'Không thể tải danh sách đơn thuê');
+    }
+  }
+
+  @override
+  Future<void> cancelBooking(int bookingId, {String? reason}) async {
+    final authHeader = await userLocalStorage.getAuthHeader();
+
+    final response = await dio.post(
+      '${ApiConstants.baseUrl}/api/booking/update-status',
+      data: {
+        'id': bookingId,
+        'status': 'CANCELLED',
+        if (reason != null) 'reason': reason,
+      },
+      options: Options(
+        headers: authHeader != null ? {'Authorization': authHeader} : null,
+        validateStatus: (_) => true,
+      ),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+        _extractMessage(response.data) ??
+            'Hủy đơn thuê thất bại (${response.statusCode})',
+      );
     }
   }
 

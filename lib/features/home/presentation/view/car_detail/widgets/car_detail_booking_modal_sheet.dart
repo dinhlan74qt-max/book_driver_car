@@ -1,9 +1,11 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
-import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
 import 'package:book_drive_car/features/home/domain/entities/booking_request_entity.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/view/booking_contract_flow.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -80,8 +82,8 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
     setState(() => _isSubmitting = true);
 
     try {
-      final bookingRemoteDataSource = sl<BookingRemoteDataSource>();
-      final verifiedUser = await bookingRemoteDataSource.checkVerified();
+      final bookingRepository = sl<BookingRepository>();
+      final verifiedUser = await bookingRepository.checkVerified();
 
       debugPrint(
         '[BookingSubmit] vehicleId=$vehicleId start=${widget.selectedDateRange.start.toIso8601String()} end=${widget.selectedDateRange.end.toIso8601String()}',
@@ -111,11 +113,21 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
 
       if (!mounted) return;
       Navigator.of(context).pop();
-      AppToast.show(
-        null,
-        message: 'Đặt xe thành công! Vui lòng vào "Đơn thuê" để kiểm tra thông tin.',
-        type: AppToastType.success,
-      );
+      if (bookingResult == 'timeout') {
+        AppToast.show(
+          null,
+          message:
+              'Dữ liệu đã được gửi đi. Nếu chưa hiển thị, vui lòng kéo để tải lại hoặc nhập lại sau.',
+          type: AppToastType.success,
+        );
+      } else {
+        AppToast.show(
+          null,
+          message:
+              'Đặt xe thành công! Vui lòng vào "Đơn thuê" để kiểm tra thông tin.',
+          type: AppToastType.success,
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       final errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -131,11 +143,25 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final bgColor = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -143,76 +169,87 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
         children: [
           Center(
             child: Container(
-              width: 40,
+              width: 44,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+                color: borderColor,
+                borderRadius: BorderRadius.circular(999),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            'Xác nhận đặt xe ${widget.car.name}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Xác nhận đặt ${widget.car.name}',
+                  style: AppTypography.titleLarge.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: textPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close_rounded, color: textSecondary),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              color: bgColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Thời gian thuê:', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    Text('Thời gian thuê:', style: AppTypography.bodySmall.copyWith(color: textSecondary)),
                     Text(
                       '${_formatDate(widget.selectedDateRange.start)} - ${_formatDate(widget.selectedDateRange.end)}',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontSize: 13),
+                      style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700, color: textPrimary),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Tổng số ngày:', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    Text('Tổng số ngày:', style: AppTypography.bodySmall.copyWith(color: textSecondary)),
                     Text(
                       '${widget.rentalDays} ngày',
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary, fontSize: 13),
+                      style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700, color: textPrimary),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Đơn giá:', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    Text('Đơn giá niêm yết:', style: AppTypography.bodySmall.copyWith(color: textSecondary)),
                     Text(
                       '${widget.formatPrice(widget.car.pricePerDay)}/ngày',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13),
+                      style: AppTypography.priceMedium.copyWith(color: textPrimary),
                     ),
                   ],
                 ),
-                const Divider(height: 18, color: AppColors.border),
+                Divider(height: 20, color: borderColor),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Tổng thanh toán:', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                    Text(
+                      'Tổng thanh toán:',
+                      style: AppTypography.titleMedium.copyWith(fontWeight: FontWeight.w800, color: textPrimary),
+                    ),
                     Text(
                       widget.formatPrice(widget.totalPrice),
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: AppTypography.priceLarge.copyWith(
+                        color: primaryColor,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -223,44 +260,37 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
           const SizedBox(height: 14),
           TextField(
             controller: _noteController,
+            style: TextStyle(color: textPrimary),
             decoration: InputDecoration(
-              hintText: 'Ghi chú cho chủ xe (tùy chọn)...',
-              hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+              hintText: 'Ghi chú cho chủ xe (thời gian nhận xe, địa chỉ cụ thể...)...',
+              hintStyle: AppTypography.bodySmall.copyWith(color: textMuted),
               filled: true,
-              fillColor: AppColors.background,
+              fillColor: bgColor,
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: borderColor),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: borderColor),
               ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(color: primaryColor, width: 1.4),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             maxLines: 2,
           ),
           const SizedBox(height: 18),
-          SizedBox(
+          AppButton(
+            text: 'Tiến hành ký hợp đồng & Đặt xe',
+            trailingIcon: const Icon(Icons.arrow_forward_rounded),
             width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _isSubmitting ? null : _submitBooking,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text('Gửi yêu cầu thuê xe', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-            ),
+            isLoading: _isSubmitting,
+            onPressed: _submitBooking,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
       ),
     );

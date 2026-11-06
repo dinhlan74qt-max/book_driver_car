@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
@@ -14,10 +14,11 @@ import 'package:book_drive_car/features/profile/presentation/widget/vehicle_regi
 import 'package:book_drive_car/features/profile/presentation/widget/vehicle_registration_widgets.dart';
 import 'package:book_drive_car/core/helper/validator_helper.dart';
 import 'package:book_drive_car/core/helper/vehicle_media_picker_helper.dart';
-import 'package:book_drive_car/shared/data/mock_data/car_query_services.dart';
+import 'package:book_drive_car/shared/services/car_query/car_query_service.dart';
 import 'package:book_drive_car/shared/services/car_query/model/car_make.dart';
 import 'package:book_drive_car/shared/services/car_query/model/car_model.dart';
 import 'package:book_drive_car/shared/services/car_query/model/car_trim.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
@@ -595,7 +596,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
                       final isSelected = item.value == selectedValue;
                       return Material(
                         color: isSelected
-                            ? AppColors.primary.withOpacity(0.08)
+                            ? AppColors.primary.withValues(alpha: 0.08)
                             : AppColors.background,
                         borderRadius: BorderRadius.circular(18),
                         child: InkWell(
@@ -837,21 +838,12 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: SizedBox(
+        child: AppButton(
+          text: buttonText,
           width: double.infinity,
-          child: ElevatedButton(
-            onPressed: canProceed && !isSubmitting ? _goNext : null,
-            child: isSubmitting && isLast
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(buttonText),
-          ),
+          isLoading: isSubmitting && isLast,
+          trailingIcon: Icon(isLast ? Icons.description_rounded : Icons.arrow_forward_rounded),
+          onPressed: canProceed && !isSubmitting ? _goNext : null,
         ),
       ),
     );
@@ -1010,12 +1002,16 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final sheetBg = isDark ? AppColors.darkSurface : Colors.white;
+        final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+
         return SafeArea(
           child: Container(
             height: MediaQuery.of(context).size.height * 0.34,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            decoration: BoxDecoration(
+              color: sheetBg,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1026,7 +1022,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
                     width: 46,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: AppColors.border,
+                      color: borderColor,
                       borderRadius: BorderRadius.circular(999),
                     ),
                   ),
@@ -1141,10 +1137,16 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
         },
         builder: (context, state) {
           final isSubmitting = state is AddVehicleLoading;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+          final surfaceColor = isDark ? AppColors.darkSurface : Colors.white;
+          final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+          final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
           return Stack(
             children: [
               Scaffold(
-                backgroundColor: AppColors.background,
+                backgroundColor: bgColor,
                 body: GestureDetector(
                   behavior: HitTestBehavior.translucent,
                   onTap: _hideKeyboard,
@@ -1161,23 +1163,24 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
+                                    color: surfaceColor,
                                     borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: AppColors.border),
+                                    border: Border.all(color: borderColor),
                                   ),
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.arrow_back_rounded,
-                                    color: AppColors.textPrimary,
+                                    color: textPrimary,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
                                   'Đăng ký xe',
                                   style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
+                                    color: textPrimary,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -1190,15 +1193,15 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
                                     width: 44,
                                     height: 44,
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: surfaceColor,
                                       borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
-                                        color: AppColors.border,
+                                        color: borderColor,
                                       ),
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.close_rounded,
-                                      color: AppColors.textPrimary,
+                                      color: textPrimary,
                                     ),
                                   ),
                                 ),
@@ -1302,14 +1305,22 @@ class _SourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tileBg = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final iconBg = isDark ? AppColors.darkPrimaryContainer : AppColors.primary.withValues(alpha: 0.08);
+
     return TapScale(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: tileBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
@@ -1317,10 +1328,10 @@ class _SourceTile extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.08),
+                color: iconBg,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: AppColors.primary),
+              child: Icon(icon, color: primaryColor),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -1329,16 +1340,17 @@ class _SourceTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                    style: TextStyle(
+                      color: textSecondary,
                       height: 1.4,
                     ),
                   ),
@@ -1346,9 +1358,9 @@ class _SourceTile extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: AppColors.textSecondary,
+              color: textSecondary,
             ),
           ],
         ),

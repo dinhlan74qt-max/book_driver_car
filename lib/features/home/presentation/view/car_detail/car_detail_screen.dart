@@ -1,7 +1,8 @@
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
-import 'package:book_drive_car/features/home/data/datasources/booking_remote_data_source.dart';
+import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/widgets/car_detail_booking_modal_sheet.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/widgets/car_detail_date_picker_sheet.dart';
@@ -10,9 +11,11 @@ import 'package:book_drive_car/features/home/presentation/widget/car_detail_owne
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_spec_grid.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_terms_card.dart';
-import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -141,7 +144,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
       builder: (sheetContext) {
         return CarDetailDatePickerSheet(
           vehicleId: vehicleId,
-          bookingRemoteDataSource: sl<BookingRemoteDataSource>(),
+          bookingRepository: sl<BookingRepository>(),
           initialStart: firstDay.isBefore(now) ? now : _dateOnly(firstDay),
           initialEnd: lastDay.isBefore(now.add(const Duration(days: 1)))
               ? now.add(const Duration(days: 1))
@@ -162,7 +165,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
   }
 
   Future<void> _handleBookingFlow(BuildContext context) async {
-    final vData = await sl<VerificationLocalDataSource>().getVerificationData();
+    final vData = await sl<VerificationRepository>().getVerificationData();
     if (vData.status != VerificationStatus.verified) {
       if (!context.mounted) return;
       _showVerificationRequiredDialog(context, vData);
@@ -205,25 +208,28 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.headlightAmber),
-            SizedBox(width: 8),
-            Text('Xác minh tài khoản', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+            const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+            const SizedBox(width: 8),
+            Text(
+              'Xác minh tài khoản',
+              style: AppTypography.titleMedium.copyWith(color: AppColors.textPrimary),
+            ),
           ],
         ),
         content: Text(
           isExpired
               ? 'Giấy phép lái xe của bạn đã hết hạn. Vui lòng cập nhật GPLX mới để tiếp tục đặt thuê xe.'
               : 'Bạn cần hoàn thành Xác minh danh tính & Giấy phép lái xe (KYC) trước khi bắt đầu thuê xe trên hệ thống.',
-          style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          style: AppTypography.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Để sau', style: TextStyle(color: Colors.white54)),
+            child: const Text('Để sau'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -234,12 +240,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Xác minh ngay', style: TextStyle(fontWeight: FontWeight.w800)),
+            child: const Text('Xác minh ngay'),
           ),
         ],
       ),
@@ -248,27 +249,35 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
+    final surfaceSubtle = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSubtle;
+
     final images = car.imageUrls.isNotEmpty ? car.imageUrls : [car.imageIcon];
     final hasImages = images.any((e) => e.startsWith('http'));
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0C1017),
+      backgroundColor: bgColor,
       body: Stack(
-        fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: LuxuryCarDetailBackground()),
           CustomScrollView(
             slivers: [
               SliverAppBar(
-                expandedHeight: context.isTablet ? 420 : 310,
+                expandedHeight: context.isTablet ? 400 : 300,
                 pinned: true,
                 elevation: 0,
-                backgroundColor: Colors.transparent,
-                surfaceTintColor: Colors.transparent,
+                backgroundColor: surfaceColor,
+                foregroundColor: textPrimary,
                 leading: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: GlassIconButton(
-                    icon: Icons.arrow_back_rounded,
+                    icon: Icons.arrow_back_ios_new_rounded,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ),
@@ -286,8 +295,8 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                           SnackBar(
                             content: Text(
                               _isFavorite
-                                  ? 'Đã thêm vào yêu thích'
-                                  : 'Đã xóa khỏi yêu thích',
+                                  ? 'Đã thêm vào mục yêu thích'
+                                  : 'Đã xóa khỏi mục yêu thích',
                             ),
                             duration: const Duration(seconds: 1),
                             behavior: SnackBarBehavior.floating,
@@ -327,16 +336,15 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                             imageUrl: images[i],
                             fit: BoxFit.cover,
                             placeholder: (_, _) => Container(
-                              color: AppColors.primary.withValues(alpha: 0.08),
+                              color: AppColors.shimmerBase,
                               alignment: Alignment.center,
-                              child: const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation(AppColors.primary),
                               ),
                             ),
                             errorWidget: (context, error, stackTrace) => Container(
-                              color: AppColors.primary.withValues(alpha: 0.15),
+                              color: AppColors.primaryContainer,
                               child: const Icon(
                                 Icons.directions_car_filled_outlined,
                                 size: 80,
@@ -347,18 +355,12 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                         )
                       else
                         Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFF0F141B), Color(0xFF16202B)],
-                            ),
-                          ),
+                          color: AppColors.primaryContainer,
                           child: const Center(
                             child: Icon(
                               Icons.directions_car_filled_rounded,
-                              size: 96,
-                              color: Colors.white,
+                              size: 80,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
@@ -369,11 +371,11 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.black.withValues(alpha: 0.55),
+                                Colors.black.withValues(alpha: 0.4),
                                 Colors.transparent,
-                                Colors.black.withValues(alpha: 0.70),
+                                Colors.black.withValues(alpha: 0.5),
                               ],
-                              stops: const [0.0, 0.45, 1.0],
+                              stops: const [0.0, 0.5, 1.0],
                             ),
                           ),
                         ),
@@ -387,7 +389,6 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white12),
                             ),
                             child: Text(
                               '${_currentImage + 1}/${images.length}',
@@ -406,13 +407,13 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: context.isTablet ? 32 : 18,
-                    vertical: 18,
+                    horizontal: context.isTablet ? 32 : 20,
+                    vertical: 20,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Tên xe & Đánh giá
+                      // Tên xe & Giá tiền
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,11 +424,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                               children: [
                                 Text(
                                   car.name,
-                                  style: const TextStyle(
+                                  style: AppTypography.display.copyWith(
                                     fontSize: 22,
-                                    fontWeight: FontWeight.w900,
-                                    color: Colors.white,
-                                    letterSpacing: -0.5,
+                                    color: textPrimary,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -436,15 +435,14 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                       decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.15),
+                                        color: isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer,
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         car.vehicleType,
-                                        style: const TextStyle(
-                                          fontSize: 12,
+                                        style: AppTypography.caption.copyWith(
                                           fontWeight: FontWeight.w700,
-                                          color: AppColors.primary,
+                                          color: primaryColor,
                                         ),
                                       ),
                                     ),
@@ -453,10 +451,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                     const SizedBox(width: 3),
                                     Text(
                                       '${car.rating} (Đánh giá cao)',
-                                      style: const TextStyle(
-                                        fontSize: 12.5,
+                                      style: AppTypography.caption.copyWith(
+                                        color: textSecondary,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.white70,
                                       ),
                                     ),
                                   ],
@@ -469,18 +466,14 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                             children: [
                               Text(
                                 _formatPrice(car.pricePerDay),
-                                style: const TextStyle(
+                                style: AppTypography.priceLarge.copyWith(
                                   fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.primary,
+                                  color: primaryColor,
                                 ),
                               ),
-                              const Text(
+                              Text(
                                 '/ ngày',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white60,
-                                ),
+                                style: AppTypography.caption.copyWith(color: textSecondary),
                               ),
                             ],
                           ),
@@ -489,45 +482,41 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                       const SizedBox(height: 20),
 
                       // Chọn thời gian thuê xe
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.calendar_month_rounded, color: AppColors.primary, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Thời gian thuê xe',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w800,
+                      TapScale(
+                        onTap: () async {
+                          final picked = await _pickDateRange(context);
+                          if (picked != null) {
+                            setState(() => _selectedDateRange = picked);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: surfaceColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: borderColor),
+                            boxShadow: isDark ? null : AppColors.shadowSm,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_month_rounded, color: primaryColor, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Thời gian thuê xe',
+                                    style: AppTypography.titleMedium.copyWith(color: textPrimary),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            InkWell(
-                              onTap: () async {
-                                final picked = await _pickDateRange(context);
-                                if (picked != null) {
-                                  setState(() => _selectedDateRange = picked);
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.05),
+                                  color: surfaceSubtle,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                                  border: Border.all(color: borderColor),
                                 ),
                                 child: Row(
                                   children: [
@@ -536,19 +525,22 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                         _selectedDateRange != null
                                             ? _formatBookingRange(_selectedDateRange!)
                                             : 'Chạm để chọn ngày nhận & trả xe',
-                                        style: TextStyle(
-                                          color: _selectedDateRange != null ? Colors.white : Colors.white54,
-                                          fontWeight: _selectedDateRange != null ? FontWeight.w700 : FontWeight.normal,
-                                          fontSize: 13.5,
+                                        style: AppTypography.body.copyWith(
+                                          color: _selectedDateRange != null
+                                              ? textPrimary
+                                              : textMuted,
+                                          fontWeight: _selectedDateRange != null
+                                              ? FontWeight.w600
+                                              : FontWeight.normal,
                                         ),
                                       ),
                                     ),
-                                    const Icon(Icons.edit_calendar_rounded, color: AppColors.primary, size: 18),
+                                    Icon(Icons.edit_calendar_rounded, color: primaryColor, size: 18),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -579,7 +571,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                       ),
                       const SizedBox(height: 24),
                       const CarDetailTermsCard(),
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 110),
                     ],
                   ),
                 ),
@@ -587,7 +579,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
             ],
           ),
 
-          // Sticky Bottom Bar
+          // Sticky Bottom Dock
           Positioned(
             bottom: 0,
             left: 0,
@@ -595,56 +587,49 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
               decoration: BoxDecoration(
-                color: const Color(0xFF151A24),
-                border: const Border(top: BorderSide(color: Colors.white12)),
+                color: surfaceColor,
+                border: Border(top: BorderSide(color: borderColor, width: 0.8)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
-                    blurRadius: 16,
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                    blurRadius: 18,
                     offset: const Offset(0, -4),
                   ),
                 ],
               ),
-              child: Row(
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Tổng tạm tính',
-                        style: TextStyle(fontSize: 11.5, color: Colors.white54),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatPrice(_totalPrice),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
+              child: SafeArea(
+                top: false,
+                child: Row(
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tổng tạm tính',
+                          style: AppTypography.caption.copyWith(color: textSecondary),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatPrice(_totalPrice),
+                          style: AppTypography.priceLarge.copyWith(
+                            color: primaryColor,
+                            fontSize: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 20),
+                    Expanded(
+                      child: AppButton(
+                        text: 'Đặt xe ngay',
+                        height: 50,
                         onPressed: () => _handleBookingFlow(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: const Text(
-                          'Đặt xe ngay',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                        ),
+                        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

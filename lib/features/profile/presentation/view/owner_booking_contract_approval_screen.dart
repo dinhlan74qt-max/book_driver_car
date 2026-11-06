@@ -2,15 +2,19 @@ import 'dart:typed_data';
 
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
+import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
 import 'package:book_drive_car/features/profile/domain/entities/owner_booking_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/owner_booking_cubit.dart';
+import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_status_badge.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart' as pdf;
@@ -472,251 +476,411 @@ class _OwnerBookingContractApprovalScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F1E7),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-              child: Row(
-                children: [
-                  TapScale(
-                    onTap: _submitting
-                        ? null
-                        : () => Navigator.of(context).pop(),
-                    child: const Icon(
-                      Icons.arrow_back_rounded,
-                      size: 26,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                      children: [
-                        Expanded(
-                          flex: 6,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(18),
-                              child: Container(
-                                color: Colors.white,
-                                child: _contractPdfBytes != null
-                                    ? Stack(
-                                        children: [
-                                          PdfPreview(
-                                            build: (_) async =>
-                                                _contractPdfBytes!,
-                                            canChangePageFormat: false,
-                                            canChangeOrientation: false,
-                                            canDebug: false,
-                                            allowPrinting: false,
-                                            allowSharing: false,
-                                            pdfFileName:
-                                                'contract_${widget.booking.bookingCode}.pdf',
-                                          ),
-                                          if (_error != null)
-                                            Positioned(
-                                              left: 12,
-                                              right: 12,
-                                              top: 12,
-                                              child: Material(
-                                                color: Colors.amber.shade100,
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                child: Padding(
-                                                  padding: const EdgeInsets.all(
-                                                    12,
-                                                  ),
-                                                  child: Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons.info_outline,
-                                                        size: 18,
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                      Expanded(
-                                                        child: Text(
-                                                          _error!,
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 12,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      TextButton(
-                                                        onPressed: _submitting
-                                                            ? null
-                                                            : _init,
-                                                        child: const Text(
-                                                          'Tải lại',
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                        ],
-                                      )
-                                    : Center(
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(24),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Icon(
-                                                Icons.picture_as_pdf_outlined,
-                                                size: 44,
-                                              ),
-                                              const SizedBox(height: 12),
-                                              Text(
-                                                _error ??
-                                                    'Không tải được tài liệu PDF.',
-                                                textAlign: TextAlign.center,
-                                                style: const TextStyle(
-                                                  color: Colors.black87,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 12),
-                                              TextButton(
-                                                onPressed: _submitting
-                                                    ? null
-                                                    : _init,
-                                                child: const Text('Tải lại'),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Expanded(
-                          flex: 3,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                            child: Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: Colors.black,
-                                  width: 1,
-                                ),
-                              ),
-                              child: Column(
-                                children: [
-                                  Expanded(
-                                    child: Signature(
-                                      controller: _signatureController,
-                                      backgroundColor: Colors.white,
-                                    ),
-                                  ),
-                                  Container(
-                                    width: double.infinity,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    decoration: const BoxDecoration(
-                                      border: Border(
-                                        top: BorderSide(
-                                          color: Colors.black12,
-                                          width: 1,
-                                        ),
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Expanded(
-                                          child: Text(
-                                            'Ký xác nhận của chủ xe (Bên A).',
-                                            style: TextStyle(fontSize: 11.5),
-                                          ),
-                                        ),
-                                        TextButton(
-                                          onPressed: _submitting
-                                              ? null
-                                              : _signatureController.clear,
-                                          child: const Text('Xóa chữ ký'),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Text(
-                'Ký xong rồi bấm "Duyệt đơn" để gửi trạng thái xác nhận kèm file PDF lên server.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.black.withValues(alpha: 0.65),
+      backgroundColor: AppColors.surfacePrimary,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfacePrimary,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: TapScale(
+              onTap: _submitting ? null : () => Navigator.of(context).pop(),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceSecondary,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: 20,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Duyệt & Ký Hợp Đồng',
+              style: AppTypography.headingMd.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '${widget.booking.vehicleName} • #${widget.booking.bookingCode}',
+              style: AppTypography.bodySmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.primary),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Contract PDF Card
+                          Container(
+                            height: 380,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceSecondary,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Column(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: const BoxDecoration(
+                                    border: Border(
+                                      bottom: BorderSide(
+                                        color: AppColors.borderLight,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.description_outlined,
+                                        size: 20,
+                                        color: AppColors.primary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Văn bản hợp đồng thuê',
+                                          style: AppTypography.labelLarge.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      if (_contractPdfBytes != null)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 3,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            'PDF Sẵn sàng',
+                                            style: AppTypography.caption.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _contractPdfBytes != null
+                                      ? Stack(
+                                          children: [
+                                            PdfPreview(
+                                              build: (_) async =>
+                                                  _contractPdfBytes!,
+                                              canChangePageFormat: false,
+                                              canChangeOrientation: false,
+                                              canDebug: false,
+                                              allowPrinting: false,
+                                              allowSharing: false,
+                                              pdfFileName:
+                                                  'contract_${widget.booking.bookingCode}.pdf',
+                                            ),
+                                            if (_error != null)
+                                              Positioned(
+                                                left: 12,
+                                                right: 12,
+                                                top: 12,
+                                                child: Material(
+                                                  color: Colors.amber.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  elevation: 2,
+                                                  child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(12),
+                                                    child: Row(
+                                                      children: [
+                                                        const Icon(
+                                                          Icons.info_outline,
+                                                          size: 18,
+                                                          color: Colors.amber,
+                                                        ),
+                                                        const SizedBox(width: 8),
+                                                        Expanded(
+                                                          child: Text(
+                                                            _error!,
+                                                            style: AppTypography
+                                                                .bodySmall
+                                                                .copyWith(
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                        TextButton(
+                                                          onPressed: _submitting
+                                                              ? null
+                                                              : _init,
+                                                          child: const Text(
+                                                            'Tải lại',
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                          ],
+                                        )
+                                      : Center(
+                                          child: Padding(
+                                            padding: const EdgeInsets.all(24),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(
+                                                  Icons.picture_as_pdf_outlined,
+                                                  size: 44,
+                                                  color: AppColors.textTertiary,
+                                                ),
+                                                const SizedBox(height: 12),
+                                                Text(
+                                                  _error ??
+                                                      'Không tải được tài liệu PDF.',
+                                                  textAlign: TextAlign.center,
+                                                  style: AppTypography.bodySmall
+                                                      .copyWith(
+                                                    color: AppColors.textSecondary,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 12),
+                                                TextButton.icon(
+                                                  onPressed: _submitting
+                                                      ? null
+                                                      : _init,
+                                                  icon: const Icon(
+                                                    Icons.refresh_rounded,
+                                                    size: 18,
+                                                  ),
+                                                  label: const Text('Thử lại'),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Signature Card
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceSecondary,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.borderLight),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.draw_rounded,
+                                          size: 20,
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Chữ ký chủ xe (Bên A)',
+                                          style: AppTypography.labelLarge
+                                              .copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    TapScale(
+                                      onTap: _submitting
+                                          ? null
+                                          : _signatureController.clear,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surfacePrimary,
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: AppColors.borderLight,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.refresh_rounded,
+                                              size: 15,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Ký lại',
+                                              style: AppTypography.caption
+                                                  .copyWith(
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Ký vào ô bên dưới để xác nhận duyệt hợp đồng và đồng ý bàn giao xe.',
+                                  style: AppTypography.bodySmall.copyWith(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  height: 180,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: AppColors.borderLight,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Stack(
+                                    children: [
+                                      Positioned(
+                                        left: 20,
+                                        right: 20,
+                                        bottom: 36,
+                                        child: Container(
+                                          height: 1,
+                                          color: Colors.grey.shade300,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: 16,
+                                        bottom: 12,
+                                        child: Text(
+                                          'Ký tại đây',
+                                          style: AppTypography.caption.copyWith(
+                                            color: Colors.grey.shade400,
+                                            fontStyle: FontStyle.italic,
+                                          ),
+                                        ),
+                                      ),
+                                      Signature(
+                                        controller: _signatureController,
+                                        backgroundColor: Colors.transparent,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+
+            // Sticky Bottom Dock
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: BoxDecoration(
+                color: AppColors.surfacePrimary,
+                border: const Border(
+                  top: BorderSide(color: AppColors.borderLight),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    flex: 1,
+                    child: AppButton(
+                      text: 'Hủy',
+                      variant: AppButtonVariant.outline,
+                      height: 48,
                       onPressed: _submitting
                           ? null
                           : () => Navigator.of(context).pop(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.black,
-                        side: const BorderSide(color: Colors.black26),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text('Hủy'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: _submitting ? null : _approve,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: Colors.black26,
-                        disabledForegroundColor: Colors.white70,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: _submitting
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Duyệt đơn',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
+                    flex: 2,
+                    child: AppButton(
+                      text: 'Xác nhận & Duyệt đơn',
+                      variant: AppButtonVariant.primary,
+                      height: 48,
+                      icon: Icons.verified_rounded,
+                      isLoading: _submitting,
+                      onPressed: _approve,
                     ),
                   ),
                 ],
