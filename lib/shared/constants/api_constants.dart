@@ -2,7 +2,7 @@ class ApiConstants {
   static const String baseUrl = _devicePhysical;
 
   // Thiết bị thật (đổi theo IP LAN máy tính của bạn, dùng ipconfig để xem)
-  static const String _devicePhysical = "http://nsopro.site";
+  static const String _devicePhysical = "http://thuexetulai.click:8080";
 
   // Endpoint cụ thể
   static const String sendOtp = "$baseUrl/api/auth/register/send-otp";
