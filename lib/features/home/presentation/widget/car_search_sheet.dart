@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:book_drive_car/core/helper/location_helper.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/presentation/widget/city_search_suggestions.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -19,6 +21,9 @@ class CarSearchFilter {
   final String? model;
   final int? minPrice;
   final int? maxPrice;
+  final int? minSeats;
+  final int? maxSeats;
+  final String? city;
 
   const CarSearchFilter({
     this.locationMode = LocationSearchMode.none,
@@ -30,6 +35,9 @@ class CarSearchFilter {
     this.model,
     this.minPrice,
     this.maxPrice,
+    this.minSeats,
+    this.maxSeats,
+    this.city,
   });
 
   int get activeFilterCount {
@@ -39,6 +47,7 @@ class CarSearchFilter {
     if (brand != null && brand != kAllOption) count++;
     if (model != null && model != kAllOption) count++;
     if (minPrice != null || maxPrice != null) count++;
+    if (minSeats != null || maxSeats != null) count++;
     return count;
   }
 
@@ -52,6 +61,9 @@ class CarSearchFilter {
     String? model,
     int? minPrice,
     int? maxPrice,
+    int? minSeats,
+    int? maxSeats,
+    String? city,
   }) {
     return CarSearchFilter(
       locationMode: locationMode ?? this.locationMode,
@@ -63,6 +75,9 @@ class CarSearchFilter {
       model: model ?? this.model,
       minPrice: minPrice ?? this.minPrice,
       maxPrice: maxPrice ?? this.maxPrice,
+      minSeats: minSeats ?? this.minSeats,
+      maxSeats: maxSeats ?? this.maxSeats,
+      city: city ?? this.city,
     );
   }
 }
@@ -253,40 +268,80 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        throw Exception('Vui lòng bật dịch vụ định vị (GPS) trên thiết bị.');
+        if (mounted) {
+          AppToast.show(
+            context,
+            message: 'Vui lòng bật dịch vụ định vị (GPS) trên thiết bị',
+            type: AppToastType.warning,
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
       }
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          throw Exception('Bạn đã từ chối quyền truy cập vị trí.');
+          if (mounted) {
+            AppToast.show(
+              context,
+              message: 'Bạn cần cấp quyền để sử dụng vị trí',
+              type: AppToastType.warning,
+            );
+          }
+          setState(() => _isLocating = false);
+          return;
         }
       }
+
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Quyền vị trí bị chặn. Hãy cấp quyền trong Cài đặt.');
+        if (mounted) {
+          AppToast.show(
+            context,
+            message:
+                'Bạn cần cấp quyền để sử dụng vị trí. Vui lòng mở Cài đặt ứng dụng để cấp quyền.',
+            type: AppToastType.warning,
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
       }
 
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
         ),
       );
+
+      final cityName = await LocationHelper.getProvinceFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (!mounted) return;
 
       setState(() {
         _locationMode = LocationSearchMode.currentLocation;
         _latitude = position.latitude;
         _longitude = position.longitude;
-        _locationController.text = 'Vị trí hiện tại của bạn';
+        _locationController.text = cityName;
         _isLocating = false;
         _suggestions = [];
       });
       _locationFocusNode.unfocus();
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLocating = false;
         _locationError = e.toString().replaceFirst('Exception: ', '');
       });
+      AppToast.show(
+        context,
+        message: 'Không thể lấy vị trí hiện tại. Vui lòng thử lại.',
+        type: AppToastType.error,
+      );
     }
   }
 
@@ -452,6 +507,21 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
 
   void _applyFilter() {
     final text = _locationController.text.trim();
+    int? minSeats;
+    int? maxSeats;
+    if (_selectedType != null && _selectedType != kAllOption) {
+      if (_selectedType!.contains('4 chỗ')) {
+        minSeats = 4;
+        maxSeats = 4;
+      } else if (_selectedType!.contains('5 chỗ')) {
+        minSeats = 5;
+        maxSeats = 5;
+      } else if (_selectedType!.contains('7 chỗ')) {
+        minSeats = 7;
+        maxSeats = 7;
+      }
+    }
+
     Navigator.of(context).pop(
       CarSearchFilter(
         locationMode: _locationMode,
@@ -463,6 +533,9 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
         model: _selectedModel,
         minPrice: _minPrice,
         maxPrice: _maxPrice,
+        minSeats: minSeats,
+        maxSeats: maxSeats,
+        city: text.isEmpty ? null : text,
       ),
     );
   }
@@ -852,25 +925,38 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
               onChanged: _onLocationTextChanged,
               onSubmitted: (_) => _confirmTypedAddress(),
               textInputAction: TextInputAction.search,
-              readOnly: isCurrentLocation,
+              readOnly: false,
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF0F172A),
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
                 hintText: 'Nhập tỉnh/thành hoặc địa chỉ...',
-                hintStyle: TextStyle(
+                hintStyle: const TextStyle(
                   fontSize: 13.5,
                   fontWeight: FontWeight.w400,
                   color: Color(0xFF94A3B8),
                 ),
                 border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
+                contentPadding: const EdgeInsets.symmetric(
                   vertical: 12,
                   horizontal: 12,
                 ),
+                suffixIcon: _locationController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(
+                          Icons.clear_rounded,
+                          size: 18,
+                          color: Color(0xFF94A3B8),
+                        ),
+                        onPressed: () {
+                          _clearLocation();
+                          setState(() {});
+                        },
+                      )
+                    : null,
               ),
             ),
           ),
@@ -906,17 +992,6 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
                           ? Colors.white
                           : AppColors.primary,
                     ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Gần tôi',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isCurrentLocation
-                          ? Colors.white
-                          : AppColors.primary,
-                    ),
-                  ),
                 ],
               ),
             ),

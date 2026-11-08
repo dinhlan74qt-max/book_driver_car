@@ -9,6 +9,7 @@ class ApiConstants {
   static const String verifyOtp = "$baseUrl/api/auth/register/verify-otp";
   static const String login = "$baseUrl/api/auth/login";
   static const String vehicles = "$baseUrl/api/vehicles";
+  static const String searchVehicles = "$baseUrl/api/vehicles/search";
   static const String myVehicles = "$baseUrl/api/vehicles/my-vehicles";
   static const String myWallet = "$baseUrl/api/my-wallet";
   static const String deposits = "$baseUrl/api/my-wallet/deposit";

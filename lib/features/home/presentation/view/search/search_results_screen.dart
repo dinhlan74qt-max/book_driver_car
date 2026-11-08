@@ -25,11 +25,6 @@ Future<void> _runSearchForFilter(
   HomeCubit cubit,
   CarSearchFilter filter,
 ) async {
-  if (_isCityFilter(filter)) {
-    await cubit.searchCarsByCity(filter.locationLabel!.trim());
-    return;
-  }
-
   await cubit.searchCars(
     locationMode: filter.locationMode.toString(),
     locationLabel: filter.locationLabel,
@@ -40,6 +35,9 @@ Future<void> _runSearchForFilter(
     model: filter.model,
     minPrice: filter.minPrice,
     maxPrice: filter.maxPrice,
+    minSeats: filter.minSeats,
+    maxSeats: filter.maxSeats,
+    city: filter.city ?? filter.locationLabel,
   );
 }
 

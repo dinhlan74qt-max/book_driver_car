@@ -30,20 +30,56 @@ class HomeRepositoryImpl implements HomeRepository {
     String? model,
     int? minPrice,
     int? maxPrice,
+    int? minSeats,
+    int? maxSeats,
+    String? city,
   }) async {
     final params = <String, dynamic>{};
-    if (brand != null && brand.isNotEmpty) params['brand'] = brand;
-    if (vehicleType != null && vehicleType.isNotEmpty) params['vehicleType'] = vehicleType;
-    if (model != null && model.isNotEmpty) params['model'] = model;
-    if (locationLabel != null && locationLabel.trim().isNotEmpty) {
-      params['city'] = locationLabel.trim();
+
+    final effectiveCity = (city != null && city.trim().isNotEmpty)
+        ? city.trim()
+        : (locationLabel != null && locationLabel.trim().isNotEmpty
+            ? locationLabel.trim()
+            : null);
+
+    if (effectiveCity != null &&
+        effectiveCity != 'Tất cả' &&
+        !effectiveCity.contains('Vị trí hiện tại')) {
+      params['city'] = effectiveCity;
     }
-    if (minPrice != null) params['minPrice'] = minPrice;
-    if (maxPrice != null) params['maxPrice'] = maxPrice;
-    if (latitude != null && longitude != null) {
-      params['lat'] = latitude.toString();
-      params['lng'] = longitude.toString();
+
+    if (brand != null && brand.isNotEmpty && brand != 'Tất cả') {
+      params['brand'] = brand.trim();
     }
+
+    if (model != null && model.isNotEmpty && model != 'Tất cả') {
+      params['model'] = model.trim();
+    }
+
+    int? effectiveMinSeats = minSeats;
+    int? effectiveMaxSeats = maxSeats;
+
+    if (effectiveMinSeats == null &&
+        effectiveMaxSeats == null &&
+        vehicleType != null) {
+      if (vehicleType.contains('4 chỗ')) {
+        effectiveMinSeats = 4;
+        effectiveMaxSeats = 4;
+      } else if (vehicleType.contains('5 chỗ')) {
+        effectiveMinSeats = 5;
+        effectiveMaxSeats = 5;
+      } else if (vehicleType.contains('7 chỗ')) {
+        effectiveMinSeats = 7;
+        effectiveMaxSeats = 7;
+      }
+    }
+
+    if (effectiveMinSeats != null) params['minSeats'] = effectiveMinSeats;
+    if (effectiveMaxSeats != null) params['maxSeats'] = effectiveMaxSeats;
+
+    if (minPrice != null && minPrice > 0) params['minPrice'] = minPrice;
+    if (maxPrice != null && maxPrice > 0) params['maxPrice'] = maxPrice;
+
     return await remoteDataSource.searchCars(params);
   }
 

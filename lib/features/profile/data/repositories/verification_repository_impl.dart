@@ -45,6 +45,14 @@ class VerificationRepositoryImpl implements VerificationRepository {
     return remoteDataSource.submitVerification(data);
   }
 
+  bool _isTrueOrOne(dynamic val) {
+    if (val == null) return false;
+    if (val is bool) return val;
+    if (val is num) return val == 1;
+    final s = val.toString().trim().toLowerCase();
+    return s == '1' || s == 'true' || s == 'verified' || s == 'approved';
+  }
+
   @override
   Future<VerificationStatus?> fetchRemoteVerificationStatus() async {
     try {
@@ -63,16 +71,30 @@ class VerificationRepositoryImpl implements VerificationRepository {
         if (data is bool) {
           return data ? VerificationStatus.verified : null;
         }
+        if (data is num) {
+          if (data == 1) return VerificationStatus.verified;
+          if (data == 0) return VerificationStatus.unverified;
+        }
         if (data is Map) {
-          if (data['isVerified'] == true || data['isCccdVerified'] == true) {
+          if (_isTrueOrOne(data['isVerified']) ||
+              _isTrueOrOne(data['isCccdVerified']) ||
+              _isTrueOrOne(data['verified']) ||
+              _isTrueOrOne(data['cccdVerified'])) {
             return VerificationStatus.verified;
           }
           final inner = data['data'];
           if (inner is bool) {
             return inner ? VerificationStatus.verified : null;
           }
+          if (inner is num) {
+            if (inner == 1) return VerificationStatus.verified;
+            if (inner == 0) return VerificationStatus.unverified;
+          }
           if (inner is Map) {
-            if (inner['isVerified'] == true || inner['isCccdVerified'] == true) {
+            if (_isTrueOrOne(inner['isVerified']) ||
+                _isTrueOrOne(inner['isCccdVerified']) ||
+                _isTrueOrOne(inner['verified']) ||
+                _isTrueOrOne(inner['cccdVerified'])) {
               return VerificationStatus.verified;
             }
             final innerStatus = inner['status'] ?? inner['verificationStatus'];
@@ -84,7 +106,21 @@ class VerificationRepositoryImpl implements VerificationRepository {
           if (rawStatus != null && rawStatus is! int) {
             return VerificationStatus.fromString(rawStatus.toString());
           }
+          if (rawStatus is int && rawStatus == 1) {
+            return VerificationStatus.verified;
+          }
         } else if (data is String) {
+          final trimmed = data.trim().toLowerCase();
+          if (trimmed.startsWith('<!doctype') ||
+              trimmed.startsWith('<html') ||
+              trimmed.contains('<form')) {
+            debugPrint(
+              '[fetchRemoteVerificationStatus] Server trả về HTML login page (token hết hạn hoặc redirect), bỏ qua không ghi đè trạng thái.',
+            );
+            return null;
+          }
+          if (trimmed == '1') return VerificationStatus.verified;
+          if (trimmed == '0') return VerificationStatus.unverified;
           return VerificationStatus.fromString(data);
         }
       }

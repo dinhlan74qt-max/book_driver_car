@@ -14,6 +14,9 @@ abstract class HomeRepository {
     String? model,
     int? minPrice,
     int? maxPrice,
+    int? minSeats,
+    int? maxSeats,
+    String? city,
   });
 
   Future<List<CarEntity>> searchCarsByCity(String cityName);
