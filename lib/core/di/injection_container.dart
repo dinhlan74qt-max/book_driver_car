@@ -4,6 +4,7 @@ import 'package:book_drive_car/features/ai_assistant/data/repositories/ai_reposi
 import 'package:book_drive_car/features/ai_assistant/domain/repositories/ai_repository.dart';
 import 'package:book_drive_car/features/ai_assistant/domain/usecases/send_ai_chat_message.dart';
 import 'package:book_drive_car/features/ai_assistant/presentation/bloc/ai_assistant_bloc.dart';
+import 'package:book_drive_car/features/favorite/data/datasources/favorite_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_remote_data_source.dart';
@@ -28,6 +29,7 @@ import 'package:book_drive_car/features/rental/data/repositories/rental_reposito
 import 'package:book_drive_car/features/rental/domain/repositories/rental_repository.dart';
 import 'package:book_drive_car/features/rental/domain/usecases/cancel_booking.dart';
 import 'package:book_drive_car/features/rental/domain/usecases/get_renter_bookings.dart';
+import 'package:book_drive_car/features/profile/data/datasources/user_security_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/vehicle_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/repositories/vehicle_repository_impl.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/vehicle_repository.dart';
@@ -181,6 +183,12 @@ Future<void> configureDependencies() async {
     sl.registerFactory<HomeCubit>(() => HomeCubit(sl<HomeRepository>()));
   }
 
+  if (!sl.isRegistered<UserSecurityRemoteDataSource>()) {
+    sl.registerLazySingleton<UserSecurityRemoteDataSource>(
+      () => UserSecurityRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
+    );
+  }
+
   // Rental feature
   if (!sl.isRegistered<RentalRemoteDataSource>()) {
     sl.registerLazySingleton<RentalRemoteDataSource>(
@@ -278,6 +286,13 @@ Future<void> configureDependencies() async {
   if (!sl.isRegistered<AiAssistantBloc>()) {
     sl.registerFactory<AiAssistantBloc>(
       () => AiAssistantBloc(sl<SendAiChatMessage>()),
+    );
+  }
+
+  // Favorite Feature
+  if (!sl.isRegistered<FavoriteRemoteDataSource>()) {
+    sl.registerLazySingleton<FavoriteRemoteDataSource>(
+      () => FavoriteRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
     );
   }
 }

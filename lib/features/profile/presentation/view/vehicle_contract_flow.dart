@@ -63,7 +63,10 @@ class _VehicleContractScreenState extends State<VehicleContractScreen> {
     ].where((value) => value.trim().isNotEmpty).join(', ');
   }
 
+  static pw.ThemeData? _cachedPdfTheme;
+
   Future<pw.ThemeData> _loadPdfTheme() async {
+    if (_cachedPdfTheme != null) return _cachedPdfTheme!;
     final regularFont = pw.Font.ttf(
       (await rootBundle.load('assets/fonts/arialuni.ttf')).buffer.asByteData(),
     );
@@ -71,7 +74,8 @@ class _VehicleContractScreenState extends State<VehicleContractScreen> {
       (await rootBundle.load('assets/fonts/arialbd.ttf')).buffer.asByteData(),
     );
 
-    return pw.ThemeData.withFont(base: regularFont, bold: boldFont);
+    _cachedPdfTheme = pw.ThemeData.withFont(base: regularFont, bold: boldFont);
+    return _cachedPdfTheme!;
   }
 
   Future<Uint8List> _buildSignedPdf(Uint8List signatureBytes) async {
@@ -912,7 +916,10 @@ class _VehicleSignatureScreenState extends State<VehicleSignatureScreen> {
     ].where((value) => value.trim().isNotEmpty).join(', ');
   }
 
+  static pw.ThemeData? _cachedPdfTheme;
+
   Future<pw.ThemeData> _loadPdfTheme() async {
+    if (_cachedPdfTheme != null) return _cachedPdfTheme!;
     final regularFont = pw.Font.ttf(
       (await rootBundle.load('assets/fonts/arialuni.ttf')).buffer.asByteData(),
     );
@@ -920,7 +927,8 @@ class _VehicleSignatureScreenState extends State<VehicleSignatureScreen> {
       (await rootBundle.load('assets/fonts/arialbd.ttf')).buffer.asByteData(),
     );
 
-    return pw.ThemeData.withFont(base: regularFont, bold: boldFont);
+    _cachedPdfTheme = pw.ThemeData.withFont(base: regularFont, bold: boldFont);
+    return _cachedPdfTheme!;
   }
 
   Future<Uint8List> _buildSignedPdf(Uint8List signatureBytes) async {

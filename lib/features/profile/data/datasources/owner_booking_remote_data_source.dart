@@ -108,6 +108,9 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
     final endpoints = <String>[
       '${ApiConstants.baseUrl}/api/booking/update-status',
       '${ApiConstants.baseUrl}/api/bookings/update-status',
+      'http://192.168.1.52:8080/api/booking/update-status',
+      'http://10.0.2.2:8080/api/booking/update-status',
+      'http://localhost:8080/api/booking/update-status',
     ];
 
     Object? lastError;
@@ -149,6 +152,9 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
           data: requestData,
           options: Options(
             headers: {if (authHeader != null) 'Authorization': authHeader},
+            connectTimeout: const Duration(seconds: 10),
+            sendTimeout: const Duration(seconds: 20),
+            receiveTimeout: const Duration(seconds: 20),
             validateStatus: (_) => true,
           ),
         );
@@ -170,6 +176,49 @@ class OwnerBookingRemoteDataSourceImpl implements OwnerBookingRemoteDataSource {
           throw Exception(
             'Cập nhật thành công nhưng dữ liệu phản hồi không hợp lệ',
           );
+        }
+
+        // Nếu multipart không được chấp nhận, thử fallback bằng JSON
+        if (response.statusCode == 404 ||
+            response.statusCode == 405 ||
+            response.statusCode == 415) {
+          try {
+            debugPrint(
+              '[OwnerBookingRemoteDataSource] updateBookingStatus trying JSON fallback on $endpoint',
+            );
+            final jsonResponse = await dio.post(
+              endpoint,
+              data: {
+                'id': parsedId,
+                'status': status,
+                if (reason != null && reason.trim().isNotEmpty)
+                  'reason': reason.trim(),
+              },
+              options: Options(
+                headers: {
+                  if (authHeader != null) 'Authorization': authHeader,
+                  'Content-Type': 'application/json',
+                },
+                connectTimeout: const Duration(seconds: 8),
+                sendTimeout: const Duration(seconds: 8),
+                receiveTimeout: const Duration(seconds: 8),
+                validateStatus: (_) => true,
+              ),
+            );
+
+            if (jsonResponse.statusCode == 200 ||
+                jsonResponse.statusCode == 201) {
+              final data = jsonResponse.data;
+              final payload = data is Map<String, dynamic>
+                  ? data['data'] ?? data
+                  : data;
+              if (payload is Map<String, dynamic>) {
+                return OwnerBookingModel.fromJson(payload);
+              }
+            }
+          } catch (e) {
+            debugPrint('[OwnerBookingRemoteDataSource] JSON fallback error: $e');
+          }
         }
 
         lastError = _buildFetchException(response.data, response.statusCode);
