@@ -50,6 +50,14 @@ class RentalRemoteDataSourceImpl implements RentalRemoteDataSource {
 
       final responseData = response.data;
       if (response.statusCode == 200) {
+        if (responseData is String) {
+          final trimmed = responseData.trim().toLowerCase();
+          if (trimmed.startsWith('<!doctype') ||
+              trimmed.startsWith('<html') ||
+              trimmed.contains('<form')) {
+            throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+          }
+        }
         final rawList = responseData is Map
             ? (responseData as Map)['data']
             : responseData;

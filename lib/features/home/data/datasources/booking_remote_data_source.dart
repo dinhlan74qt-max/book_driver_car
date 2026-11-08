@@ -53,17 +53,26 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
     return fallback;
   }
 
+  bool _isTrueOrOne(dynamic val) {
+    if (val == null) return false;
+    if (val is bool) return val;
+    if (val is num) return val == 1;
+    final s = val.toString().trim().toLowerCase();
+    return s == '1' || s == 'true' || s == 'verified' || s == 'approved';
+  }
+
   VerifiedUserEntity _parseVerifiedUser(dynamic data) {
     if (data is Map<String, dynamic>) {
       final addressData = data['address'];
-      final isVerifiedRaw = data['isCccdVerified'];
-      final isVerified = isVerifiedRaw is bool
-          ? isVerifiedRaw
-          : isVerifiedRaw is String
-          ? isVerifiedRaw.trim().toLowerCase() == 'true'
-          : throw Exception('Server chưa trả về isCccdVerified trong data');
+      final isVerifiedRaw = data['isCccdVerified'] ??
+          data['isVerified'] ??
+          data['cccdVerified'] ??
+          data['verified'];
+      final isVerified = _isTrueOrOne(isVerifiedRaw);
       return VerifiedUserEntity(
-        fullname: data['fullname']?.toString() ?? '',
+        fullname: data['fullname']?.toString() ??
+            data['fullName']?.toString() ??
+            '',
         email: data['email']?.toString() ?? '',
         phone: data['phone']?.toString() ?? '',
         cccd: data['cccd']?.toString(),
@@ -181,6 +190,14 @@ class BookingRemoteDataSourceImpl implements BookingRemoteDataSource {
       '[BookingRemoteDataSource][checkVerified] HTTP ${response.statusCode} body=$data',
     );
     if (response.statusCode == 200) {
+      if (data is String) {
+        final trimmed = data.trim().toLowerCase();
+        if (trimmed.startsWith('<!doctype') ||
+            trimmed.startsWith('<html') ||
+            trimmed.contains('<form')) {
+          throw Exception('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+        }
+      }
       final rawData = data is Map<String, dynamic>
           ? data['data'] ?? data
           : data;

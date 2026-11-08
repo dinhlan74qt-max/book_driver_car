@@ -63,7 +63,10 @@ Future<void> configureDependencies() async {
           connectTimeout: const Duration(seconds: 60),
           receiveTimeout: const Duration(seconds: 120),
           sendTimeout: const Duration(seconds: 60),
-          headers: const {'Accept': 'application/json'},
+          headers: const {
+            'Accept': 'application/json, text/plain, */*',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
         ),
       ),
     );

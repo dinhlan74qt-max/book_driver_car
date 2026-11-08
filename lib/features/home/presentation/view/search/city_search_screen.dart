@@ -1,3 +1,4 @@
+import 'package:book_drive_car/core/helper/location_helper.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/features/home/presentation/view/search/city_cars_result_screen.dart';
@@ -6,6 +7,7 @@ import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
 class CitySearchScreen extends StatefulWidget {
   const CitySearchScreen({super.key});
@@ -17,6 +19,7 @@ class CitySearchScreen extends StatefulWidget {
 class _CitySearchScreenState extends State<CitySearchScreen> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  bool _isLocating = false;
 
   final List<String> _popularCities = const [
     'Hà Nội',
@@ -36,6 +39,79 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() => _isLocating = true);
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          AppToast.show(
+            context,
+            message: 'Vui lòng bật dịch vụ định vị (GPS) trên thiết bị',
+            type: AppToastType.warning,
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            AppToast.show(
+              context,
+              message: 'Bạn cần cấp quyền để sử dụng vị trí',
+              type: AppToastType.warning,
+            );
+          }
+          setState(() => _isLocating = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          AppToast.show(
+            context,
+            message: 'Bạn cần cấp quyền để sử dụng vị trí. Vui lòng mở Cài đặt ứng dụng để cấp quyền.',
+            type: AppToastType.warning,
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+
+      final cityName = await LocationHelper.getProvinceFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (!mounted) return;
+
+      _selectCity(cityName);
+      setState(() => _isLocating = false);
+
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLocating = false);
+      AppToast.show(
+        context,
+        message: 'Không thể lấy vị trí hiện tại. Vui lòng thử lại.',
+        type: AppToastType.error,
+      );
+    }
   }
 
   void _selectCity(String city) {
@@ -125,39 +201,74 @@ class _CitySearchScreenState extends State<CitySearchScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Column(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: surfaceSecondary,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: _focusNode.hasFocus ? primaryColor : borderColor,
-                        width: 1.2,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: surfaceSecondary,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _focusNode.hasFocus ? primaryColor : borderColor,
+                              width: 1.2,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            onChanged: (_) => setState(() {}),
+                            textInputAction: TextInputAction.search,
+                            onSubmitted: (_) => _search(),
+                            style: AppTypography.bodyLarge.copyWith(color: textPrimary),
+                            decoration: InputDecoration(
+                              border: InputBorder.none,
+                              hintText: 'Nhập tỉnh/thành phố (Hà Nội, Đà Nẵng...)',
+                              hintStyle: AppTypography.body.copyWith(color: textMuted),
+                              prefixIcon: Icon(Icons.search_rounded, color: primaryColor),
+                              suffixIcon: query.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(Icons.clear_rounded, size: 18, color: textMuted),
+                                      onPressed: () {
+                                        _controller.clear();
+                                        setState(() {});
+                                      },
+                                    )
+                                  : null,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      onChanged: (_) => setState(() {}),
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _search(),
-                      style: AppTypography.bodyLarge.copyWith(color: textPrimary),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: 'Nhập tỉnh/thành phố (Hà Nội, Đà Nẵng...)',
-                        hintStyle: AppTypography.body.copyWith(color: textMuted),
-                        prefixIcon: Icon(Icons.search_rounded, color: primaryColor),
-                        suffixIcon: query.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(Icons.clear_rounded, size: 18, color: textMuted),
-                                onPressed: () {
-                                  _controller.clear();
-                                  setState(() {});
-                                },
-                              )
-                            : null,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      const SizedBox(width: 8),
+                      TapScale(
+                        onTap: _isLocating ? null : _useCurrentLocation,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: primaryColor.withValues(alpha: 0.3),
+                              width: 1.2,
+                            ),
+                          ),
+                          child: _isLocating
+                              ? SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: primaryColor,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.my_location_rounded,
+                                  size: 20,
+                                  color: primaryColor,
+                                ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: 12),
                   AppButton(

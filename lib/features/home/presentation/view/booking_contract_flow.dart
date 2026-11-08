@@ -951,24 +951,24 @@ class _BookingContractScreenState extends State<BookingContractScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.draw_rounded,
-                                          size: 20,
-                                          color: AppColors.primary,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Chữ ký Người thuê (Bên B)',
-                                          style: AppTypography.labelLarge.copyWith(
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ],
+                                    const Icon(
+                                      Icons.draw_rounded,
+                                      size: 20,
+                                      color: AppColors.primary,
                                     ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Chữ ký Người thuê (Bên B)',
+                                        style: AppTypography.labelLarge.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     TapScale(
                                       onTap: _isSubmitting
                                           ? null
