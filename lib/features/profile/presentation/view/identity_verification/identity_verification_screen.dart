@@ -29,6 +29,7 @@ class IdentityVerificationScreen extends StatefulWidget {
 class _IdentityVerificationScreenState extends State<IdentityVerificationScreen> {
   int _currentStep = 0;
   bool _isSubmitting = false;
+  VerificationData? _data;
 
   // Controllers - Step 1: Basic Info
   late final TextEditingController _fullNameController;
@@ -70,6 +71,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   void initState() {
     super.initState();
     final d = widget.initialData;
+    _data = d;
 
     _fullNameController = TextEditingController(text: d?.fullName ?? '');
     _dobController = TextEditingController(text: d?.dob ?? '');
@@ -111,6 +113,26 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     if (_licenseExpiryDateController.text.isNotEmpty) {
       _validateLicenseExpiry(_licenseExpiryDateController.text);
     }
+    _syncKyc();
+  }
+
+  Future<void> _syncKyc() async {
+    try {
+      final synced = await sl<VerificationRepository>().syncVerification();
+      if (!mounted) return;
+      setState(() {
+        _data = synced;
+        if (synced.fullName?.isNotEmpty == true && _fullNameController.text.isEmpty) {
+          _fullNameController.text = synced.fullName!;
+        }
+        if (synced.cccdNumber?.isNotEmpty == true && _cccdController.text.isEmpty) {
+          _cccdController.text = synced.cccdNumber!;
+        }
+        if (synced.address?.isNotEmpty == true && _addressController.text.isEmpty) {
+          _addressController.text = synced.address!;
+        }
+      });
+    } catch (_) {}
   }
 
   void _onFieldChanged() {
@@ -178,7 +200,13 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     }
   }
 
+  bool get _isReadOnly {
+    final s = _data?.status ?? widget.initialData?.status;
+    return s == VerificationStatus.pending || s == VerificationStatus.verified;
+  }
+
   bool _isStepValid(int step) {
+    if (_isReadOnly) return true;
     switch (step) {
       case 0:
         return _fullNameController.text.trim().isNotEmpty &&
@@ -211,6 +239,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   }
 
   Future<void> _selectDate(TextEditingController controller, {bool isDob = false}) async {
+    if (_isReadOnly) return;
     final now = DateTime.now();
     final initialDate = isDob ? DateTime(2000, 1, 1) : now;
     final firstDate = isDob ? DateTime(1940) : DateTime(2000);
@@ -232,6 +261,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
   }
 
   Future<void> _chooseImage(Function(String path) onSelected) async {
+    if (_isReadOnly) return;
     await VerificationImagePickerBox.showImagePickerSheet(
       context: context,
       onSelected: onSelected,
@@ -289,25 +319,88 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
     return Scaffold(
       backgroundColor: bgColor,
       appBar: AppBar(
+        titleSpacing: 4,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Xác Thực Danh Tính (KYC)',
-              style: AppTypography.headingMd.copyWith(
-                fontWeight: FontWeight.w700,
-                color: textPrimary,
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    'Xác Thực Danh Tính',
+                    style: AppTypography.headingMd.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'eKYC',
+                    style: TextStyle(
+                      color: Color(0xFF10B981),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 2),
             Text(
               'Bước ${_currentStep + 1}/6: ${VerificationStepIndicator.stepTitles[_currentStep]}',
               style: AppTypography.bodySmall.copyWith(
                 color: textSecondary,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.darkSurfaceSecondary
+                  : AppColors.surfaceSecondary,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderColor),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  size: 13,
+                  color: Color(0xFF10B981),
+                ),
+                SizedBox(width: 4),
+                Text(
+                  'Bảo mật',
+                  style: TextStyle(
+                    color: Color(0xFF10B981),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         backgroundColor: surfaceColor,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -346,62 +439,236 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           // ── Nội dung từng bước ────────────────────────────────────────────
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(18),
-              child: _buildStepContent(_currentStep),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if ((_data?.status ?? widget.initialData?.status) == VerificationStatus.pending)
+                    _buildPendingNoticeBanner(isDark),
+                  if ((_data?.status ?? widget.initialData?.status) == VerificationStatus.rejected)
+                    _buildRejectedNoticeBanner(isDark),
+                  if ((_data?.status ?? widget.initialData?.status) == VerificationStatus.verified)
+                    _buildVerifiedNoticeBanner(isDark),
+                  _buildStepContent(_currentStep),
+                ],
+              ),
             ),
           ),
 
           // ── Sticky Bottom Dock ────────────────────────────────────────────
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 18),
             decoration: BoxDecoration(
               color: surfaceColor,
-              border: Border(top: BorderSide(color: borderColor)),
+              border: Border(top: BorderSide(color: borderColor, width: 0.8)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+                  blurRadius: 16,
                   offset: const Offset(0, -4),
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                if (_currentStep > 0)
-                  Expanded(
-                    flex: 1,
-                    child: AppButton(
-                      text: 'Quay lại',
-                      variant: AppButtonVariant.outline,
-                      height: 48,
-                      onPressed: () => setState(() => _currentStep--),
+            child: SafeArea(
+              top: false,
+              child: Row(
+                children: [
+                  if (_currentStep > 0)
+                    Expanded(
+                      flex: 1,
+                      child: AppButton(
+                        text: 'Quay lại',
+                        variant: AppButtonVariant.outline,
+                        height: 50,
+                        onPressed: () => setState(() => _currentStep--),
+                      ),
                     ),
+                  if (_currentStep > 0) const SizedBox(width: 12),
+                  Expanded(
+                    flex: _currentStep > 0 ? 2 : 1,
+                    child: _currentStep < 5
+                        ? AppButton(
+                            text: 'Tiếp theo',
+                            variant: AppButtonVariant.primary,
+                            height: 50,
+                            trailingIcon: const Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 18,
+                              color: Colors.white,
+                            ),
+                            onPressed: _isStepValid(_currentStep)
+                                ? () => setState(() => _currentStep++)
+                                : null,
+                          )
+                        : (_isReadOnly
+                            ? AppButton(
+                                text: 'Đóng (Chỉ xem)',
+                                variant: AppButtonVariant.primary,
+                                height: 50,
+                                icon: const Icon(
+                                  Icons.check_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                onPressed: () => Navigator.of(context).pop(),
+                              )
+                            : AppButton(
+                                text: (_data?.status ?? widget.initialData?.status) ==
+                                        VerificationStatus.rejected
+                                    ? 'Nộp lại hồ sơ xét duyệt'
+                                    : 'Gửi hồ sơ xác minh',
+                                variant: AppButtonVariant.primary,
+                                height: 50,
+                                icon: const Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 18,
+                                  color: Colors.white,
+                                ),
+                                isLoading: _isSubmitting,
+                                onPressed: _isSubmitting || !_hasAgreedTerms
+                                    ? null
+                                    : _submitVerification,
+                              )),
                   ),
-                if (_currentStep > 0) const SizedBox(width: 12),
-                Expanded(
-                  flex: _currentStep > 0 ? 2 : 1,
-                  child: _currentStep < 5
-                      ? AppButton(
-                          text: 'Tiếp theo',
-                          variant: AppButtonVariant.primary,
-                          height: 48,
-                          icon: Icons.arrow_forward_rounded,
-                          onPressed: _isStepValid(_currentStep)
-                              ? () => setState(() => _currentStep++)
-                              : null,
-                        )
-                      : AppButton(
-                          text: 'Gửi hồ sơ xác minh',
-                          variant: AppButtonVariant.primary,
-                          height: 48,
-                          icon: Icons.check_circle_outline_rounded,
-                          isLoading: _isSubmitting,
-                          onPressed: _isSubmitting || !_hasAgreedTerms
-                              ? null
-                              : _submitVerification,
-                        ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPendingNoticeBanner(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1976D2).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF1976D2).withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1976D2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.hourglass_top_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hồ sơ đang được xét duyệt',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: Color(0xFF1976D2),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Hồ sơ của bạn đang được ban quản trị thẩm định. Bạn chỉ có quyền xem lại thông tin đã gửi và không thể chỉnh sửa lúc này.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : const Color(0xFF0D47A1),
+                    height: 1.4,
+                  ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRejectedNoticeBanner(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: AppColors.danger,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.cancel_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hồ sơ bị từ chối phê duyệt',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: AppColors.danger,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  widget.initialData?.rejectionReason ??
+                      'Giấy tờ hoặc thông tin chưa hợp lệ. Vui lòng cập nhật lại và gửi xét duyệt lại.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : const Color(0xFF991B1B),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerifiedNoticeBanner(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 22),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Hồ sơ của bạn đã được chứng thực eKYC thành công!',
+              style: TextStyle(
+                color: Color(0xFF065F46),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -418,12 +685,14 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           cccdController: _cccdController,
           addressController: _addressController,
           ageWarning: _ageWarning,
+          isReadOnly: _isReadOnly,
           onSelectDob: () => _selectDate(_dobController, isDob: true),
         );
       case 1:
         return Step2CccdSection(
           cccdFrontImage: _cccdFrontImage,
           cccdBackImage: _cccdBackImage,
+          isReadOnly: _isReadOnly,
           onPickFront: () => _chooseImage((path) => setState(() => _cccdFrontImage = path)),
           onPickBack: () => _chooseImage((path) => setState(() => _cccdBackImage = path)),
         );
@@ -437,6 +706,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           licenseWarning: _licenseWarning,
           licenseFrontImage: _licenseFrontImage,
           licenseBackImage: _licenseBackImage,
+          isReadOnly: _isReadOnly,
           onClassChanged: (val) => setState(() => _selectedLicenseClass = val ?? 'B2'),
           onSelectIssueDate: () => _selectDate(_licenseIssueDateController),
           onSelectExpiryDate: () => _selectDate(_licenseExpiryDateController),
@@ -446,6 +716,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
       case 3:
         return Step4SelfieSection(
           selfieImage: _selfieImage,
+          isReadOnly: _isReadOnly,
           onPickSelfie: () => _chooseImage((path) {
             setState(() => _selfieImage = path);
             AppToast.showSuccess(context, 'Đã cập nhật ảnh chân dung!');
@@ -457,6 +728,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           emergencyPhoneController: _emergencyPhoneController,
           emergencyRelation: _emergencyRelation,
           relations: _relations,
+          isReadOnly: _isReadOnly,
           onRelationChanged: (val) => setState(() => _emergencyRelation = val ?? 'Bố/Mẹ'),
         );
       case 5:
@@ -471,6 +743,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
           emergencyPhone: _emergencyPhoneController.text.trim(),
           emergencyRelation: _emergencyRelation,
           hasAgreedTerms: _hasAgreedTerms,
+          isReadOnly: _isReadOnly,
           onAgreementChanged: (val) => setState(() => _hasAgreedTerms = val ?? false),
         );
       default:

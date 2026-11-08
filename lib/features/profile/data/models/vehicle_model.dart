@@ -39,7 +39,11 @@ class VehicleModel extends VehicleEntity {
       fuelType: json['fuelType'] ?? '',
       transmission: json['transmission'] ?? 'Tự động',
       pricePerDay: (json['pricePerDay'] as num?)?.toDouble() ?? 0,
-      status: json['status'] ?? 'AVAILABLE',
+      status: (json['status'] == null ||
+              json['status'].toString().trim().isEmpty ||
+              json['status'].toString().trim().toUpperCase() == 'NULL')
+          ? 'PENDING'
+          : json['status'].toString(),
       description: json['description'] ?? '',
       imageUrls: (json['imageUrls'] as List<dynamic>? ?? [])
           .map((e) => e.toString())

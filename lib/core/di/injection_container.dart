@@ -1,4 +1,9 @@
 // lib/injection_container.dart
+import 'package:book_drive_car/features/ai_assistant/data/datasources/ai_remote_data_source.dart';
+import 'package:book_drive_car/features/ai_assistant/data/repositories/ai_repository_impl.dart';
+import 'package:book_drive_car/features/ai_assistant/domain/repositories/ai_repository.dart';
+import 'package:book_drive_car/features/ai_assistant/domain/usecases/send_ai_chat_message.dart';
+import 'package:book_drive_car/features/ai_assistant/presentation/bloc/ai_assistant_bloc.dart';
 import 'package:book_drive_car/features/profile/data/datasources/owner_booking_remote_data_source.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_local_datasource.dart';
 import 'package:book_drive_car/features/profile/data/datasources/verification_remote_data_source.dart';
@@ -245,6 +250,31 @@ Future<void> configureDependencies() async {
         userLocalStorage: sl<UserLocalStorage>(),
         bookingRepository: sl<BookingRepository>(),
       ),
+    );
+  }
+
+  // AI Assistant feature
+  if (!sl.isRegistered<AiRemoteDataSource>()) {
+    sl.registerLazySingleton<AiRemoteDataSource>(
+      () => AiRemoteDataSourceImpl(sl<Dio>(), sl<UserLocalStorage>()),
+    );
+  }
+
+  if (!sl.isRegistered<AiRepository>()) {
+    sl.registerLazySingleton<AiRepository>(
+      () => AiRepositoryImpl(sl<AiRemoteDataSource>()),
+    );
+  }
+
+  if (!sl.isRegistered<SendAiChatMessage>()) {
+    sl.registerFactory<SendAiChatMessage>(
+      () => SendAiChatMessage(sl<AiRepository>()),
+    );
+  }
+
+  if (!sl.isRegistered<AiAssistantBloc>()) {
+    sl.registerFactory<AiAssistantBloc>(
+      () => AiAssistantBloc(sl<SendAiChatMessage>()),
     );
   }
 }

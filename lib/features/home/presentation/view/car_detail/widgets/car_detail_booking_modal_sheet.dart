@@ -285,7 +285,6 @@ class _CarDetailBookingModalSheetState extends State<CarDetailBookingModalSheet>
           const SizedBox(height: 18),
           AppButton(
             text: 'Tiến hành ký hợp đồng & Đặt xe',
-            trailingIcon: const Icon(Icons.arrow_forward_rounded),
             width: double.infinity,
             isLoading: _isSubmitting,
             onPressed: _submitBooking,

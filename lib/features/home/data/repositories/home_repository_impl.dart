@@ -28,11 +28,18 @@ class HomeRepositoryImpl implements HomeRepository {
     String? vehicleType,
     String? brand,
     String? model,
+    int? minPrice,
+    int? maxPrice,
   }) async {
     final params = <String, dynamic>{};
     if (brand != null && brand.isNotEmpty) params['brand'] = brand;
     if (vehicleType != null && vehicleType.isNotEmpty) params['vehicleType'] = vehicleType;
     if (model != null && model.isNotEmpty) params['model'] = model;
+    if (locationLabel != null && locationLabel.trim().isNotEmpty) {
+      params['city'] = locationLabel.trim();
+    }
+    if (minPrice != null) params['minPrice'] = minPrice;
+    if (maxPrice != null) params['maxPrice'] = maxPrice;
     if (latitude != null && longitude != null) {
       params['lat'] = latitude.toString();
       params['lng'] = longitude.toString();

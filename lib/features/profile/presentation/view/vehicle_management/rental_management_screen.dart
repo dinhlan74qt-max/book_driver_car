@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/theme/app_typography.dart';
+import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
+import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
 import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_bloc.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/my_vehicles_event.dart';
@@ -14,6 +17,7 @@ import 'package:book_drive_car/shared/widget/app_buttons.dart';
 import 'package:book_drive_car/shared/widget/app_empty_state.dart';
 import 'package:book_drive_car/shared/widget/app_shimmer.dart';
 import 'package:book_drive_car/shared/widget/app_status_badge.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
@@ -51,6 +55,35 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
   }
 
   Future<void> _openRegistration() async {
+    // Kiểm tra trạng thái KYC trước khi cho phép vào màn hình đăng ký xe
+    try {
+      final vRepo = sl<VerificationRepository>();
+      final vData = await vRepo.syncVerification();
+      if (vData.status != VerificationStatus.verified) {
+        if (!mounted) return;
+        if (vData.status == VerificationStatus.pending) {
+          AppToast.show(
+            context,
+            message:
+                'Hồ sơ KYC đang chờ kiểm duyệt. Vui lòng chờ phê duyệt trước khi tạo xe.',
+            type: AppToastType.info,
+            duration: const Duration(seconds: 4),
+          );
+        } else {
+          AppToast.show(
+            context,
+            message:
+                'Vui lòng hoàn tất xác thực danh tính (KYC) trước khi tạo xe.',
+            type: AppToastType.warning,
+            duration: const Duration(seconds: 4),
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      debugPrint('[RentalManagement] KYC check failed: $e');
+    }
+
     final result = await Navigator.of(context).push<Object?>(
       MaterialPageRoute(builder: (_) => const VehicleRegistrationScreen()),
     );
@@ -58,24 +91,22 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
     if (!mounted) return;
 
     if (result == 'timeout') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
+      AppToast.show(
+        context,
+        message:
             'Dữ liệu đã được gửi đi, nếu chưa hiển thị vui lòng kéo để tải lại.',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
+        type: AppToastType.info,
       );
       _myVehiclesBloc.add(const MyVehiclesRequested());
       return;
     }
 
     if (result is VehicleEntity) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã tạo xe thành công, đang cập nhật danh sách...'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      AppToast.show(
+        context,
+        message: 'Tạo xe thành công! Xe đã được thêm vào danh sách quản lý.',
+        type: AppToastType.success,
+        duration: const Duration(seconds: 4),
       );
     }
     _myVehiclesBloc.add(const MyVehiclesRequested());
@@ -148,11 +179,10 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                 !(_refreshCompleter?.isCompleted ?? true)) {
               _refreshCompleter?.complete();
             }
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.error),
-                behavior: SnackBarBehavior.floating,
-              ),
+            AppToast.show(
+              context,
+              message: state.error,
+              type: AppToastType.error,
             );
           }
         },
@@ -186,7 +216,7 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 title: Text(
-                  'Quản lý đội xe cho thuê',
+                  'Quản lý xe cho thuê',
                   style: AppTypography.titleLarge.copyWith(color: textPrimary),
                 ),
                 actions: [
@@ -231,27 +261,6 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 14, left: 4),
-                    child: TapScale(
-                      onTap: _openRegistration,
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: primaryColor,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.add_rounded,
-                          color: isDark
-                              ? AppColors.darkBackground
-                              : Colors.white,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
               body: SafeArea(
@@ -269,15 +278,30 @@ class _RentalManagementScreenState extends State<RentalManagementScreen> {
                           state is MyVehiclesLoading && vehicles.isNotEmpty;
 
                       final totalCount = vehicles.length;
-                      final availableCount = vehicles
-                          .where((v) => v.status.toUpperCase() == 'AVAILABLE')
-                          .length;
-                      final pendingCount = vehicles
-                          .where((v) => v.status.toUpperCase() == 'PENDING')
-                          .length;
+                      final availableCount = vehicles.where((v) {
+                        final s = v.status.toUpperCase().trim();
+                        return s == 'AVAILABLE' ||
+                            s == 'APPROVED' ||
+                            s == 'ACTIVE' ||
+                            s == 'ĐÃ DUYỆT';
+                      }).length;
+                      final pendingCount = vehicles.where((v) {
+                        final s = v.status.toUpperCase().trim();
+                        return s == 'PENDING' ||
+                            s == 'WAITING' ||
+                            s == 'CHỜ DUYỆT' ||
+                            s == 'ĐANG CHỜ DUYỆT' ||
+                            s.isEmpty ||
+                            s == 'NULL';
+                      }).length;
                       final blockedCount = vehicles.where((v) {
-                        final s = v.status.toUpperCase();
-                        return s == 'REJECTED' || s == 'UNAVAILABLE';
+                        final s = v.status.toUpperCase().trim();
+                        return s == 'REJECTED' ||
+                            s == 'UNAVAILABLE' ||
+                            s == 'BLOCKED' ||
+                            s == 'DENIED' ||
+                            s == 'TỪ CHỐI' ||
+                            s == 'TẠM ẨN';
                       }).length;
 
                       return ListView(
@@ -520,7 +544,7 @@ class _RentalFleetHero extends StatelessWidget {
             children: [
               _HeroMetricTile(label: '$totalCount', caption: 'Tổng xe'),
               const SizedBox(width: 8),
-              _HeroMetricTile(label: '$availableCount', caption: 'Khả dụng'),
+              _HeroMetricTile(label: '$availableCount', caption: 'Đã duyệt'),
               const SizedBox(width: 8),
               _HeroMetricTile(label: '$pendingCount', caption: 'Chờ duyệt'),
               const SizedBox(width: 8),
@@ -533,7 +557,6 @@ class _RentalFleetHero extends StatelessWidget {
             height: 48,
             width: double.infinity,
             variant: AppButtonVariant.secondary,
-            icon: const Icon(Icons.add_rounded, size: 20),
             onPressed: onAddVehicle,
           ),
         ],
@@ -685,28 +708,58 @@ class _VehicleFleetCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                AppStatusBadge.fromStatus(vehicle.status),
+                AppStatusBadge.fromVehicleStatus(vehicle.status),
               ],
             ),
             Divider(height: 20, color: borderColor),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    _FleetChip(label: '${vehicle.seatCount} chỗ'),
-                    const SizedBox(width: 6),
-                    _FleetChip(label: vehicle.transmission),
-                    const SizedBox(width: 6),
-                    _FleetChip(label: vehicle.fuelType),
-                  ],
-                ),
-                Text(
-                  '$priceFormatted đ/ngày',
-                  style: AppTypography.priceMedium.copyWith(
-                    color: primaryColor,
-                    fontWeight: FontWeight.w800,
+                Expanded(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _FleetChip(label: '${vehicle.seatCount} chỗ'),
+                      _FleetChip(
+                        label:
+                            vehicle.transmission.toLowerCase().contains(
+                              'tự động',
+                            )
+                            ? 'Tự động'
+                            : (vehicle.transmission.toLowerCase().contains(
+                                    'sàn',
+                                  )
+                                  ? 'Số sàn'
+                                  : vehicle.transmission),
+                      ),
+                      _FleetChip(label: vehicle.fuelType),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                Text.rich(
+                  TextSpan(
+                    text: priceFormatted,
+                    style: AppTypography.priceMedium.copyWith(
+                      color: primaryColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: ' đ/ngày',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          color: textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

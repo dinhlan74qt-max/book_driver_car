@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:book_drive_car/core/theme/app_colors.dart';
+import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,6 +11,7 @@ class VerificationImagePickerBox extends StatelessWidget {
   final IconData documentIcon;
   final String? emptySubtitle;
   final VoidCallback onPick;
+  final bool isReadOnly;
 
   const VerificationImagePickerBox({
     super.key,
@@ -18,40 +20,90 @@ class VerificationImagePickerBox extends StatelessWidget {
     this.documentIcon = Icons.badge_outlined,
     this.emptySubtitle,
     required this.onPick,
+    this.isReadOnly = false,
   });
 
   static Future<void> showImagePickerSheet({
     required BuildContext context,
     required Function(String path) onSelected,
   }) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheetBg = isDark ? AppColors.darkSurface : Colors.white;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final tileHover = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+
     final result = await showModalBottomSheet<dynamic>(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Chọn nguồn hình ảnh', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 16),
-            ListTile(
-              leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
-              title: const Text('Chụp từ Camera', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
-              title: const Text('Chọn từ Thư viện ảnh', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
-            ),
-            ListTile(
-              leading: const Icon(Icons.auto_awesome_rounded, color: AppColors.headlightAmber),
-              title: const Text('Dùng ảnh mẫu sẵn (Demo)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-              onTap: () => Navigator.of(ctx).pop('DEMO'),
-            ),
-          ],
+      backgroundColor: sheetBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white30 : Colors.black12),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                'Chọn nguồn hình ảnh',
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Vui lòng chọn ảnh chụp rõ nét, đủ 4 góc giấy tờ',
+                style: AppTypography.caption.copyWith(color: textSecondary),
+              ),
+              const SizedBox(height: 16),
+              _buildPickerTile(
+                icon: Icons.camera_alt_rounded,
+                title: 'Chụp từ Camera',
+                subtitle: 'Mở máy ảnh chụp trực tiếp',
+                color: AppColors.primary,
+                bgColor: tileHover,
+                textColor: textPrimary,
+                subColor: textSecondary,
+                onTap: () => Navigator.of(ctx).pop(ImageSource.camera),
+              ),
+              const SizedBox(height: 8),
+              _buildPickerTile(
+                icon: Icons.photo_library_rounded,
+                title: 'Chọn từ Thư viện ảnh',
+                subtitle: 'Chọn ảnh có sẵn trên thiết bị',
+                color: AppColors.accent,
+                bgColor: tileHover,
+                textColor: textPrimary,
+                subColor: textSecondary,
+                onTap: () => Navigator.of(ctx).pop(ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+              _buildPickerTile(
+                icon: Icons.auto_awesome_rounded,
+                title: 'Dùng ảnh mẫu sẵn (Demo)',
+                subtitle: 'Tải nhanh ảnh mẫu để thử nghiệm',
+                color: const Color(0xFF10B981),
+                bgColor: tileHover,
+                textColor: textPrimary,
+                subColor: textSecondary,
+                onTap: () => Navigator.of(ctx).pop('DEMO'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -76,32 +128,104 @@ class VerificationImagePickerBox extends StatelessWidget {
     }
   }
 
+  static Widget _buildPickerTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required Color bgColor,
+    required Color textColor,
+    required Color subColor,
+    required VoidCallback onTap,
+  }) {
+    return TapScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: subColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: subColor, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final surfaceColor = isDark ? AppColors.darkSurface : Colors.white;
+    final boxBg = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+
     final hasImage = imagePath != null && imagePath!.isNotEmpty;
 
     Widget displayWidget;
     if (!hasImage) {
       displayWidget = Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.15),
-            width: 1.2,
-          ),
+          color: boxBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: borderColor, width: 1.2),
         ),
         child: Row(
           children: [
             Container(
-              width: 52,
-              height: 52,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.12),
+                    AppColors.accent.withValues(alpha: 0.10),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3),
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  width: 1,
                 ),
               ),
               child: Stack(
@@ -110,57 +234,83 @@ class VerificationImagePickerBox extends StatelessWidget {
                   Icon(
                     documentIcon,
                     color: AppColors.primary,
-                    size: 26,
+                    size: 24,
                   ),
                   Positioned(
-                    right: 4,
-                    bottom: 4,
+                    right: 3,
+                    bottom: 3,
                     child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1E293B),
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         Icons.camera_alt_rounded,
-                        size: 10,
-                        color: Colors.white70,
+                        size: 9,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'Chụp / Tải ảnh lên',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    'Chụp hoặc Tải ảnh lên',
+                    style: TextStyle(
+                      color: textPrimary,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    emptySubtitle ?? 'Chạm để chụp từ camera hoặc chọn từ thư viện',
+                    emptySubtitle ?? 'Chạm để chụp từ camera hoặc chọn thư viện',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: textSecondary,
                       fontSize: 11.5,
-                      height: 1.2,
+                      height: 1.25,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const Icon(
-              Icons.add_photo_alternate_rounded,
-              color: AppColors.primary,
-              size: 22,
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: borderColor),
+                boxShadow: isDark
+                    ? null
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: const Icon(
+                Icons.add_a_photo_rounded,
+                color: AppColors.primary,
+                size: 17,
+              ),
             ),
           ],
         ),
@@ -173,22 +323,59 @@ class VerificationImagePickerBox extends StatelessWidget {
             Image.network(imagePath!, fit: BoxFit.cover)
           else
             Image.file(File(imagePath!), fit: BoxFit.cover),
+          if (!isReadOnly)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black26, blurRadius: 6),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.edit_rounded, color: Colors.white, size: 12),
+                    SizedBox(width: 5),
+                    Text(
+                      'Đổi ảnh',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           Positioned(
-            top: 8,
-            right: 8,
+            bottom: 10,
+            left: 10,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.6)),
+                color: const Color(0xFF10B981).withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.edit_rounded, color: AppColors.primary, size: 12),
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.white, size: 13),
                   SizedBox(width: 4),
-                  Text('Đổi ảnh', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  Text(
+                    'Đã tải lên',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -205,20 +392,24 @@ class VerificationImagePickerBox extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: textPrimary,
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 13.5,
               ),
             ),
             if (hasImage)
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primary),
-                  SizedBox(width: 4),
+                  const Icon(Icons.check_circle_rounded, size: 15, color: Color(0xFF10B981)),
+                  const SizedBox(width: 4),
                   Text(
-                    'Đã tải ảnh',
-                    style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.w700),
+                    'Hợp lệ',
+                    style: TextStyle(
+                      color: const Color(0xFF10B981),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ],
               ),
@@ -226,22 +417,32 @@ class VerificationImagePickerBox extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TapScale(
-          onTap: onPick,
+          onTap: isReadOnly ? null : onPick,
           child: Container(
-            height: hasImage ? 140 : 80,
+            height: hasImage ? 150 : null,
+            constraints: hasImage ? null : const BoxConstraints(minHeight: 76),
             width: double.infinity,
             decoration: BoxDecoration(
-              color: hasImage ? Colors.white10 : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(18),
               border: hasImage
                   ? Border.all(
-                      color: AppColors.primary.withValues(alpha: 0.5),
+                      color: const Color(0xFF10B981).withValues(alpha: 0.6),
                       width: 1.5,
                     )
                   : null,
+              boxShadow: isDark
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(18),
               child: displayWidget,
             ),
           ),

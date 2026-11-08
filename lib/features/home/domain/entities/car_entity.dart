@@ -21,6 +21,8 @@ class CarEntity extends Equatable {
   final String? transmission;
   final String? description;
   final String? licensePlate;
+  final String? ownerName;
+  final String? ownerPhone;
 
   const CarEntity({
     required this.id,
@@ -42,6 +44,8 @@ class CarEntity extends Equatable {
     this.transmission,
     this.description,
     this.licensePlate,
+    this.ownerName,
+    this.ownerPhone,
   });
 
   @override
@@ -49,5 +53,6 @@ class CarEntity extends Equatable {
         id, name, brand, vehicleType, province, imageIcon,
         imageUrls, pricePerDay, distanceKm, seats, rating, location,
         model, year, color, fuelType, transmission, description, licensePlate,
+        ownerName, ownerPhone,
       ];
 }

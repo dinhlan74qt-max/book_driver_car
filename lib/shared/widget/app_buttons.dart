@@ -49,19 +49,27 @@ class AppButton extends StatelessWidget {
     switch (variant) {
       case AppButtonVariant.primary:
         if (isDark) {
-          bg = isInteractive ? AppColors.darkPrimary : AppColors.darkPrimary.withValues(alpha: 0.5);
+          bg = isInteractive
+              ? AppColors.darkPrimary
+              : AppColors.darkPrimary.withValues(alpha: 0.5);
           fg = AppColors.darkBackground;
         } else {
-          bg = isInteractive ? AppColors.primary : AppColors.primary.withValues(alpha: 0.6);
+          bg = isInteractive
+              ? AppColors.primary
+              : AppColors.primary.withValues(alpha: 0.6);
           fg = Colors.white;
         }
         break;
       case AppButtonVariant.secondary:
         if (isDark) {
-          bg = isInteractive ? AppColors.darkAccent : AppColors.darkAccent.withValues(alpha: 0.5);
+          bg = isInteractive
+              ? AppColors.darkAccent
+              : AppColors.darkAccent.withValues(alpha: 0.5);
           fg = AppColors.darkBackground;
         } else {
-          bg = isInteractive ? AppColors.accent : AppColors.accent.withValues(alpha: 0.6);
+          bg = isInteractive
+              ? AppColors.accent
+              : AppColors.accent.withValues(alpha: 0.6);
           fg = Colors.white;
         }
         break;
@@ -73,16 +81,22 @@ class AppButton extends StatelessWidget {
         border = Border.all(
           color: isInteractive
               ? (isDark ? AppColors.darkBorder : AppColors.border)
-              : (isDark ? AppColors.darkBorder.withValues(alpha: 0.5) : AppColors.borderSubtle),
+              : (isDark
+                    ? AppColors.darkBorder.withValues(alpha: 0.5)
+                    : AppColors.borderSubtle),
           width: 1.2,
         );
         break;
       case AppButtonVariant.danger:
         if (isDark) {
-          bg = isInteractive ? AppColors.darkDanger : AppColors.darkDanger.withValues(alpha: 0.5);
+          bg = isInteractive
+              ? AppColors.darkDanger
+              : AppColors.darkDanger.withValues(alpha: 0.5);
           fg = Colors.white;
         } else {
-          bg = isInteractive ? AppColors.danger : AppColors.danger.withValues(alpha: 0.6);
+          bg = isInteractive
+              ? AppColors.danger
+              : AppColors.danger.withValues(alpha: 0.6);
           fg = Colors.white;
         }
         break;
@@ -111,10 +125,7 @@ class AppButton extends StatelessWidget {
             ),
           )
         else ...[
-          if (leading != null) ...[
-            leading,
-            const SizedBox(width: 8),
-          ],
+          if (leading != null) ...[leading, const SizedBox(width: 8)],
           Flexible(
             child: Text(
               text,
@@ -126,10 +137,7 @@ class AppButton extends StatelessWidget {
               ),
             ),
           ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing,
-          ],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing],
         ],
       ],
     );
@@ -146,7 +154,10 @@ class AppButton extends StatelessWidget {
           color: bg,
           borderRadius: radius,
           border: border,
-          boxShadow: (isInteractive && (variant == AppButtonVariant.primary || variant == AppButtonVariant.secondary))
+          boxShadow:
+              (isInteractive &&
+                  (variant == AppButtonVariant.primary ||
+                      variant == AppButtonVariant.secondary))
               ? [
                   BoxShadow(
                     color: bg.withValues(alpha: 0.28),

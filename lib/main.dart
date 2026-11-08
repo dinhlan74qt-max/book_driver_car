@@ -2,6 +2,7 @@ import 'package:book_drive_car/features/splash/presentation/view/splash_screen.d
 import 'package:book_drive_car/shared/constants/app_keys.dart';
 import 'package:book_drive_car/core/theme/app_theme.dart';
 import 'package:book_drive_car/core/theme/theme_controller.dart';
+import 'package:book_drive_car/core/theme/theme_transition_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/di/injection_container.dart';
@@ -18,8 +19,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: themeController,
+    return ListenableBuilder(
+      listenable: themeController,
       builder: (context, _) {
         return MaterialApp(
           navigatorKey: appNavigatorKey,
@@ -39,6 +40,13 @@ class MyApp extends StatelessWidget {
           theme: AppTheme.light(),
           darkTheme: AppTheme.dark(),
           themeMode: themeController.themeMode,
+          themeAnimationDuration: const Duration(milliseconds: 380),
+          themeAnimationCurve: Curves.easeInOutCubic,
+          builder: (context, child) {
+            return ThemeTransitionWrapper(
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           home: const SplashScreen(),
         );
       },

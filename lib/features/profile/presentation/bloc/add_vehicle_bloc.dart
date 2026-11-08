@@ -21,9 +21,10 @@ class AddVehicleBloc extends Bloc<AddVehicleEvent, AddVehicleState> {
     try {
       final vehicle = await addVehicleUseCase(event.request);
       emit(AddVehicleSuccess(vehicle));
-    } catch (e) {
+    } catch (e, stackTrace) {
       final errorMessage = e.toString().replaceFirst("Exception: ", "");
-      debugPrint('AddVehicleBloc error: $errorMessage');
+      debugPrint('[AddVehicleBloc] ❌ Error: $errorMessage');
+      debugPrint('[AddVehicleBloc] StackTrace:\n$stackTrace');
       emit(AddVehicleFailure(errorMessage));
     }
   }

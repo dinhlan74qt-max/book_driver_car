@@ -6,6 +6,9 @@ import 'package:book_drive_car/core/helper/vehicle_price_formatter_helper.dart';
 import 'package:book_drive_car/features/profile/domain/entities/address_entity.dart';
 import 'package:book_drive_car/features/profile/domain/entities/add_vehicle_request_entity.dart';
 import 'package:book_drive_car/features/profile/domain/entities/vehicle_entity.dart';
+import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
+import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
+import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_bloc.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_event.dart';
 import 'package:book_drive_car/features/profile/presentation/bloc/add_vehicle_state.dart';
@@ -798,8 +801,37 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
       return;
     }
 
+    setState(() => _isSubmitting = true);
+
     try {
+      // Kiểm tra trạng thái KYC của chủ xe trước khi cho phép tiếp tục
+      final vRepo = sl<VerificationRepository>();
+      final vData = await vRepo.syncVerification();
+      if (vData.status != VerificationStatus.verified) {
+        if (!mounted) return;
+        setState(() => _isSubmitting = false);
+        if (vData.status == VerificationStatus.pending) {
+          AppToast.show(
+            context,
+            message: 'Hồ sơ KYC đang chờ kiểm duyệt. Vui lòng chờ phê duyệt trước khi tạo xe.',
+            type: AppToastType.info,
+            duration: const Duration(seconds: 4),
+          );
+        } else {
+          AppToast.show(
+            context,
+            message: 'Tài khoản chưa hoàn tất KYC. Vui lòng xác thực danh tính trước khi tạo xe.',
+            type: AppToastType.warning,
+            duration: const Duration(seconds: 4),
+          );
+        }
+        return;
+      }
+
       final request = await _buildAddVehicleRequest();
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
       final contractPdfBytes = await Navigator.of(context).push<Uint8List>(
         MaterialPageRoute(
           builder: (_) => VehicleContractScreen(request: request),
@@ -817,6 +849,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
       );
     } catch (e) {
       debugPrint('VehicleRegistrationScreen _submitVehicle error: $e');
+      if (mounted) setState(() => _isSubmitting = false);
       if (!mounted) return;
       AppToast.show(context, message: e.toString(), type: AppToastType.error);
     }
@@ -829,10 +862,231 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
         normalized.contains('dữ liệu đã được gửi đi');
   }
 
+  void _handleVehicleRegistrationError(BuildContext context, String error) {
+    final lower = error.toLowerCase();
+
+    // 1. Biển số xe đã tồn tại / bị trùng
+    if (lower.contains('license') ||
+        lower.contains('plate') ||
+        lower.contains('biển số') ||
+        lower.contains('trùng') ||
+        lower.contains('duplicate') ||
+        lower.contains('already exists')) {
+      final plate = _licensePlateController.text.trim();
+      AppToast.show(
+        context,
+        message: plate.isNotEmpty
+            ? 'Biển số xe "$plate" đã tồn tại trên hệ thống. Vui lòng kiểm tra lại.'
+            : 'Biển số xe này đã được đăng ký trước đó. Vui lòng kiểm tra lại.',
+        type: AppToastType.error,
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    // 2. Tài khoản chưa xác thực KYC
+    if (lower.contains('kyc') ||
+        lower.contains('chưa xác thực') ||
+        lower.contains('cccd') ||
+        lower.contains('verified') ||
+        lower.contains('unverified')) {
+      AppToast.show(
+        context,
+        message: 'Tài khoản chưa hoàn tất KYC. Vui lòng xác thực danh tính trước khi tạo xe.',
+        type: AppToastType.warning,
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    // 3. Lỗi 500 từ máy chủ
+    if (lower.contains('500') || lower.contains('internal server error')) {
+      AppToast.show(
+        context,
+        message: 'Lỗi máy chủ (500): Không thể tạo xe. Vui lòng kiểm tra lại biển số hoặc thử lại sau.',
+        type: AppToastType.error,
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    // 4. Lỗi khác
+    AppToast.show(
+      context,
+      message: error.isNotEmpty ? error : 'Tạo xe thất bại. Vui lòng thử lại.',
+      type: AppToastType.error,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  // ignore: unused_element
+  void _showKycRequiredDialog(VerificationData vData) {
+    final isPending = vData.status == VerificationStatus.pending;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              isPending ? Icons.hourglass_top_rounded : Icons.verified_user_rounded,
+              color: isPending ? const Color(0xFFE86000) : AppColors.primary,
+              size: 26,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isPending ? 'Hồ sơ KYC đang chờ duyệt' : 'Yêu cầu xác thực danh tính',
+                style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          isPending
+              ? 'Hồ sơ xác thực danh tính (KYC) của bạn đang được kiểm duyệt. Bạn vui lòng chờ ban quản trị phê duyệt trước khi đăng ký cho thuê xe.'
+              : 'Để đảm bảo an toàn và tính pháp lý cho nền tảng, bạn cần hoàn tất Xác thực danh tính (CCCD & Giấy phép lái xe) trước khi đăng ký xe.',
+          style: const TextStyle(fontSize: 13.5, color: Color(0xFF475569), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng', style: TextStyle(color: Color(0xFF64748B))),
+          ),
+          if (!isPending)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => IdentityVerificationScreen(initialData: vData),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Xác thực ngay'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddVehicleFailureDialog(String error) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 26),
+            SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Đăng ký xe thất bại',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              error,
+              style: const TextStyle(fontSize: 13.5, color: Color(0xFF1E293B), height: 1.45),
+            ),
+            const SizedBox(height: 14),
+            const Text(
+              'Các nguyên nhân thường gặp:',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A)),
+            ),
+            const SizedBox(height: 8),
+            _buildFailureCheckItem(
+              icon: Icons.verified_user_outlined,
+              title: 'Xác thực tài khoản (KYC)',
+              desc: 'Tài khoản cần hoàn tất xác thực CCCD & GPLX và được duyệt trước khi đăng ký xe.',
+            ),
+            const SizedBox(height: 6),
+            _buildFailureCheckItem(
+              icon: Icons.pin_outlined,
+              title: 'Biển số xe',
+              desc: 'Đảm bảo biển số xe chính xác và chưa từng được đăng ký trên hệ thống.',
+            ),
+            const SizedBox(height: 6),
+            _buildFailureCheckItem(
+              icon: Icons.document_scanner_outlined,
+              title: 'Ảnh giấy tờ xe & Ảnh xe',
+              desc: 'Ảnh chụp rõ nét 4 góc, đầy đủ cà vẹt xe và hợp đồng.',
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const IdentityVerificationScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Kiểm tra KYC'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFailureCheckItem({
+    required IconData icon,
+    required String title,
+    required String desc,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 17, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 12.5, color: Color(0xFF475569), height: 1.35),
+              children: [
+                TextSpan(
+                  text: '$title: ',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                TextSpan(text: desc),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildActionBar({required bool isSubmitting}) {
     final isLast = _currentStep == 3;
     final canProceed = _canProceedCurrentStep;
     final buttonText = isLast ? 'Xem hợp đồng' : 'Tiếp tục';
+    final isLoading = isSubmitting || _isSubmitting;
 
     return SafeArea(
       top: false,
@@ -841,9 +1095,8 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
         child: AppButton(
           text: buttonText,
           width: double.infinity,
-          isLoading: isSubmitting && isLast,
-          trailingIcon: Icon(isLast ? Icons.description_rounded : Icons.arrow_forward_rounded),
-          onPressed: canProceed && !isSubmitting ? _goNext : null,
+          isLoading: isLoading && isLast,
+          onPressed: canProceed && !isLoading ? _goNext : null,
         ),
       ),
     );
@@ -1112,14 +1365,21 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
           if (state is AddVehicleSuccess) {
             AppToast.show(
               context,
-              message: 'Đã lưu xe thành công',
+              message: 'Tạo xe thành công! Xe đã được gửi lên hệ thống và đang chờ duyệt.',
               type: AppToastType.success,
+              duration: const Duration(seconds: 4),
             );
             if (mounted) {
               Navigator.of(context).pop(state.vehicle);
             }
           } else if (state is AddVehicleFailure) {
             if (_isTimeoutFailure(state.error)) {
+              AppToast.show(
+                context,
+                message: 'Yêu cầu tạo xe đã được gửi đi. Vui lòng kiểm tra lại sau ít phút.',
+                type: AppToastType.info,
+                duration: const Duration(seconds: 4),
+              );
               if (mounted) {
                 Navigator.of(context).pop('timeout');
               }
@@ -1128,11 +1388,7 @@ class _VehicleRegistrationScreenState extends State<VehicleRegistrationScreen> {
             debugPrint(
               'VehicleRegistrationScreen AddVehicleFailure: ${state.error}',
             );
-            AppToast.show(
-              context,
-              message: state.error,
-              type: AppToastType.error,
-            );
+            _handleVehicleRegistrationError(context, state.error);
           }
         },
         builder: (context, state) {

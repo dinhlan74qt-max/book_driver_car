@@ -38,6 +38,8 @@ Future<void> _runSearchForFilter(
     vehicleType: filter.vehicleType,
     brand: filter.brand,
     model: filter.model,
+    minPrice: filter.minPrice,
+    maxPrice: filter.maxPrice,
   );
 }
 
@@ -101,6 +103,14 @@ class _SearchResultsContent extends StatelessWidget {
       if (carCity.isEmpty || !carCity.contains(targetCity)) return false;
     }
 
+    if (filter.minPrice != null && car.pricePerDay < filter.minPrice!) {
+      return false;
+    }
+
+    if (filter.maxPrice != null && car.pricePerDay > filter.maxPrice!) {
+      return false;
+    }
+
     return true;
   }
 
@@ -108,11 +118,24 @@ class _SearchResultsContent extends StatelessWidget {
     return cars.where(_matchesFilter).toList();
   }
 
+  String _formatPriceFilter(int? min, int? max) {
+    if (min != null && max != null) {
+      return '${(min / 1000).toStringAsFixed(0)}k-${(max / 1000).toStringAsFixed(0)}k';
+    } else if (min != null) {
+      return '≥${(min / 1000).toStringAsFixed(0)}k';
+    } else if (max != null) {
+      return '≤${(max / 1000).toStringAsFixed(0)}k';
+    }
+    return '';
+  }
+
   String get _title {
     final parts = <String>[
       if (filter.locationLabel?.isNotEmpty == true) filter.locationLabel!,
       if (filter.brand?.isNotEmpty == true) filter.brand!,
       if (filter.model?.isNotEmpty == true) filter.model!,
+      if (filter.minPrice != null || filter.maxPrice != null)
+        _formatPriceFilter(filter.minPrice, filter.maxPrice),
     ];
     return parts.isEmpty ? 'Kết quả tìm kiếm' : parts.join(' • ');
   }

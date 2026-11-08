@@ -21,6 +21,8 @@ class CarModel extends CarEntity {
     super.transmission,
     super.description,
     super.licensePlate,
+    super.ownerName,
+    super.ownerPhone,
   });
 
   factory CarModel.fromJson(Map<String, dynamic> json) {
@@ -83,6 +85,24 @@ class CarModel extends CarEntity {
       transmission: json['transmission']?.toString(),
       description: json['description']?.toString(),
       licensePlate: json['licensePlate']?.toString(),
+      ownerName: () {
+        final ownerJson = json['user'] is Map
+            ? Map<String, dynamic>.from(json['user'] as Map)
+            : (json['owner'] is Map ? Map<String, dynamic>.from(json['owner'] as Map) : null);
+        return ownerJson?['fullname']?.toString() ??
+            ownerJson?['name']?.toString() ??
+            ownerJson?['fullName']?.toString() ??
+            ownerJson?['username']?.toString() ??
+            json['ownerName']?.toString();
+      }(),
+      ownerPhone: () {
+        final ownerJson = json['user'] is Map
+            ? Map<String, dynamic>.from(json['user'] as Map)
+            : (json['owner'] is Map ? Map<String, dynamic>.from(json['owner'] as Map) : null);
+        return ownerJson?['phone']?.toString() ??
+            ownerJson?['phoneNumber']?.toString() ??
+            json['ownerPhone']?.toString();
+      }(),
     );
   }
 }

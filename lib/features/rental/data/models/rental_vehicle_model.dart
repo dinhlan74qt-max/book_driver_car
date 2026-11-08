@@ -47,7 +47,11 @@ class RentalVehicleModel extends RentalVehicleEntity {
       fuelType: json['fuelType'] ?? '',
       transmission: json['transmission'] ?? '',
       pricePerDay: (json['pricePerDay'] as num?)?.toInt() ?? 0,
-      status: json['status'] ?? '',
+      status: (json['status'] == null ||
+              json['status'].toString().trim().isEmpty ||
+              json['status'].toString().trim().toUpperCase() == 'NULL')
+          ? 'PENDING'
+          : json['status'].toString(),
       description: json['description'] ?? '',
       imageUrls: (json['imageUrls'] as List<dynamic>? ?? [])
           .map((e) => e as String)

@@ -39,6 +39,8 @@ class HomeCubit extends Cubit<HomeState> {
     String? vehicleType,
     String? brand,
     String? model,
+    int? minPrice,
+    int? maxPrice,
   }) async {
     emit(HomeLoading());
     try {
@@ -50,6 +52,8 @@ class HomeCubit extends Cubit<HomeState> {
         vehicleType: vehicleType,
         brand: brand,
         model: model,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
       );
 
       final nearbyCars = List<CarEntity>.from(cars)

@@ -20,4 +20,5 @@ class ApiConstants {
   static const String withdraw = "$baseUrl/api/withdraw";
   static const String verification = "$baseUrl/api/users/veri";
   static const String verificationStatus = "$baseUrl/api/users/veri/status";
+  static const String aiChat = "$baseUrl/api/ai/chat";
 }
