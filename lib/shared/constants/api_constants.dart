@@ -22,4 +22,6 @@ class ApiConstants {
   static const String verification = "$baseUrl/api/users/veri";
   static const String verificationStatus = "$baseUrl/api/users/veri/status";
   static const String aiChat = "$baseUrl/api/ai/chat";
+  static const String changePassword = "$baseUrl/api/users/me/password";
+  static const String favorites = "$baseUrl/api/favorites";
 }

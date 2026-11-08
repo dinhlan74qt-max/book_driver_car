@@ -20,6 +20,7 @@ import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/staggered_fade_in.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
@@ -297,6 +298,19 @@ class _WalletScreenState extends State<WalletScreen>
     _refreshWallet();
   }
 
+  void _showTransactionDetail(BuildContext context, WalletTransactionEntity tx) {
+    final priceFormat = NumberFormat.decimalPattern('vi_VN');
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TransactionDetailSheet(
+        tx: tx,
+        priceFormat: priceFormat,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final priceFormat = NumberFormat.decimalPattern('vi_VN');
@@ -516,6 +530,7 @@ class _WalletScreenState extends State<WalletScreen>
                                     amountText:
                                         '${isPositive ? '+' : '-'}${priceFormat.format(tx.amount.abs())}đ',
                                     isPositive: isPositive,
+                                    onTap: () => _showTransactionDetail(context, tx),
                                   ),
                                 ),
                               );
@@ -741,12 +756,14 @@ class _TransactionCard extends StatelessWidget {
   final String dateText;
   final String amountText;
   final bool isPositive;
+  final VoidCallback? onTap;
 
   const _TransactionCard({
     required this.title,
     required this.dateText,
     required this.amountText,
     required this.isPositive,
+    this.onTap,
   });
 
   @override
@@ -760,62 +777,349 @@ class _TransactionCard extends StatelessWidget {
         ? (isDark ? const Color(0xFF81C69A) : AppColors.success)
         : (isDark ? const Color(0xFFE18B83) : AppColors.danger);
 
+    return TapScale(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor),
+          boxShadow: isDark ? null : AppColors.shadowSm,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: isDark ? 0.2 : 0.10),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                isPositive ? Icons.south_west_rounded : Icons.north_east_rounded,
+                size: 20,
+                color: accent,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.titleSmall.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    dateText,
+                    style: AppTypography.caption.copyWith(color: textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              amountText,
+              style: AppTypography.priceMedium.copyWith(
+                fontSize: 15,
+                color: accent,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: textSecondary.withValues(alpha: 0.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TransactionDetailSheet extends StatelessWidget {
+  final WalletTransactionEntity tx;
+  final NumberFormat priceFormat;
+
+  const _TransactionDetailSheet({
+    required this.tx,
+    required this.priceFormat,
+  });
+
+  String _formatFullDate(DateTime? dt) {
+    if (dt == null) return 'Không xác định';
+    return DateFormat('HH:mm:ss - dd/MM/yyyy').format(dt);
+  }
+
+  String _typeLabel(String type) {
+    switch (type.toUpperCase()) {
+      case 'DEPOSIT':
+      case 'TOPUP':
+        return 'Nạp tiền vào ví (VietQR)';
+      case 'WITHDRAW':
+        return 'Rút tiền về tài khoản';
+      case 'PAYMENT':
+        return 'Thanh toán thuê xe';
+      case 'REFUND':
+        return 'Hoàn tiền giao dịch';
+      case 'PENALTY':
+      case 'FEE':
+        return 'Khấu trừ phí';
+      default:
+        return type.isEmpty ? 'Giao dịch ví' : type;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark ? AppColors.darkSurface : Colors.white;
+    final bgColor =
+        isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
+    final textPrimary =
+        isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary =
+        isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+    final isPositive = tx.isCredit;
+    final accentColor = isPositive
+        ? (isDark ? const Color(0xFF81C69A) : AppColors.success)
+        : (isDark ? const Color(0xFFE18B83) : AppColors.danger);
+
+    final txCode = 'GD-${tx.id.toString().padLeft(6, '0')}';
+
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-        boxShadow: isDark ? null : AppColors.shadowSm,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      child: Row(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        16,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 28,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: isDark ? 0.2 : 0.10),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              isPositive ? Icons.south_west_rounded : Icons.north_east_rounded,
-              size: 20,
-              color: accent,
+          // Drag handle
+          Center(
+            child: Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: borderColor,
+                borderRadius: BorderRadius.circular(999),
+              ),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
+          const SizedBox(height: 18),
+
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Chi tiết giao dịch',
+                style: AppTypography.titleLarge.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: textPrimary,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.close_rounded, color: textSecondary),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Hero Amount Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: isDark ? 0.15 : 0.08),
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: accentColor.withValues(alpha: 0.25)),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.titleSmall.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: textPrimary,
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: isDark ? 0.25 : 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isPositive
+                        ? Icons.south_west_rounded
+                        : Icons.north_east_rounded,
+                    color: accentColor,
+                    size: 26,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 Text(
-                  dateText,
-                  style: AppTypography.caption.copyWith(color: textSecondary),
+                  '${isPositive ? '+' : '-'}${priceFormat.format(tx.amount.abs())} đ',
+                  style: AppTypography.priceLarge.copyWith(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: accentColor,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    'Thành công',
+                    style: AppTypography.caption.copyWith(
+                      color: accentColor,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            amountText,
-            style: AppTypography.priceMedium.copyWith(
-              fontSize: 15,
-              color: accent,
-              fontWeight: FontWeight.w800,
+          const SizedBox(height: 18),
+
+          // Information Table Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
             ),
+            child: Column(
+              children: [
+                _buildRow(
+                  label: 'Mã giao dịch',
+                  valueWidget: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        txCode,
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      TapScale(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: txCode));
+                          AppToast.show(
+                            context,
+                            message: 'Đã sao chép mã giao dịch: $txCode',
+                            type: AppToastType.success,
+                          );
+                        },
+                        child: Icon(
+                          Icons.copy_rounded,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  textSecondary: textSecondary,
+                ),
+                Divider(height: 20, color: borderColor),
+                _buildRow(
+                  label: 'Loại giao dịch',
+                  valueText: _typeLabel(tx.transactionType),
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                ),
+                Divider(height: 20, color: borderColor),
+                _buildRow(
+                  label: 'Thời gian',
+                  valueText: _formatFullDate(tx.createdAt),
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                ),
+                if (tx.walletBalance != null) ...[
+                  Divider(height: 20, color: borderColor),
+                  _buildRow(
+                    label: 'Số dư ví sau GD',
+                    valueText: '${priceFormat.format(tx.walletBalance)} đ',
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
+                  ),
+                ],
+                Divider(height: 20, color: borderColor),
+                _buildRow(
+                  label: 'Nội dung',
+                  valueText: tx.description.isNotEmpty
+                      ? tx.description
+                      : 'Không có ghi chú',
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  isMultiline: true,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Close Button
+          AppButton(
+            text: 'Đóng',
+            width: double.infinity,
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildRow({
+    required String label,
+    String? valueText,
+    Widget? valueWidget,
+    Color? textPrimary,
+    required Color textSecondary,
+    bool isMultiline = false,
+  }) {
+    return Row(
+      crossAxisAlignment:
+          isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: AppTypography.bodySmall.copyWith(color: textSecondary),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: valueWidget ??
+              Text(
+                valueText ?? '',
+                textAlign: TextAlign.end,
+                style: AppTypography.bodyMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: textPrimary,
+                ),
+              ),
+        ),
+      ],
     );
   }
 }

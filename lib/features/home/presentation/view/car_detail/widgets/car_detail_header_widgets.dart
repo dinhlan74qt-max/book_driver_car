@@ -96,7 +96,17 @@ class GlassIconButton extends StatelessWidget {
       ),
       child: IconButton(
         onPressed: onPressed,
-        icon: Icon(icon, color: iconColor, size: 20),
+        icon: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
+          child: Icon(
+            icon,
+            key: ValueKey<IconData>(icon),
+            color: iconColor,
+            size: 20,
+          ),
+        ),
       ),
     );
   }

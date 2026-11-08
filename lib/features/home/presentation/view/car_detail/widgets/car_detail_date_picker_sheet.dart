@@ -2,6 +2,7 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
 import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class CarDetailDatePickerSheet extends StatefulWidget {
   final int vehicleId;
@@ -10,6 +11,7 @@ class CarDetailDatePickerSheet extends StatefulWidget {
   final DateTime initialEnd;
   final DateTime minDate;
   final DateTime maxDate;
+  final int? pricePerDay;
   final DateTime Function(DateTime) dateOnly;
   final bool Function(DateTime, DateTime) isSameDay;
   final bool hasInitialSelection;
@@ -28,6 +30,7 @@ class CarDetailDatePickerSheet extends StatefulWidget {
     required this.hasInitialSelection,
     required this.minDate,
     required this.maxDate,
+    this.pricePerDay,
     required this.dateOnly,
     required this.isSameDay,
     required this.weekdayShortLabel,
@@ -38,7 +41,8 @@ class CarDetailDatePickerSheet extends StatefulWidget {
   });
 
   @override
-  State<CarDetailDatePickerSheet> createState() => _CarDetailDatePickerSheetState();
+  State<CarDetailDatePickerSheet> createState() =>
+      _CarDetailDatePickerSheetState();
 }
 
 class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
@@ -356,15 +360,50 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
                 const Icon(Icons.event_rounded, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    _startDate == null || _endDate == null
-                        ? 'Vui lòng chọn thời gian thuê xe'
-                        : '${widget.formatBookingRangeWithTime(DateTimeRange(start: _startDate!, end: _endDate!))} (${_endDate!.difference(_startDate!).inDays < 1 ? 1 : _endDate!.difference(_startDate!).inDays} ngày)',
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _startDate == null || _endDate == null
+                            ? 'Vui lòng chọn thời gian thuê xe'
+                            : widget.formatBookingRangeWithTime(
+                                DateTimeRange(
+                                  start: _startDate!,
+                                  end: _endDate!,
+                                ),
+                              ),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      if (_startDate != null &&
+                          _endDate != null &&
+                          widget.pricePerDay != null) ...[
+                        const SizedBox(height: 5),
+                        Builder(
+                          builder: (context) {
+                            final days = _endDate!
+                                .difference(_startDate!)
+                                .inDays;
+                            final rentalDays = days < 1 ? 1 : days;
+                            final total = widget.pricePerDay! * rentalDays;
+                            final formattedTotal = NumberFormat.decimalPattern(
+                              'vi_VN',
+                            ).format(total);
+                            return Text(
+                              'Tổng tạm tính ($rentalDays ngày): $formattedTotal đ',
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
@@ -381,10 +420,14 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
     final size = MediaQuery.of(context).size;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
-    final bgColor = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
+    final bgColor = isDark
+        ? AppColors.darkSurfaceSecondary
+        : AppColors.surfaceSecondary;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
     final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
     final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
 
     return SafeArea(
@@ -588,9 +631,32 @@ class _CarDetailDatePickerSheetState extends State<CarDetailDatePickerSheet> {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        child: const Text(
-                          'Xác nhận',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                        child: Builder(
+                          builder: (context) {
+                            if (_startDate != null &&
+                                _endDate != null &&
+                                widget.pricePerDay != null) {
+                              final days = _endDate!
+                                  .difference(_startDate!)
+                                  .inDays;
+                              final rentalDays = days < 1 ? 1 : days;
+                              final total = widget.pricePerDay! * rentalDays;
+                              final formattedTotal =
+                                  NumberFormat.decimalPattern(
+                                    'vi_VN',
+                                  ).format(total);
+                              return Text(
+                                'Xác nhận',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              );
+                            }
+                            return const Text(
+                              'Xác nhận',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            );
+                          },
                         ),
                       ),
                     ),

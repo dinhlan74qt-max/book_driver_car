@@ -538,48 +538,29 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                     icon: Icons.badge_outlined,
                   ),
                   const Divider(height: 18, color: AppColors.divider),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.phone_outlined, size: 18, color: AppColors.textMuted),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Số điện thoại',
-                            style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            _currentBooking.renterPhone.isNotEmpty
-                                ? _currentBooking.renterPhone
-                                : 'Chưa có',
-                            style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                          ),
-                          if (_currentBooking.renterPhone.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            TapScale(
-                              onTap: _callRenterPhone,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primaryContainer,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.call_rounded,
-                                  size: 16,
-                                  color: AppColors.primary,
-                                ),
+                  _InfoRowItem(
+                    label: 'Số điện thoại',
+                    value: _currentBooking.renterPhone.isNotEmpty
+                        ? _currentBooking.renterPhone
+                        : 'Chưa có',
+                    icon: Icons.phone_outlined,
+                    trailing: _currentBooking.renterPhone.isNotEmpty
+                        ? TapScale(
+                            onTap: _callRenterPhone,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryContainer,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.call_rounded,
+                                size: 16,
+                                color: AppColors.primary,
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ],
+                          )
+                        : null,
                   ),
                   if (_currentBooking.renterEmail.isNotEmpty) ...[
                     const Divider(height: 18, color: AppColors.divider),
@@ -834,12 +815,14 @@ class _InfoRowItem extends StatelessWidget {
   final String value;
   final IconData icon;
   final bool isMultiline;
+  final Widget? trailing;
 
   const _InfoRowItem({
     required this.label,
     required this.value,
     required this.icon,
     this.isMultiline = false,
+    this.trailing,
   });
 
   @override
@@ -853,23 +836,47 @@ class _InfoRowItem extends StatelessWidget {
       crossAxisAlignment:
           isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
-        Icon(icon, size: 18, color: textMuted),
-        const SizedBox(width: 10),
-        Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(color: textSecondary),
+        Padding(
+          padding: EdgeInsets.only(top: isMultiline ? 2.0 : 0.0),
+          child: Icon(icon, size: 18, color: textMuted),
         ),
-        const Spacer(),
-        Flexible(
-          flex: isMultiline ? 2 : 1,
+        const SizedBox(width: 10),
+        Padding(
+          padding: EdgeInsets.only(top: isMultiline ? 1.0 : 0.0),
           child: Text(
-            value,
-            textAlign: TextAlign.end,
-            style: AppTypography.bodyMedium.copyWith(
-              fontWeight: FontWeight.w700,
-              color: textPrimary,
-            ),
+            label,
+            style: AppTypography.bodySmall.copyWith(color: textSecondary),
           ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: trailing == null
+              ? Text(
+                  value,
+                  textAlign: TextAlign.end,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: textPrimary,
+                  ),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        value,
+                        textAlign: TextAlign.end,
+                        style: AppTypography.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    trailing!,
+                  ],
+                ),
         ),
       ],
     );

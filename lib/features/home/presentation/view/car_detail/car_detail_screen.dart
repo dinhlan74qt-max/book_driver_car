@@ -2,6 +2,8 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
+import 'package:book_drive_car/features/favorite/presentation/manager/favorite_manager.dart';
+import 'package:book_drive_car/features/home/data/models/car_model.dart';
 import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
 import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
@@ -15,6 +17,7 @@ import 'package:book_drive_car/features/profile/domain/repositories/verification
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
 import 'package:book_drive_car/shared/widget/app_buttons.dart';
+import 'package:book_drive_car/shared/widget/app_toast.dart';
 import 'package:book_drive_car/shared/widget/tap_scale.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +46,76 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
     _car = widget.car;
     _selectedDateRange = null;
     _fetchCarDetail();
+    _initFavorite();
+  }
+
+  void _initFavorite() {
+    _isFavorite = FavoriteManager.instance.isFavorite(widget.car.id);
+    if (!FavoriteManager.instance.hasInitialLoaded) {
+      FavoriteManager.instance.loadFavorites().then((_) {
+        if (mounted) {
+          setState(() {
+            _isFavorite = FavoriteManager.instance.isFavorite(widget.car.id);
+          });
+        }
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final vehicleId = int.tryParse(car.id);
+    if (vehicleId == null) {
+      AppToast.show(
+        context,
+        message: 'Mã xe không hợp lệ',
+        type: AppToastType.warning,
+      );
+      return;
+    }
+
+    // 1. HIỆN TIM ĐỎ LẬP TỨC (Optimistic UI - trước khi gửi request lên server)
+    final nextFavoriteState = !_isFavorite;
+    setState(() => _isFavorite = nextFavoriteState);
+
+    CarModel? fallbackCar;
+    if (car is CarModel) {
+      fallbackCar = car as CarModel;
+    } else {
+      fallbackCar = CarModel(
+        id: car.id,
+        name: car.name,
+        brand: car.brand,
+        vehicleType: car.vehicleType,
+        province: car.province,
+        imageIcon: car.imageIcon,
+        imageUrls: car.imageUrls,
+        pricePerDay: car.pricePerDay,
+        distanceKm: car.distanceKm,
+        seats: car.seats,
+        rating: car.rating,
+        location: car.location,
+        model: car.model,
+        year: car.year,
+        color: car.color,
+        fuelType: car.fuelType,
+        transmission: car.transmission,
+        description: car.description,
+        licensePlate: car.licensePlate,
+        ownerName: car.ownerName,
+        ownerPhone: car.ownerPhone,
+      );
+    }
+
+    // 2. GỬI LÊN SERVER CHẠY NGẦM (Không chờ đợi làm chậm giao diện)
+    try {
+      await FavoriteManager.instance.toggleFavorite(
+        vehicleId,
+        fallbackCar: fallbackCar,
+        persistOptimisticOnFailure: true,
+      );
+    } catch (e) {
+      debugPrint('[CarDetailScreen][_toggleFavorite] Server sync log: $e');
+    }
   }
 
   Future<void> _fetchCarDetail() async {
@@ -161,6 +234,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
         return CarDetailDatePickerSheet(
           vehicleId: vehicleId,
           bookingRepository: sl<BookingRepository>(),
+          pricePerDay: car.pricePerDay,
           initialStart: firstDay.isBefore(now) ? now : _dateOnly(firstDay),
           initialEnd: lastDay.isBefore(now.add(const Duration(days: 1)))
               ? now.add(const Duration(days: 1))
@@ -208,11 +282,10 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
     }
 
     if (!context.mounted) return;
-    if (_selectedDateRange == null) {
-      final pickedRange = await _pickDateRange(context);
-      if (pickedRange == null) return;
-      setState(() => _selectedDateRange = pickedRange);
-    }
+    // Luôn hiển thị lịch để người dùng kiểm tra hoặc đổi lại ngày thuê, tránh chọn nhầm ngày
+    final pickedRange = await _pickDateRange(context);
+    if (pickedRange == null) return;
+    setState(() => _selectedDateRange = pickedRange);
 
     if (!context.mounted) return;
     CarDetailBookingModalSheet.show(
@@ -319,23 +392,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                           ? Icons.favorite_rounded
                           : Icons.favorite_border_rounded,
                       iconColor: _isFavorite ? Colors.redAccent : Colors.white,
-                      onPressed: () {
-                        setState(() => _isFavorite = !_isFavorite);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              _isFavorite
-                                  ? 'Đã thêm vào mục yêu thích'
-                                  : 'Đã xóa khỏi mục yêu thích',
-                            ),
-                            duration: const Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: _toggleFavorite,
                     ),
                   ),
                   Padding(
@@ -593,21 +650,39 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                 child: Row(
                                   children: [
                                     Expanded(
-                                      child: Text(
-                                        _selectedDateRange != null
-                                            ? _formatBookingRange(
-                                                _selectedDateRange!,
-                                              )
-                                            : 'Chạm để chọn ngày nhận & trả xe',
-                                        style: TextStyle(
-                                          color: _selectedDateRange != null
-                                              ? textPrimary
-                                              : textSecondary,
-                                          fontWeight: _selectedDateRange != null
-                                              ? FontWeight.w700
-                                              : FontWeight.w600,
-                                          fontSize: 13.5,
-                                        ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _selectedDateRange != null
+                                                ? _formatBookingRange(
+                                                    _selectedDateRange!,
+                                                  )
+                                                : 'Chạm để chọn ngày nhận & trả xe',
+                                            style: TextStyle(
+                                              color: _selectedDateRange != null
+                                                  ? textPrimary
+                                                  : textSecondary,
+                                              fontWeight:
+                                                  _selectedDateRange != null
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w600,
+                                              fontSize: 13.5,
+                                            ),
+                                          ),
+                                          if (_selectedDateRange != null) ...[
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              '$_rentalDays ngày • Tạm tính: ${_formatPrice(_totalPrice)}',
+                                              style: TextStyle(
+                                                color: primaryColor,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 12.5,
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ),
                                     Icon(
@@ -700,7 +775,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Tổng tạm tính',
+                          _selectedDateRange != null
+                              ? 'Tổng tạm tính ($_rentalDays ngày)'
+                              : 'Giá thuê 1 ngày',
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w700,

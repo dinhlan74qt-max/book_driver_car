@@ -619,15 +619,12 @@ class _BookingDetailSheet extends StatelessWidget {
   bool get _isAfterEndDate => _today.isAfter(_endDate);
 
   bool get _canCancelBooking {
-    final status = booking.status.trim().toUpperCase();
-    if (status == 'COMPLETED' ||
-        status == 'CANCELLED' ||
-        status == 'REJECTED' ||
-        status == 'RENTING' ||
-        status == 'ONGOING') {
-      return false;
+    final status = _normalizeStatus(booking.status);
+    // Cho phép hủy khi đơn ở trạng thái PENDING (chờ duyệt) hoặc APPROVED (đã duyệt, trừ 10%)
+    if (status == 'PENDING' || status == 'APPROVED') {
+      return !_isAfterEndDate;
     }
-    return !_isAfterEndDate;
+    return false;
   }
 
   bool get _isFinal {
@@ -637,13 +634,33 @@ class _BookingDetailSheet extends StatelessWidget {
         status == 'REJECTED';
   }
 
+  String _cancelDisabledReason() {
+    final status = _normalizeStatus(booking.status);
+    if (status == 'APPROVED') {
+      return 'Đơn thuê đã được duyệt nên bạn không thể hủy trực tiếp. Vui lòng liên hệ hỗ trợ hoặc chủ xe.';
+    }
+    if (status == 'RENTING' || status == 'ONGOING') {
+      return 'Đơn thuê đang trong quá trình thuê xe nên không thể hủy.';
+    }
+    if (status == 'COMPLETED') {
+      return 'Đơn thuê đã hoàn thành nên không thể hủy.';
+    }
+    if (status == 'CANCELLED' || status == 'REJECTED') {
+      return 'Đơn thuê đã kết thúc.';
+    }
+    if (_isAfterEndDate) {
+      return 'Đơn thuê đã quá ngày kết thúc nên không thể hủy.';
+    }
+    return 'Không thể hủy đơn thuê này.';
+  }
+
   String _cancelDialogMessage() {
-    final status = booking.status.trim().toUpperCase();
+    final status = _normalizeStatus(booking.status);
     if (status == 'PENDING') {
       return 'Đơn thuê chưa được xác nhận, vì vậy bạn sẽ không mất tiền nếu hủy đơn. Bạn có muốn tiếp tục hủy đơn thuê không?';
     }
     if (status == 'APPROVED') {
-      return 'Đơn thuê đã xác nhận, nếu hủy bạn sẽ mất 10% số tiền. Bạn có muốn tiếp tục hủy đơn thuê không?';
+      return 'Đơn thuê đã được duyệt, nếu hủy bạn sẽ bị trừ 10% số tiền theo chính sách hủy đơn. Bạn có chắc chắn muốn tiếp tục hủy đơn thuê không?';
     }
     if (status == 'RENTING' || status == 'ONGOING') {
       return 'Đơn thuê đang ở trạng thái đang thuê nên bạn không thể hủy nữa. Vui lòng liên hệ chủ xe nếu cần hỗ trợ.';
@@ -964,7 +981,8 @@ class _BookingDetailSheet extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                const Expanded(
+                                const SizedBox(
+                                  width: 120,
                                   child: Text(
                                     'Điện thoại',
                                     style: TextStyle(
@@ -973,41 +991,47 @@ class _BookingDetailSheet extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                InkWell(
-                                  onTap: () => _callSupport(
-                                    context,
-                                    phoneNumber: booking.vehicle.ownerPhone,
-                                  ),
-                                  borderRadius: BorderRadius.circular(999),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(
-                                        0.08,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: InkWell(
+                                      onTap: () => _callSupport(
+                                        context,
+                                        phoneNumber: booking.vehicle.ownerPhone,
                                       ),
                                       borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(
-                                          Icons.call_rounded,
-                                          size: 16,
-                                          color: AppColors.primary,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
                                         ),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          booking.vehicle.ownerPhone!,
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w800,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withOpacity(
+                                            0.08,
                                           ),
+                                          borderRadius: BorderRadius.circular(999),
                                         ),
-                                      ],
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.call_rounded,
+                                              size: 15,
+                                              color: AppColors.primary,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              booking.vehicle.ownerPhone!,
+                                              style: const TextStyle(
+                                                color: AppColors.primary,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w800,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1036,15 +1060,18 @@ class _BookingDetailSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Trạng thái',
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
+                      const SizedBox(
+                        width: 120,
+                        child: Text(
+                          'Trạng thái',
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
@@ -1176,11 +1203,17 @@ class _BookingDetailSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(18),
                           ),
                         ),
-                        onPressed: _canCancelBooking
-                            ? () {
-                                _confirmCancelBooking(context);
-                              }
-                            : null,
+                        onPressed: () {
+                          if (!_canCancelBooking) {
+                            AppToast.show(
+                              context,
+                              message: _cancelDisabledReason(),
+                              type: AppToastType.warning,
+                            );
+                            return;
+                          }
+                          _confirmCancelBooking(context);
+                        },
                         icon: Icon(
                           _canCancelBooking
                               ? Icons.cancel_rounded
@@ -1364,21 +1397,29 @@ class _DetailRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
+          SizedBox(
+            width: 120,
             child: Text(
               label,
-              style: TextStyle(color: textSecondary, fontSize: 13),
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 13,
+                height: 1.35,
+              ),
             ),
           ),
-          Flexible(
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
               value,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.left,
               style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w700,
                 color: valueColor ?? textPrimary,
+                height: 1.35,
               ),
             ),
           ),

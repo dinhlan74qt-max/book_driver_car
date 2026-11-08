@@ -2,10 +2,13 @@ import 'package:book_drive_car/core/di/injection_container.dart';
 import 'package:book_drive_car/core/storage/user_local_storage.dart';
 import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/features/auth/domain/entities/user_entity.dart';
+import 'package:book_drive_car/features/favorite/presentation/manager/favorite_manager.dart';
+import 'package:book_drive_car/features/favorite/presentation/view/favorite_vehicles_screen.dart';
 import 'package:book_drive_car/features/profile/domain/entities/verification_entity.dart';
 import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
 import 'package:book_drive_car/features/profile/presentation/view/identity_verification/identity_verification_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/owner_booking/owner_booking_list_screen.dart';
+import 'package:book_drive_car/features/profile/presentation/view/security/change_password_screen.dart';
 import 'package:book_drive_car/features/profile/presentation/view/vehicle_management/rental_management_screen.dart';
 import 'package:book_drive_car/features/welcome/presentation/view/welcome_screen.dart';
 import 'package:book_drive_car/core/theme/app_typography.dart';
@@ -64,6 +67,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUser();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        FavoriteManager.instance.loadFavorites();
+      }
+    });
   }
 
   Future<void> _loadUser() async {
@@ -555,6 +563,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 24),
 
+              // ── MỤC XE YÊU THÍCH ──────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Yêu Thích & Đã Lưu',
+                      style: AppTypography.headingSm.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: borderColor),
+                  boxShadow: isDark ? null : AppColors.shadowSm,
+                ),
+                child: _MenuActionItem(
+                  icon: Icons.favorite_rounded,
+                  iconColor: Colors.redAccent,
+                  title: 'Danh sách xe yêu thích',
+                  subtitle: 'Các mẫu xe bạn đã lưu và quan tâm',
+                  trailing: AnimatedBuilder(
+                    animation: FavoriteManager.instance,
+                    builder: (_, __) {
+                      final count = FavoriteManager.instance.favorites.length;
+                      if (count == 0) return const SizedBox.shrink();
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$count xe',
+                          style: const TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const FavoriteVehiclesScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+
               // ── SECTION 1: QUẢN LÝ XE & KINH DOANH (OWNER SUITE) ──────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -691,10 +772,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           : AppColors.warning,
                       title: 'Đổi mật khẩu',
                       subtitle: 'Cập nhật mật khẩu để tăng bảo mật tài khoản',
-                      onTap: () => _showSimpleMessage(
-                        'Đổi mật khẩu',
-                        'Vui lòng liên hệ hotline hỗ trợ hoặc sử dụng chức năng quên mật khẩu tại màn hình đăng nhập.',
-                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ChangePasswordScreen(),
+                          ),
+                        );
+                      },
                     ),
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
@@ -825,6 +909,7 @@ class _MenuActionItem extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
   final bool danger;
+  final Widget? trailing;
 
   const _MenuActionItem({
     required this.icon,
@@ -833,6 +918,7 @@ class _MenuActionItem extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.danger = false,
+    this.trailing,
   });
 
   @override
@@ -881,6 +967,10 @@ class _MenuActionItem extends StatelessWidget {
                 ],
               ),
             ),
+            if (trailing != null) ...[
+              trailing!,
+              const SizedBox(width: 6),
+            ],
             Icon(
               Icons.chevron_right_rounded,
               size: 20,
