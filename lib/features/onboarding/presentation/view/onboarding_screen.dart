@@ -241,10 +241,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       text: isLastPage ? 'Bắt đầu ngay' : 'Tiếp tục',
                       width: double.infinity,
                       height: 52,
-                      trailingIcon: Icon(
-                        isLastPage ? Icons.key_rounded : Icons.arrow_forward_rounded,
-                        size: 20,
-                      ),
+                      trailingIcon: isLastPage
+                          ? const Icon(Icons.key_rounded, size: 20)
+                          : null,
                       onPressed: _next,
                     ),
                   ],

@@ -6,6 +6,7 @@ import 'package:book_drive_car/features/profile/domain/entities/verification_ent
 import 'package:book_drive_car/features/profile/domain/repositories/verification_repository.dart';
 import 'package:book_drive_car/shared/constants/api_constants.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 
 @LazySingleton(as: VerificationRepository)
@@ -56,16 +57,40 @@ class VerificationRepositoryImpl implements VerificationRepository {
           receiveTimeout: const Duration(seconds: 5),
         ),
       );
+      debugPrint('[fetchRemoteVerificationStatus] HTTP ${response.statusCode} data=${response.data}');
       if (response.statusCode == 200) {
         final data = response.data;
-        final raw = data is Map ? (data['data'] ?? data['status'] ?? data) : data;
-        final statusStr = raw is String ? raw : (raw is Map ? raw['status'] : null);
-        if (statusStr != null) {
-          return VerificationStatus.fromString(statusStr.toString());
+        if (data is bool) {
+          return data ? VerificationStatus.verified : null;
+        }
+        if (data is Map) {
+          if (data['isVerified'] == true || data['isCccdVerified'] == true) {
+            return VerificationStatus.verified;
+          }
+          final inner = data['data'];
+          if (inner is bool) {
+            return inner ? VerificationStatus.verified : null;
+          }
+          if (inner is Map) {
+            if (inner['isVerified'] == true || inner['isCccdVerified'] == true) {
+              return VerificationStatus.verified;
+            }
+            final innerStatus = inner['status'] ?? inner['verificationStatus'];
+            if (innerStatus != null) {
+              return VerificationStatus.fromString(innerStatus.toString());
+            }
+          }
+          final rawStatus = data['status'] ?? data['verificationStatus'];
+          if (rawStatus != null && rawStatus is! int) {
+            return VerificationStatus.fromString(rawStatus.toString());
+          }
+        } else if (data is String) {
+          return VerificationStatus.fromString(data);
         }
       }
       return null;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[fetchRemoteVerificationStatus] error=$e');
       return null;
     }
   }
@@ -75,29 +100,46 @@ class VerificationRepositoryImpl implements VerificationRepository {
     final current = await localDataSource.getVerificationData();
     VerificationData vData = current;
 
+    debugPrint('\n==================== [SYNC KYC STATUS] ====================');
+    debugPrint('Current Local KYC Status: ${current.status}');
+
+    // 1. Kiểm tra ưu tiên qua endpoint chính của Backend: /api/users/checkverified
     try {
-      final serverStatus = await fetchRemoteVerificationStatus();
-      if (serverStatus != null && serverStatus != current.status) {
-        vData = current.copyWith(status: serverStatus);
-        await localDataSource.saveVerificationData(vData);
-      }
-    } catch (_) {
-      try {
-        final serverUser = await bookingRepository.checkVerified();
-        vData = current.copyWith(
+      debugPrint('--> [1/2] Calling checkVerified (${ApiConstants.checkVerified})...');
+      final serverUser = await bookingRepository.checkVerified();
+      debugPrint('<-- checkVerified result: isCccdVerified=${serverUser.isCccdVerified}, fullname=${serverUser.fullname}, cccd=${serverUser.cccd}');
+      if (serverUser.isCccdVerified) {
+        vData = vData.copyWith(
           status: VerificationStatus.verified,
-          fullName: serverUser.fullname,
-          cccdNumber: serverUser.cccd ?? current.cccdNumber,
-          address: serverUser.addressText.isNotEmpty
-              ? serverUser.addressText
-              : current.address,
+          fullName: serverUser.fullname.isNotEmpty ? serverUser.fullname : vData.fullName,
+          cccdNumber: serverUser.cccd ?? vData.cccdNumber,
+          address: serverUser.addressText.isNotEmpty ? serverUser.addressText : vData.address,
         );
         await localDataSource.saveVerificationData(vData);
-      } catch (_) {
-        // Retain local state
+        debugPrint('✅ KYC is VERIFIED according to /api/users/checkverified!');
+        debugPrint('===========================================================\n');
+        return vData;
       }
+    } catch (e) {
+      debugPrint('<-- checkVerified response/exception: $e');
     }
 
+    // 2. Kiểm tra thêm qua endpoint /api/users/veri/status
+    try {
+      debugPrint('--> [2/2] Calling fetchRemoteVerificationStatus (${ApiConstants.verificationStatus})...');
+      final serverStatus = await fetchRemoteVerificationStatus();
+      debugPrint('<-- fetchRemoteVerificationStatus: $serverStatus');
+      if (serverStatus != null) {
+        vData = vData.copyWith(status: serverStatus);
+        await localDataSource.saveVerificationData(vData);
+        debugPrint('✅ Updated KYC status to $serverStatus from /api/users/veri/status');
+      }
+    } catch (e) {
+      debugPrint('<-- fetchRemoteVerificationStatus error: $e');
+    }
+
+    debugPrint('Final Synced KYC Status: ${vData.status}');
+    debugPrint('===========================================================\n');
     return vData;
   }
 }

@@ -462,27 +462,68 @@ class VehicleRegistrationSubmittingOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+
     return Positioned.fill(
       child: Stack(
         children: [
-          const ModalBarrier(dismissible: false, color: Colors.black26),
+          ModalBarrier(
+            dismissible: false,
+            color: Colors.black.withValues(alpha: 0.45),
+          ),
           Center(
             child: Container(
-              width: 72,
-              height: 72,
-              padding: const EdgeInsets.all(18),
+              margin: const EdgeInsets.symmetric(horizontal: 36),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: cardBg,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0F172A).withOpacity(0.18),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 32,
+                    offset: const Offset(0, 16),
                   ),
                 ],
               ),
-              child: const CircularProgressIndicator(strokeWidth: 2.6),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3.5,
+                      valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Đang gửi lên...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Hệ thống đang xử lý, vui lòng đợi trong giây lát.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.45,
+                      color: textSecondary,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ],

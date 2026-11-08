@@ -33,8 +33,9 @@ class VehicleMediaPickerHelper {
 
     final file = await _imagePicker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 85,
-      maxWidth: 1600,
+      imageQuality: 80,
+      maxWidth: 1280,
+      maxHeight: 1280,
     );
 
     if (file == null) {
@@ -73,8 +74,9 @@ class VehicleMediaPickerHelper {
 
     final file = await _imagePicker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 85,
-      maxWidth: 1600,
+      imageQuality: 80,
+      maxWidth: 1280,
+      maxHeight: 1280,
     );
 
     if (file == null) {

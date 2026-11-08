@@ -16,9 +16,28 @@ class AppStatusBadge extends StatelessWidget {
     this.icon,
   });
 
-  factory AppStatusBadge.fromStatus(String status) {
+  factory AppStatusBadge.fromStatus(String? status) {
+    if (status == null ||
+        status.trim().isEmpty ||
+        status.trim().toUpperCase() == 'NULL') {
+      return const AppStatusBadge(
+        label: 'Đang chờ duyệt',
+        foregroundColor: AppColors.warning,
+        backgroundColor: AppColors.warningLight,
+        icon: Icons.hourglass_top_rounded,
+      );
+    }
+
     final s = status.toUpperCase().trim();
     switch (s) {
+      case 'AVAILABLE':
+      case 'SẴN SÀNG':
+        return const AppStatusBadge(
+          label: 'Khả dụng',
+          foregroundColor: AppColors.success,
+          backgroundColor: AppColors.successLight,
+          icon: Icons.check_circle_rounded,
+        );
       case 'PENDING':
       case 'CHỜ XÁC NHẬN':
       case 'CHỜ DUYỆT':
@@ -33,8 +52,8 @@ class AppStatusBadge extends StatelessWidget {
       case 'ĐÃ DUYỆT':
         return const AppStatusBadge(
           label: 'Đã duyệt',
-          foregroundColor: AppColors.info,
-          backgroundColor: AppColors.infoLight,
+          foregroundColor: AppColors.success,
+          backgroundColor: AppColors.successLight,
           icon: Icons.check_circle_outline_rounded,
         );
       case 'RENTING':
@@ -55,20 +74,125 @@ class AppStatusBadge extends StatelessWidget {
           icon: Icons.verified_rounded,
         );
       case 'CANCELLED':
-      case 'REJECTED':
       case 'ĐÃ HUỶ':
-      case 'TỪ CHỐI':
         return const AppStatusBadge(
           label: 'Đã huỷ',
           foregroundColor: AppColors.danger,
           backgroundColor: AppColors.dangerLight,
           icon: Icons.cancel_outlined,
         );
+      case 'REJECTED':
+      case 'DENIED':
+      case 'TỪ CHỐI':
+        return const AppStatusBadge(
+          label: 'Từ chối',
+          foregroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerLight,
+          icon: Icons.cancel_rounded,
+        );
       default:
         return AppStatusBadge(
           label: status,
           foregroundColor: AppColors.textSecondary,
           backgroundColor: AppColors.borderSubtle,
+        );
+    }
+  }
+
+  /// Factory riêng chuyên dụng cho xe sở hữu / đội xe (Owner Fleet)
+  factory AppStatusBadge.fromVehicleStatus(String? status) {
+    if (status == null ||
+        status.trim().isEmpty ||
+        status.trim().toUpperCase() == 'NULL') {
+      return const AppStatusBadge(
+        label: 'Đang chờ duyệt',
+        foregroundColor: AppColors.warning,
+        backgroundColor: AppColors.warningLight,
+        icon: Icons.hourglass_top_rounded,
+      );
+    }
+
+    final s = status.toUpperCase().trim();
+    switch (s) {
+      // 1. Xe đã được duyệt / Sẵn sàng đón khách
+      case 'AVAILABLE':
+      case 'APPROVED':
+      case 'VERIFIED':
+      case 'ACTIVE':
+      case 'SẴN SÀNG':
+      case 'ĐÃ DUYỆT':
+      case 'DA_DUYET':
+        return const AppStatusBadge(
+          label: 'Đã duyệt',
+          foregroundColor: AppColors.success,
+          backgroundColor: AppColors.successLight,
+          icon: Icons.check_circle_rounded,
+        );
+
+      // 2. Xe đang chờ kiểm duyệt
+      case 'PENDING':
+      case 'WAITING':
+      case 'IN_REVIEW':
+      case 'CHỜ DUYỆT':
+      case 'ĐANG CHỜ DUYỆT':
+      case 'CHO_DUYET':
+        return const AppStatusBadge(
+          label: 'Đang chờ duyệt',
+          foregroundColor: AppColors.warning,
+          backgroundColor: AppColors.warningLight,
+          icon: Icons.hourglass_top_rounded,
+        );
+
+      // 3. Xe chưa được duyệt / Bị từ chối
+      case 'REJECTED':
+      case 'DENIED':
+      case 'UNAPPROVED':
+      case 'NOT_APPROVED':
+      case 'CHƯA DUYỆT':
+      case 'CHƯA ĐƯỢC DUYỆT':
+      case 'TỪ CHỐI':
+      case 'TU_CHOI':
+        return const AppStatusBadge(
+          label: 'Chưa được duyệt',
+          foregroundColor: AppColors.danger,
+          backgroundColor: AppColors.dangerLight,
+          icon: Icons.cancel_rounded,
+        );
+
+      // 4. Xe đang có khách thuê
+      case 'RENTING':
+      case 'RENTED':
+      case 'BUSY':
+      case 'ONGOING':
+      case 'ĐANG CHO THUÊ':
+      case 'ĐANG THUÊ':
+        return const AppStatusBadge(
+          label: 'Đang cho thuê',
+          foregroundColor: AppColors.info,
+          backgroundColor: AppColors.infoLight,
+          icon: Icons.directions_car_rounded,
+        );
+
+      // 5. Xe tạm ẩn / khóa hoạt động
+      case 'UNAVAILABLE':
+      case 'BLOCKED':
+      case 'LOCKED':
+      case 'INACTIVE':
+      case 'TẠM ẨN':
+      case 'TAM_AN':
+        return const AppStatusBadge(
+          label: 'Tạm ẩn',
+          foregroundColor: AppColors.textSecondary,
+          backgroundColor: AppColors.borderSubtle,
+          icon: Icons.visibility_off_rounded,
+        );
+
+      default:
+        return AppStatusBadge(
+          label: status.isEmpty ? 'Chưa rõ' : status,
+          foregroundColor: AppColors.textSecondary,
+          backgroundColor: AppColors.borderSubtle,
+          icon: Icons.info_outline_rounded,
         );
     }
   }

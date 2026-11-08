@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:book_drive_car/core/theme/theme_controller.dart';
 
 /// Bảng màu chuẩn mực của CarNow - Phong cách: MODERN MOBILITY (DEEP RICH NAVY & BOLD AMBER ORANGE)
 /// - Chiến lược: DUAL THEME – LIGHT MODE + DARK MODE
@@ -119,6 +120,173 @@ abstract class AppColors {
   static const Color darkShimmerBase = Color(0xFF1D2633);
   static const Color darkShimmerHighlight = Color(0xFF283446);
 
+  // ── High-Contrast Mobility Tokens (Dual Theme) ───────────────────────────
+  static const Color canvasLight = Color(0xFFF1F5F9); // Crisp Slate 100
+  static const Color canvasDark = Color(0xFF0B0E14); // Deep Midnight 950
+
+  static const Color cardLight = Color(0xFFFFFFFF); // Pure White
+  static const Color cardDark = Color(0xFF1E293B); // Rich Slate Navy 800
+
+  static const Color cardSubtleLight = Color(0xFFF8FAFC); // Slate 50
+  static const Color cardSubtleDark = Color(0xFF0F172A); // Slate 900
+
+  static const Color cardBorderLight = Color(0xFFE2E8F0); // Defined Slate 200
+  static const Color cardBorderDark = Color(0xFF334155); // Defined Slate 700
+
+  static const Color textMainLight = Color(0xFF0F172A); // High-contrast Slate 900
+  static const Color textMainDark = Color(0xFFF8FAFC); // Crisp Slate 50
+
+  static const Color textSubLight = Color(0xFF475569); // Slate 600
+  static const Color textSubDark = Color(0xFF94A3B8); // Slate 400
+
+  static const Color textMutedSlate = Color(0xFF64748B); // Slate 500
+
+  // ── Tag & Accent Pill Tokens ──────────────────────────────────────────────
+  static const Color tagTextLight = Color(0xFF0284C7); // Sky 600
+  static const Color tagTextDark = Color(0xFF38BDF8); // Sky 400
+  static const Color tagBgLight = Color(0xFFE0F2FE); // Sky 100
+  static const Color tagBgDark = Color(0xFF0C4A6E); // Sky 900
+
+  // ── Adaptive Dynamic Helpers (Native ThemeExtension & Fallbacks) ─────────
+  static CarNowThemeColors of(BuildContext context) {
+    return Theme.of(context).extension<CarNowThemeColors>() ??
+        (Theme.of(context).brightness == Brightness.dark
+            ? CarNowThemeColors.dark
+            : CarNowThemeColors.light);
+  }
+
+  static BuildContext? _ctx(dynamic a, BuildContext? b) =>
+      a is BuildContext ? a : b;
+  static bool? _dark(dynamic a) => a is bool ? a : null;
+
+  static Color getBackground([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).background;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? canvasDark
+        : canvasLight;
+  }
+
+  static Color getSurface([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).surface;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? cardDark
+        : cardLight;
+  }
+
+  static Color getSurfaceSubtle([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).surfaceSubtle;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? cardSubtleDark
+        : cardSubtleLight;
+  }
+
+  static Color getSurfaceSecondary([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).surfaceSecondary;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? darkSurfaceSecondary
+        : surfaceSecondary;
+  }
+
+  static Color getBorder([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).border;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? cardBorderDark
+        : cardBorderLight;
+  }
+
+  static Color getPrimary([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).primary;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? tagTextDark
+        : primary;
+  }
+
+  static Color getPrimaryContainer([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).primaryContainer;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? tagBgDark
+        : tagBgLight;
+  }
+
+  static Color getTextPrimary([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).textPrimary;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? textMainDark
+        : textMainLight;
+  }
+
+  static Color getTextSecondary([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).textSecondary;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? textSubDark
+        : textSubLight;
+  }
+
+  static Color getTextMuted([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).textMuted;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? darkTextMuted
+        : textTertiary;
+  }
+
+  static Color getTagText([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).tagText;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? tagTextDark
+        : tagTextLight;
+  }
+
+  static Color getTagBg([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).tagBg;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? tagBgDark
+        : tagBgLight;
+  }
+
+  static Color getDivider([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).divider;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? cardBorderDark
+        : divider;
+  }
+
+  static Color getWarning([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).warning;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? darkWarning
+        : warning;
+  }
+
+  static Color getSuccess([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).success;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? darkSuccess
+        : success;
+  }
+
+  static Color getDanger([dynamic isDarkOrContext, BuildContext? context]) {
+    final ctx = _ctx(isDarkOrContext, context);
+    if (ctx != null) return of(ctx).danger;
+    return (_dark(isDarkOrContext) ?? themeController.isDarkMode)
+        ? darkDanger
+        : danger;
+  }
+
   // ── Toast Colors ───────────────────────────────────────────────────────
   static const Color toastErrorBackground = Color(0xFFFDE8E8);
   static const Color toastErrorBorder = Color(0xFFF8B4B4);
@@ -145,4 +313,150 @@ abstract class AppColors {
   static const Color toastInfoContent = Color(0xFF0E3A5D);
 
   static const Color toastText = Color(0xFF0F1216);
+}
+
+/// ThemeExtension hỗ trợ nội suy màu sắc 60fps mượt mà bằng AnimatedTheme của Flutter
+@immutable
+class CarNowThemeColors extends ThemeExtension<CarNowThemeColors> {
+  final Color background;
+  final Color surface;
+  final Color surfaceSubtle;
+  final Color surfaceSecondary;
+  final Color border;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+  final Color primary;
+  final Color primaryContainer;
+  final Color tagText;
+  final Color tagBg;
+  final Color divider;
+  final Color warning;
+  final Color success;
+  final Color danger;
+
+  const CarNowThemeColors({
+    required this.background,
+    required this.surface,
+    required this.surfaceSubtle,
+    required this.surfaceSecondary,
+    required this.border,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textMuted,
+    required this.primary,
+    required this.primaryContainer,
+    required this.tagText,
+    required this.tagBg,
+    required this.divider,
+    required this.warning,
+    required this.success,
+    required this.danger,
+  });
+
+  static const CarNowThemeColors light = CarNowThemeColors(
+    background: AppColors.canvasLight,
+    surface: AppColors.cardLight,
+    surfaceSubtle: AppColors.cardSubtleLight,
+    surfaceSecondary: AppColors.surfaceSecondary,
+    border: AppColors.cardBorderLight,
+    textPrimary: AppColors.textMainLight,
+    textSecondary: AppColors.textSubLight,
+    textMuted: AppColors.textTertiary,
+    primary: AppColors.primary,
+    primaryContainer: AppColors.tagBgLight,
+    tagText: AppColors.tagTextLight,
+    tagBg: AppColors.tagBgLight,
+    divider: AppColors.divider,
+    warning: AppColors.warning,
+    success: AppColors.success,
+    danger: AppColors.danger,
+  );
+
+  static const CarNowThemeColors dark = CarNowThemeColors(
+    background: AppColors.canvasDark,
+    surface: AppColors.cardDark,
+    surfaceSubtle: AppColors.cardSubtleDark,
+    surfaceSecondary: AppColors.darkSurfaceSecondary,
+    border: AppColors.cardBorderDark,
+    textPrimary: AppColors.textMainDark,
+    textSecondary: AppColors.textSubDark,
+    textMuted: AppColors.darkTextMuted,
+    primary: AppColors.tagTextDark,
+    primaryContainer: AppColors.tagBgDark,
+    tagText: AppColors.tagTextDark,
+    tagBg: AppColors.tagBgDark,
+    divider: AppColors.cardBorderDark,
+    warning: AppColors.darkWarning,
+    success: AppColors.darkSuccess,
+    danger: AppColors.darkDanger,
+  );
+
+  @override
+  CarNowThemeColors copyWith({
+    Color? background,
+    Color? surface,
+    Color? surfaceSubtle,
+    Color? surfaceSecondary,
+    Color? border,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? textMuted,
+    Color? primary,
+    Color? primaryContainer,
+    Color? tagText,
+    Color? tagBg,
+    Color? divider,
+    Color? warning,
+    Color? success,
+    Color? danger,
+  }) {
+    return CarNowThemeColors(
+      background: background ?? this.background,
+      surface: surface ?? this.surface,
+      surfaceSubtle: surfaceSubtle ?? this.surfaceSubtle,
+      surfaceSecondary: surfaceSecondary ?? this.surfaceSecondary,
+      border: border ?? this.border,
+      textPrimary: textPrimary ?? this.textPrimary,
+      textSecondary: textSecondary ?? this.textSecondary,
+      textMuted: textMuted ?? this.textMuted,
+      primary: primary ?? this.primary,
+      primaryContainer: primaryContainer ?? this.primaryContainer,
+      tagText: tagText ?? this.tagText,
+      tagBg: tagBg ?? this.tagBg,
+      divider: divider ?? this.divider,
+      warning: warning ?? this.warning,
+      success: success ?? this.success,
+      danger: danger ?? this.danger,
+    );
+  }
+
+  @override
+  CarNowThemeColors lerp(ThemeExtension<CarNowThemeColors>? other, double t) {
+    if (other is! CarNowThemeColors) return this;
+    return CarNowThemeColors(
+      background: Color.lerp(background, other.background, t) ?? background,
+      surface: Color.lerp(surface, other.surface, t) ?? surface,
+      surfaceSubtle:
+          Color.lerp(surfaceSubtle, other.surfaceSubtle, t) ?? surfaceSubtle,
+      surfaceSecondary:
+          Color.lerp(surfaceSecondary, other.surfaceSecondary, t) ??
+              surfaceSecondary,
+      border: Color.lerp(border, other.border, t) ?? border,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t) ?? textPrimary,
+      textSecondary:
+          Color.lerp(textSecondary, other.textSecondary, t) ?? textSecondary,
+      textMuted: Color.lerp(textMuted, other.textMuted, t) ?? textMuted,
+      primary: Color.lerp(primary, other.primary, t) ?? primary,
+      primaryContainer:
+          Color.lerp(primaryContainer, other.primaryContainer, t) ??
+              primaryContainer,
+      tagText: Color.lerp(tagText, other.tagText, t) ?? tagText,
+      tagBg: Color.lerp(tagBg, other.tagBg, t) ?? tagBg,
+      divider: Color.lerp(divider, other.divider, t) ?? divider,
+      warning: Color.lerp(warning, other.warning, t) ?? warning,
+      success: Color.lerp(success, other.success, t) ?? success,
+      danger: Color.lerp(danger, other.danger, t) ?? danger,
+    );
+  }
 }

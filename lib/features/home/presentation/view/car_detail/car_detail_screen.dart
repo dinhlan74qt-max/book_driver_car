@@ -3,11 +3,11 @@ import 'package:book_drive_car/core/theme/app_colors.dart';
 import 'package:book_drive_car/core/theme/app_typography.dart';
 import 'package:book_drive_car/core/utils/responsive_utils.dart';
 import 'package:book_drive_car/features/home/domain/repositories/booking_repository.dart';
+import 'package:book_drive_car/features/home/domain/repositories/home_repository.dart';
 import 'package:book_drive_car/features/home/domain/entities/car_entity.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/widgets/car_detail_booking_modal_sheet.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/widgets/car_detail_date_picker_sheet.dart';
 import 'package:book_drive_car/features/home/presentation/view/car_detail/widgets/car_detail_header_widgets.dart';
-import 'package:book_drive_car/features/home/presentation/widget/car_detail_owner_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_review_card.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_spec_grid.dart';
 import 'package:book_drive_car/features/home/presentation/widget/car_detail_terms_card.dart';
@@ -33,13 +33,29 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
   int _currentImage = 0;
   bool _isFavorite = false;
   DateTimeRange? _selectedDateRange;
+  late CarEntity _car;
 
-  CarEntity get car => widget.car;
+  CarEntity get car => _car;
 
   @override
   void initState() {
     super.initState();
+    _car = widget.car;
     _selectedDateRange = null;
+    _fetchCarDetail();
+  }
+
+  Future<void> _fetchCarDetail() async {
+    try {
+      final detail = await sl<HomeRepository>().getCarDetail(widget.car.id);
+      if (mounted) {
+        setState(() {
+          _car = detail;
+        });
+      }
+    } catch (_) {
+      // Giữ thông tin xe ban đầu nếu không thể tải thêm
+    }
   }
 
   String _formatPrice(num price) {
@@ -172,11 +188,16 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
       return;
     }
 
-    if (vData.licenseExpiryDate != null && vData.licenseExpiryDate!.isNotEmpty) {
+    if (vData.licenseExpiryDate != null &&
+        vData.licenseExpiryDate!.isNotEmpty) {
       try {
         final parts = vData.licenseExpiryDate!.split('/');
         if (parts.length == 3) {
-          final expiry = DateTime(int.parse(parts[2]), int.parse(parts[1]), int.parse(parts[0]));
+          final expiry = DateTime(
+            int.parse(parts[2]),
+            int.parse(parts[1]),
+            int.parse(parts[0]),
+          );
           if (expiry.isBefore(DateTime.now())) {
             if (!context.mounted) return;
             _showVerificationRequiredDialog(context, vData, isExpired: true);
@@ -204,7 +225,11 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
     );
   }
 
-  void _showVerificationRequiredDialog(BuildContext context, VerificationData vData, {bool isExpired = false}) {
+  void _showVerificationRequiredDialog(
+    BuildContext context,
+    VerificationData vData, {
+    bool isExpired = false,
+  }) {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -216,7 +241,9 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
             const SizedBox(width: 8),
             Text(
               'Xác minh tài khoản',
-              style: AppTypography.titleMedium.copyWith(color: AppColors.textPrimary),
+              style: AppTypography.titleMedium.copyWith(
+                color: AppColors.textPrimary,
+              ),
             ),
           ],
         ),
@@ -236,7 +263,8 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
               Navigator.of(dialogContext).pop();
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => IdentityVerificationScreen(initialData: vData),
+                  builder: (_) =>
+                      IdentityVerificationScreen(initialData: vData),
                 ),
               );
             },
@@ -250,14 +278,16 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
-    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
-    final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
-    final textMuted = isDark ? AppColors.darkTextMuted : AppColors.textMuted;
-    final surfaceSubtle = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSubtle;
+    final bgColor = AppColors.getBackground(isDark);
+    final surfaceColor = AppColors.getSurface(isDark);
+    final borderColor = AppColors.getBorder(isDark);
+    final primaryColor = AppColors.getPrimary(isDark);
+    final textPrimary = AppColors.getTextPrimary(isDark);
+    final textSecondary = AppColors.getTextSecondary(isDark);
+    final textMuted = AppColors.getTextMuted(isDark);
+    final surfaceSubtle = AppColors.getSurfaceSubtle(isDark);
+    final tagBg = AppColors.getTagBg(isDark);
+    final tagText = AppColors.getTagText(isDark);
 
     final images = car.imageUrls.isNotEmpty ? car.imageUrls : [car.imageIcon];
     final hasImages = images.any((e) => e.startsWith('http'));
@@ -331,7 +361,8 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                       if (hasImages)
                         PageView.builder(
                           itemCount: images.length,
-                          onPageChanged: (i) => setState(() => _currentImage = i),
+                          onPageChanged: (i) =>
+                              setState(() => _currentImage = i),
                           itemBuilder: (_, i) => CachedNetworkImage(
                             imageUrl: images[i],
                             fit: BoxFit.cover,
@@ -340,17 +371,20 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                               alignment: Alignment.center,
                               child: const CircularProgressIndicator(
                                 strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                                valueColor: AlwaysStoppedAnimation(
+                                  AppColors.primary,
+                                ),
                               ),
                             ),
-                            errorWidget: (context, error, stackTrace) => Container(
-                              color: AppColors.primaryContainer,
-                              child: const Icon(
-                                Icons.directions_car_filled_outlined,
-                                size: 80,
-                                color: AppColors.primary,
-                              ),
-                            ),
+                            errorWidget: (context, error, stackTrace) =>
+                                Container(
+                                  color: AppColors.primaryContainer,
+                                  child: const Icon(
+                                    Icons.directions_car_filled_outlined,
+                                    size: 80,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                           ),
                         )
                       else
@@ -385,7 +419,10 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                           bottom: 16,
                           right: 16,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(12),
@@ -424,36 +461,47 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                               children: [
                                 Text(
                                   car.name,
-                                  style: AppTypography.display.copyWith(
+                                  style: TextStyle(
                                     fontSize: 22,
+                                    fontWeight: FontWeight.w900,
                                     color: textPrimary,
+                                    letterSpacing: -0.4,
                                   ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
                                 Row(
                                   children: [
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: isDark ? AppColors.darkPrimaryContainer : AppColors.primaryContainer,
-                                        borderRadius: BorderRadius.circular(6),
+                                        color: tagBg,
+                                        borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
                                         car.vehicleType,
-                                        style: AppTypography.caption.copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: primaryColor,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 12,
+                                          color: tagText,
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    const Icon(Icons.star_rounded, size: 16, color: Colors.amber),
-                                    const SizedBox(width: 3),
+                                    const SizedBox(width: 10),
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      size: 18,
+                                      color: Colors.amber,
+                                    ),
+                                    const SizedBox(width: 4),
                                     Text(
                                       '${car.rating} (Đánh giá cao)',
-                                      style: AppTypography.caption.copyWith(
+                                      style: TextStyle(
                                         color: textSecondary,
-                                        fontWeight: FontWeight.w600,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
                                       ),
                                     ),
                                   ],
@@ -466,14 +514,19 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                             children: [
                               Text(
                                 _formatPrice(car.pricePerDay),
-                                style: AppTypography.priceLarge.copyWith(
-                                  fontSize: 20,
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
                                   color: primaryColor,
                                 ),
                               ),
                               Text(
                                 '/ ngày',
-                                style: AppTypography.caption.copyWith(color: textSecondary),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: textSecondary,
+                                ),
                               ),
                             ],
                           ),
@@ -490,29 +543,48 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
                             color: surfaceColor,
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: borderColor),
-                            boxShadow: isDark ? null : AppColors.shadowSm,
+                            border: Border.all(color: borderColor, width: 1.2),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.04,
+                                ),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  Icon(Icons.calendar_month_rounded, color: primaryColor, size: 20),
+                                  Icon(
+                                    Icons.calendar_month_rounded,
+                                    color: primaryColor,
+                                    size: 20,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Thời gian thuê xe',
-                                    style: AppTypography.titleMedium.copyWith(color: textPrimary),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: textPrimary,
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
                                 decoration: BoxDecoration(
                                   color: surfaceSubtle,
                                   borderRadius: BorderRadius.circular(12),
@@ -523,19 +595,26 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                                     Expanded(
                                       child: Text(
                                         _selectedDateRange != null
-                                            ? _formatBookingRange(_selectedDateRange!)
+                                            ? _formatBookingRange(
+                                                _selectedDateRange!,
+                                              )
                                             : 'Chạm để chọn ngày nhận & trả xe',
-                                        style: AppTypography.body.copyWith(
+                                        style: TextStyle(
                                           color: _selectedDateRange != null
                                               ? textPrimary
-                                              : textMuted,
+                                              : textSecondary,
                                           fontWeight: _selectedDateRange != null
-                                              ? FontWeight.w600
-                                              : FontWeight.normal,
+                                              ? FontWeight.w700
+                                              : FontWeight.w600,
+                                          fontSize: 13.5,
                                         ),
                                       ),
                                     ),
-                                    Icon(Icons.edit_calendar_rounded, color: primaryColor, size: 18),
+                                    Icon(
+                                      Icons.edit_calendar_rounded,
+                                      color: primaryColor,
+                                      size: 18,
+                                    ),
                                   ],
                                 ),
                               ),
@@ -550,24 +629,39 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                       const SizedBox(height: 12),
                       CarDetailSpecGrid(
                         specs: [
-                          SpecItem(icon: Icons.airline_seat_recline_normal_rounded, label: 'Số chỗ', value: '${car.seats} chỗ'),
-                          SpecItem(icon: Icons.local_gas_station_rounded, label: 'Nhiên liệu', value: car.fuelType ?? 'Xăng'),
-                          SpecItem(icon: Icons.settings_rounded, label: 'Hộp số', value: car.transmission ?? 'Tự động'),
-                          const SpecItem(icon: Icons.speed_rounded, label: 'Mức tiêu hao', value: '7.5L / 100km'),
+                          SpecItem(
+                            icon: Icons.airline_seat_recline_normal_rounded,
+                            label: 'Số chỗ',
+                            value: '${car.seats} chỗ',
+                          ),
+                          SpecItem(
+                            icon: Icons.local_gas_station_rounded,
+                            label: 'Nhiên liệu',
+                            value: car.fuelType ?? 'Xăng',
+                          ),
+                          SpecItem(
+                            icon: Icons.settings_rounded,
+                            label: 'Hộp số',
+                            value: car.transmission ?? 'Tự động',
+                          ),
+                          const SpecItem(
+                            icon: Icons.speed_rounded,
+                            label: 'Mức tiêu hao',
+                            value: '7.5L / 100km',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 24),
 
-                      // Chủ xe & Đánh giá & Điều khoản
-                      const CarDetailOwnerCard(),
-                      const SizedBox(height: 24),
+                      // Đánh giá từ khách hàng
                       const SectionTitle(title: 'Đánh giá từ khách hàng'),
                       const SizedBox(height: 12),
                       const CarDetailReviewCard(
                         name: 'Nguyễn Văn Minh',
                         date: '12/03/2026',
                         rating: 5.0,
-                        comment: 'Xe rất mới, sạch sẽ và máy chạy cực êm. Chủ xe nhiệt tình, thủ tục giao nhận nhanh gọn!',
+                        comment:
+                            'Xe rất mới, sạch sẽ và máy chạy cực êm. Chủ xe nhiệt tình, thủ tục giao nhận nhanh gọn!',
                       ),
                       const SizedBox(height: 24),
                       const CarDetailTermsCard(),
@@ -607,14 +701,19 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                       children: [
                         Text(
                           'Tổng tạm tính',
-                          style: AppTypography.caption.copyWith(color: textSecondary),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                            color: textSecondary,
+                          ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           _formatPrice(_totalPrice),
-                          style: AppTypography.priceLarge.copyWith(
+                          style: TextStyle(
                             color: primaryColor,
-                            fontSize: 20,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ],
@@ -625,7 +724,6 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                         text: 'Đặt xe ngay',
                         height: 50,
                         onPressed: () => _handleBookingFlow(context),
-                        icon: const Icon(Icons.arrow_forward_rounded, size: 18),
                       ),
                     ),
                   ],

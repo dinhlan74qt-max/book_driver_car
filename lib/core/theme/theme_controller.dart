@@ -10,7 +10,18 @@ class ThemeController extends ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.system;
   ThemeMode get themeMode => _themeMode;
 
-  bool get isDarkMode => _themeMode == ThemeMode.dark;
+  Offset? lastTransitionOrigin;
+  final ValueNotifier<int> transitionTrigger = ValueNotifier<int>(0);
+
+  bool get isSystemDark =>
+      WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+      Brightness.dark;
+
+  bool get isDarkMode {
+    if (_themeMode == ThemeMode.dark) return true;
+    if (_themeMode == ThemeMode.light) return false;
+    return isSystemDark;
+  }
 
   Future<void> init() async {
     try {
@@ -23,13 +34,17 @@ class ThemeController extends ChangeNotifier {
       } else {
         _themeMode = ThemeMode.system;
       }
-      notifyListeners();
     } catch (_) {}
+
+    notifyListeners();
   }
 
-  Future<void> setThemeMode(ThemeMode mode) async {
+  Future<void> setThemeMode(ThemeMode mode, {Offset? origin}) async {
     if (_themeMode == mode) return;
     _themeMode = mode;
+    lastTransitionOrigin = origin;
+    transitionTrigger.value++;
+
     notifyListeners();
 
     try {
@@ -49,4 +64,3 @@ class ThemeController extends ChangeNotifier {
 }
 
 final themeController = ThemeController.instance;
-

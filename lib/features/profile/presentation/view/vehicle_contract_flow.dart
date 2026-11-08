@@ -840,7 +840,6 @@ class _VehicleContractScreenState extends State<VehicleContractScreen> {
                             text: 'Tiếp tục Ký Thỏa Thuận',
                             variant: AppButtonVariant.primary,
                             height: 48,
-                            icon: Icons.draw_rounded,
                             onPressed: _allConfirmed
                                 ? _goToSignatureScreen
                                 : null,
@@ -1480,7 +1479,6 @@ class _VehicleSignatureScreenState extends State<VehicleSignatureScreen> {
                       text: 'Xác nhận & Hoàn tất',
                       variant: AppButtonVariant.primary,
                       height: 48,
-                      icon: Icons.check_circle_outline_rounded,
                       isLoading: _isUploading,
                       onPressed: _confirmSignature,
                     ),

@@ -10,6 +10,19 @@ class UserLocalStorage {
   static const String _tokenType = 'auth_token_type';
   static const String _user = 'auth_user';
   static const String _welcomeSeen = 'welcome_seen';
+  static const String _localAvatarIndex = 'profile_local_avatar_index';
+
+  /// Lấy index avatar đã lưu tại local (mặc định 0)
+  Future<int> getLocalAvatarIndex() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_localAvatarIndex) ?? 0;
+  }
+
+  /// Lưu index avatar tại local (không đồng bộ server)
+  Future<void> saveLocalAvatarIndex(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_localAvatarIndex, index);
+  }
 
   /// Lưu toàn bộ thông tin đăng nhập (gọi ngay sau khi login thành công)
   Future<void> saveSession({

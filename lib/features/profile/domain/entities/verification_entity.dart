@@ -40,8 +40,49 @@ enum VerificationStatus {
   const VerificationStatus(this.code, this.label, this.color, this.icon);
 
   static VerificationStatus fromString(String? code) {
+    if (code == null || code.trim().isEmpty) return VerificationStatus.unverified;
+    final upper = code.trim().toUpperCase();
+
+    // 1. Nhóm Đã xác minh (Verified)
+    if (upper == 'VERIFIED' ||
+        upper == 'APPROVED' ||
+        upper == 'SUCCESS' ||
+        upper == 'ACTIVE' ||
+        upper == 'TRUE' ||
+        upper == '1' ||
+        upper == 'DA_XAC_MINH' ||
+        upper.contains('ĐÃ XÁC') ||
+        upper.contains('THANH_CONG')) {
+      return VerificationStatus.verified;
+    }
+
+    // 2. Nhóm Đang chờ duyệt (Pending)
+    if (upper == 'PENDING' ||
+        upper == 'WAITING' ||
+        upper == 'IN_REVIEW' ||
+        upper == 'PROCESSING' ||
+        upper == 'CHO_DUYET' ||
+        upper.contains('CHỜ')) {
+      return VerificationStatus.pending;
+    }
+
+    // 3. Nhóm Bị từ chối (Rejected)
+    if (upper == 'REJECTED' ||
+        upper == 'DENIED' ||
+        upper == 'DECLINED' ||
+        upper == 'FAILED' ||
+        upper == 'TU_CHOI' ||
+        upper.contains('TỪ CHỐI')) {
+      return VerificationStatus.rejected;
+    }
+
+    // 4. Nhóm Hết hạn (Expired)
+    if (upper == 'EXPIRED' || upper.contains('HẾT HẠN')) {
+      return VerificationStatus.expired;
+    }
+
     return VerificationStatus.values.firstWhere(
-      (e) => e.code == code?.toUpperCase(),
+      (e) => e.code == upper,
       orElse: () => VerificationStatus.unverified,
     );
   }

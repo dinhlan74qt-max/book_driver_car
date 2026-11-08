@@ -26,10 +26,34 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final List<_AvatarPreset> _avatarPresets = const [
-    _AvatarPreset(icon: Icons.person_rounded, color: AppColors.primary),
-    _AvatarPreset(icon: Icons.face_rounded, color: AppColors.accent),
-    _AvatarPreset(icon: Icons.account_circle_rounded, color: AppColors.success),
-    _AvatarPreset(icon: Icons.badge_rounded, color: AppColors.danger),
+    _AvatarPreset(icon: Icons.person_rounded, color: Color(0xFF2563EB)),
+    _AvatarPreset(icon: Icons.face_rounded, color: Color(0xFFF59E0B)),
+    _AvatarPreset(
+      icon: Icons.directions_car_filled_rounded,
+      color: Color(0xFF0284C7),
+    ),
+    _AvatarPreset(
+      icon: Icons.sports_motorsports_rounded,
+      color: Color(0xFF8B5CF6),
+    ),
+    _AvatarPreset(icon: Icons.electric_car_rounded, color: Color(0xFF10B981)),
+    _AvatarPreset(icon: Icons.stars_rounded, color: Color(0xFFEA580C)),
+    _AvatarPreset(icon: Icons.shield_rounded, color: Color(0xFF3B82F6)),
+    _AvatarPreset(icon: Icons.rocket_launch_rounded, color: Color(0xFFEC4899)),
+    _AvatarPreset(
+      icon: Icons.workspace_premium_rounded,
+      color: Color(0xFFEAB308),
+    ),
+    _AvatarPreset(icon: Icons.smart_toy_rounded, color: Color(0xFF06B6D4)),
+    _AvatarPreset(icon: Icons.flight_takeoff_rounded, color: Color(0xFF6366F1)),
+    _AvatarPreset(icon: Icons.bolt_rounded, color: Color(0xFFEF4444)),
+    _AvatarPreset(icon: Icons.spa_rounded, color: Color(0xFF14B8A6)),
+    _AvatarPreset(icon: Icons.diamond_rounded, color: Color(0xFFA855F7)),
+    _AvatarPreset(icon: Icons.military_tech_rounded, color: Color(0xFFD97706)),
+    _AvatarPreset(
+      icon: Icons.sentiment_very_satisfied_rounded,
+      color: Color(0xFF84CC16),
+    ),
   ];
 
   int _avatarIndex = 0;
@@ -44,11 +68,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUser() async {
     final user = await sl<UserLocalStorage>().getUser();
+    final localAvatarIdx = await sl<UserLocalStorage>().getLocalAvatarIndex();
     final vData = await sl<VerificationRepository>().syncVerification();
 
     if (mounted) {
       setState(() {
         _user = user;
+        if (localAvatarIdx >= 0 && localAvatarIdx < _avatarPresets.length) {
+          _avatarIndex = localAvatarIdx;
+        } else {
+          _avatarIndex = 0;
+        }
         _verificationData = vData;
       });
     }
@@ -137,6 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showAvatarPicker() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -147,44 +178,99 @@ class _ProfileScreenState extends State<ProfileScreen> {
             return _BottomSheetShell(
               title: 'Cập nhật avatar',
               subtitle:
-                  'Chọn một avatar phù hợp để làm mới hồ sơ cá nhân của bạn.',
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: List.generate(_avatarPresets.length, (index) {
-                  final preset = _avatarPresets[index];
-                  final active = index == _avatarIndex;
-                  return TapScale(
-                    onTap: () {
-                      setState(() => _avatarIndex = index);
-                      setModalState(() {});
-                      Navigator.of(context).pop();
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 220),
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        color: preset.color.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: active ? preset.color : AppColors.border,
-                          width: active ? 1.6 : 1,
+                  'Chọn biểu tượng đại diện phù hợp (dữ liệu được lưu trên thiết bị của bạn).',
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.55,
+                ),
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _avatarPresets.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 14,
+                          crossAxisSpacing: 14,
+                          childAspectRatio: 1.0,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: preset.color.withValues(
-                              alpha: active ? 0.18 : 0.06,
+                    itemBuilder: (context, index) {
+                      final preset = _avatarPresets[index];
+                      final active = index == _avatarIndex;
+                      return TapScale(
+                        onTap: () async {
+                          setState(() => _avatarIndex = index);
+                          setModalState(() {});
+                          await sl<UserLocalStorage>().saveLocalAvatarIndex(
+                            index,
+                          );
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                            AppToast.show(
+                              context,
+                              message: 'Đã cập nhật avatar thành công',
+                            );
+                          }
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? preset.color.withValues(
+                                    alpha: isDark ? 0.28 : 0.16,
+                                  )
+                                : preset.color.withValues(
+                                    alpha: isDark ? 0.10 : 0.06,
+                                  ),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: active
+                                  ? preset.color
+                                  : (isDark
+                                        ? AppColors.darkBorder
+                                        : AppColors.border),
+                              width: active ? 2.2 : 1.0,
                             ),
-                            blurRadius: active ? 18 : 12,
-                            offset: const Offset(0, 8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: preset.color.withValues(
+                                  alpha: active ? 0.25 : 0.05,
+                                ),
+                                blurRadius: active ? 14 : 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(preset.icon, color: preset.color, size: 36),
-                    ),
-                  );
-                }),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(preset.icon, color: preset.color, size: 34),
+                              if (active)
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.check_circle_rounded,
+                                      size: 16,
+                                      color: preset.color,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             );
           },
@@ -230,23 +316,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Future.microtask(_showAvatarPicker);
+                child: Builder(
+                  builder: (ctx) {
+                    final isDark = Theme.of(ctx).brightness == Brightness.dark;
+                    return OutlinedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        Future.microtask(_showAvatarPicker);
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isDark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
+                        side: BorderSide(
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.border,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Đổi avatar',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    );
                   },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    side: const BorderSide(color: AppColors.border),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: const Text(
-                    'Đổi avatar',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
                 ),
               ),
             ],
@@ -263,46 +360,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final currentMode = themeController.themeMode;
+
+        void onSelectTheme(ThemeMode mode, BuildContext tileCtx) async {
+          Offset? tapPos;
+          try {
+            final renderBox = tileCtx.findRenderObject() as RenderBox?;
+            if (renderBox != null && renderBox.hasSize) {
+              tapPos =
+                  renderBox.localToGlobal(renderBox.size.center(Offset.zero));
+            }
+          } catch (_) {}
+
+          Navigator.of(ctx).pop();
+          // Delay nhỏ để bottom sheet đóng mượt mà trước khi kích hoạt hiệu ứng ripple
+          await Future.delayed(const Duration(milliseconds: 140));
+          themeController.setThemeMode(mode, origin: tapPos);
+        }
+
         return _BottomSheetShell(
           title: 'Chế độ giao diện',
           subtitle: 'Lựa chọn phong cách hiển thị ứng dụng CarNow',
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _ThemeOptionTile(
-                icon: Icons.light_mode_rounded,
-                title: 'Giao diện Sáng (Ocean Navy & White)',
-                subtitle: 'Nền sáng thanh lịch, sắc xanh navy hiện đại',
-                isSelected: currentMode == ThemeMode.light,
-                onTap: () {
-                  themeController.setThemeMode(ThemeMode.light);
-                  Navigator.of(ctx).pop();
-                  setState(() {});
-                },
+              Builder(
+                builder: (tileCtx) => _ThemeOptionTile(
+                  icon: Icons.light_mode_rounded,
+                  title: 'Giao diện Sáng (Ocean Navy & White)',
+                  subtitle: 'Nền sáng thanh lịch, sắc xanh navy hiện đại',
+                  isSelected: currentMode == ThemeMode.light,
+                  onTap: () => onSelectTheme(ThemeMode.light, tileCtx),
+                ),
               ),
               const SizedBox(height: 10),
-              _ThemeOptionTile(
-                icon: Icons.dark_mode_rounded,
-                title: 'Giao diện Tối (Midnight & Surface Navy)',
-                subtitle: 'Nền đen nửa đêm, dịu mắt và tiết kiệm pin',
-                isSelected: currentMode == ThemeMode.dark,
-                onTap: () {
-                  themeController.setThemeMode(ThemeMode.dark);
-                  Navigator.of(ctx).pop();
-                  setState(() {});
-                },
+              Builder(
+                builder: (tileCtx) => _ThemeOptionTile(
+                  icon: Icons.dark_mode_rounded,
+                  title: 'Giao diện Tối (Midnight & Surface Navy)',
+                  subtitle: 'Nền đen nửa đêm, dịu mắt và tiết kiệm pin',
+                  isSelected: currentMode == ThemeMode.dark,
+                  onTap: () => onSelectTheme(ThemeMode.dark, tileCtx),
+                ),
               ),
               const SizedBox(height: 10),
-              _ThemeOptionTile(
-                icon: Icons.brightness_auto_rounded,
-                title: 'Tự động theo hệ thống',
-                subtitle: 'Đồng bộ tự động với chế độ máy điện thoại',
-                isSelected: currentMode == ThemeMode.system,
-                onTap: () {
-                  themeController.setThemeMode(ThemeMode.system);
-                  Navigator.of(ctx).pop();
-                  setState(() {});
-                },
+              Builder(
+                builder: (tileCtx) => _ThemeOptionTile(
+                  icon: Icons.brightness_auto_rounded,
+                  title: 'Tự động theo hệ thống',
+                  subtitle: 'Đồng bộ tự động với chế độ máy điện thoại',
+                  isSelected: currentMode == ThemeMode.system,
+                  onTap: () => onSelectTheme(ThemeMode.system, tileCtx),
+                ),
               ),
             ],
           ),
@@ -346,22 +454,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Đăng xuất'),
-        content: const Text(
-          'Bạn có muốn đăng xuất khỏi tài khoản hiện tại không?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Hủy'),
+      builder: (dialogContext) {
+        final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+          title: Text(
+            'Đăng xuất',
+            style: TextStyle(
+              color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Đăng xuất'),
+          content: Text(
+            'Bạn có muốn đăng xuất khỏi tài khoản hiện tại không?',
+            style: TextStyle(
+              color: isDark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+            ),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(
+                'Hủy',
+                style: TextStyle(
+                  color: isDark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+              child: const Text('Đăng xuất'),
+            ),
+          ],
+        );
+      },
     );
     if (confirm != true || !mounted) return;
 
@@ -382,11 +513,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.darkSurface : Colors.white;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
-    final bgColor = isDark ? AppColors.darkBackground : AppColors.background;
+    final cardColor = AppColors.getSurface(context);
+    final borderColor = AppColors.getBorder(context);
+    final bgColor = AppColors.getBackground(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final textTertiary = AppColors.getTextMuted(context);
 
-    final preset = _avatarPresets[_avatarIndex];
+    final safeIndex =
+        (_avatarIndex >= 0 && _avatarIndex < _avatarPresets.length)
+        ? _avatarIndex
+        : 0;
+    final preset = _avatarPresets[safeIndex];
     final userName = _user?.fullname ?? '';
     final userEmail = _user?.email ?? '';
     final phone = _user?.phone ?? '';
@@ -426,7 +564,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 4,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: isDark
+                            ? AppColors.darkPrimary
+                            : AppColors.primary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -435,6 +575,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Dành Cho Chủ Xe',
                       style: AppTypography.headingSm.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: textPrimary,
                       ),
                     ),
                   ],
@@ -452,7 +593,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _MenuActionItem(
                       icon: Icons.directions_car_filled_rounded,
-                      iconColor: AppColors.primary,
+                      iconColor: isDark
+                          ? AppColors.darkPrimary
+                          : AppColors.primary,
                       title: 'Đăng ký & Quản lý xe',
                       subtitle:
                           'Danh sách xe cho thuê, giá thuê và trạng thái xe',
@@ -467,7 +610,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
                       icon: Icons.assignment_rounded,
-                      iconColor: AppColors.accent,
+                      iconColor: isDark
+                          ? AppColors.darkAccent
+                          : AppColors.accent,
                       title: 'Đơn đặt xe của tôi',
                       subtitle: 'Xem duyệt các yêu cầu thuê từ khách hàng',
                       onTap: () {
@@ -492,7 +637,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 4,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: AppColors.textPrimary,
+                        color: isDark
+                            ? AppColors.darkAccent
+                            : AppColors.primary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -501,6 +648,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Tài Khoản & Bảo Mật',
                       style: AppTypography.headingSm.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: textPrimary,
                       ),
                     ),
                   ],
@@ -518,7 +666,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _MenuActionItem(
                       icon: Icons.badge_outlined,
-                      iconColor: AppColors.textPrimary,
+                      iconColor: isDark
+                          ? AppColors.darkPrimary
+                          : AppColors.primaryLight,
                       title: 'Thông tin tài khoản & CCCD',
                       subtitle: 'Xem hồ sơ cá nhân và số định danh',
                       onTap: _showAccountDetail,
@@ -526,7 +676,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
                       icon: Icons.face_rounded,
-                      iconColor: AppColors.primary,
+                      iconColor: isDark
+                          ? AppColors.darkPrimary
+                          : AppColors.primary,
                       title: 'Đổi ảnh đại diện',
                       subtitle: 'Tùy chọn phong cách biểu tượng đại diện',
                       onTap: _showAvatarPicker,
@@ -534,7 +686,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
                       icon: Icons.lock_outline_rounded,
-                      iconColor: AppColors.textPrimary,
+                      iconColor: isDark
+                          ? AppColors.darkWarning
+                          : AppColors.warning,
                       title: 'Đổi mật khẩu',
                       subtitle: 'Cập nhật mật khẩu để tăng bảo mật tài khoản',
                       onTap: () => _showSimpleMessage(
@@ -545,13 +699,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
                       icon: Icons.palette_outlined,
-                      iconColor: AppColors.accent,
-                      title: 'Chế độ giao diện (Sáng / Tối)',
+                      iconColor: isDark
+                          ? AppColors.darkAccent
+                          : AppColors.accent,
+                      title: 'Chế độ giao diện',
                       subtitle: themeController.themeMode == ThemeMode.dark
-                          ? 'Đang bật Giao diện Tối (Midnight & Surface Navy)'
+                          ? 'Giao diện Tối'
                           : (themeController.themeMode == ThemeMode.light
-                                ? 'Đang bật Giao diện Sáng (Ocean Navy & White)'
-                                : 'Tự động theo hệ sinh thái thiết bị'),
+                                ? 'Giao diện Sáng '
+                                : 'Tự động'),
                       onTap: _showThemePicker,
                     ),
                   ],
@@ -568,7 +724,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 4,
                       height: 18,
                       decoration: BoxDecoration(
-                        color: AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.darkSecondary
+                            : AppColors.secondary,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -577,6 +735,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'Hỗ Trợ & Pháp Lý',
                       style: AppTypography.headingSm.copyWith(
                         fontWeight: FontWeight.w700,
+                        color: textPrimary,
                       ),
                     ),
                   ],
@@ -594,7 +753,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _MenuActionItem(
                       icon: Icons.support_agent_rounded,
-                      iconColor: AppColors.success,
+                      iconColor: isDark
+                          ? AppColors.darkSuccess
+                          : AppColors.success,
                       title: 'Trung tâm trợ giúp 24/7',
                       subtitle: 'Tổng đài giải đáp thắc mắc và xử lý sự cố',
                       onTap: () => _showSimpleMessage(
@@ -605,7 +766,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
                       icon: Icons.gavel_rounded,
-                      iconColor: AppColors.textSecondary,
+                      iconColor: isDark
+                          ? AppColors.darkSecondary
+                          : AppColors.textSecondary,
                       title: 'Điều khoản dịch vụ & Chính sách bảo mật',
                       subtitle:
                           'Quy định đặt thuê xe và điều kiện hoạt động nền tảng',
@@ -617,7 +780,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Divider(height: 1, indent: 64, color: borderColor),
                     _MenuActionItem(
                       icon: Icons.delete_outline_rounded,
-                      iconColor: AppColors.danger,
+                      iconColor: isDark
+                          ? AppColors.darkDanger
+                          : AppColors.danger,
                       title: 'Yêu cầu xoá tài khoản',
                       subtitle:
                           'Gửi yêu cầu xoá dữ liệu vĩnh viễn khỏi hệ thống',
@@ -637,15 +802,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 variant: AppButtonVariant.outline,
                 width: double.infinity,
                 onPressed: _logout,
-                icon: Icons.logout_rounded,
               ),
               const SizedBox(height: 16),
               Center(
                 child: Text(
                   'CarNow Version 2.4.0 • Build 2026',
-                  style: AppTypography.caption.copyWith(
-                    color: AppColors.textTertiary,
-                  ),
+                  style: AppTypography.caption.copyWith(color: textTertiary),
                 ),
               ),
             ],
@@ -675,6 +837,11 @@ class _MenuActionItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final textMuted = AppColors.getTextMuted(context);
+
     return TapScale(
       onTap: onTap,
       child: Padding(
@@ -685,7 +852,7 @@ class _MenuActionItem extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.10),
+                color: iconColor.withValues(alpha: isDark ? 0.16 : 0.10),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: iconColor, size: 20),
@@ -699,14 +866,14 @@ class _MenuActionItem extends StatelessWidget {
                     title,
                     style: AppTypography.labelLarge.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: danger ? AppColors.danger : AppColors.textPrimary,
+                      color: danger ? AppColors.danger : textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: AppTypography.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: textSecondary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -717,7 +884,7 @@ class _MenuActionItem extends StatelessWidget {
             Icon(
               Icons.chevron_right_rounded,
               size: 20,
-              color: danger ? AppColors.danger : AppColors.textTertiary,
+              color: danger ? AppColors.danger : textMuted,
             ),
           ],
         ),
@@ -845,10 +1012,10 @@ class _ProfileHero extends StatelessWidget {
                       height: 78,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: preset.color.withValues(alpha: 0.22),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.35),
-                          width: 2,
+                          color: preset.color.withValues(alpha: 0.55),
+                          width: 2.2,
                         ),
                       ),
                       child: Icon(preset.icon, color: Colors.white, size: 38),
@@ -975,6 +1142,12 @@ class _BottomSheetShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = AppColors.getSurface(context);
+    final borderColor = AppColors.getBorder(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -982,9 +1155,9 @@ class _BottomSheetShell extends StatelessWidget {
         ),
         child: Container(
           padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -995,7 +1168,7 @@ class _BottomSheetShell extends StatelessWidget {
                   width: 46,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: AppColors.border,
+                    color: borderColor,
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -1003,19 +1176,16 @@ class _BottomSheetShell extends StatelessWidget {
               const SizedBox(height: 18),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+                  color: textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
+                style: TextStyle(color: textSecondary, height: 1.5),
               ),
               const SizedBox(height: 16),
               child,
@@ -1076,22 +1246,23 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary,
+            color: textPrimary,
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(color: AppColors.textSecondary, height: 1.45),
-        ),
+        Text(subtitle, style: TextStyle(color: textSecondary, height: 1.45)),
       ],
     );
   }
@@ -1114,7 +1285,15 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.danger : AppColors.primary;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = AppColors.getSurface(context);
+    final borderColor = AppColors.getBorder(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final color = danger
+        ? AppColors.getDanger(context)
+        : AppColors.getPrimary(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TapScale(
@@ -1122,16 +1301,18 @@ class _ActionTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: cardBg,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 10),
-              ),
-            ],
+            border: Border.all(color: borderColor),
+            boxShadow: isDark
+                ? null
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                      blurRadius: 16,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
           ),
           child: Row(
             children: [
@@ -1139,7 +1320,7 @@ class _ActionTile extends StatelessWidget {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.08),
+                  color: color.withValues(alpha: isDark ? 0.16 : 0.08),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Icon(icon, color: color),
@@ -1151,17 +1332,17 @@ class _ActionTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: textPrimary,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: textSecondary,
                         fontSize: 12.5,
                         height: 1.45,
                       ),
@@ -1187,11 +1368,16 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rowBg = AppColors.getSurfaceSecondary(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.background,
+        color: rowBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -1199,9 +1385,10 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
+              style: TextStyle(
+                color: textSecondary,
                 fontSize: 13,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -1212,7 +1399,7 @@ class _InfoRow extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w700,
-                color: valueColor ?? AppColors.textPrimary,
+                color: valueColor ?? textPrimary,
               ),
             ),
           ),
@@ -1525,7 +1712,12 @@ class _VerificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = data.status;
-    Color cardColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = AppColors.getSurface(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
+    final dividerColor = AppColors.getDivider(context);
+
     Color borderColor;
     IconData icon;
     String title;
@@ -1534,16 +1726,14 @@ class _VerificationCard extends StatelessWidget {
 
     switch (status) {
       case VerificationStatus.unverified:
-        cardColor = const Color(0xFF1E293B);
-        borderColor = const Color(0xFFFFA000);
+        borderColor = AppColors.getWarning(context);
         icon = Icons.warning_amber_rounded;
         title = 'Xác minh danh tính để bắt đầu thuê xe';
         subtitle = 'Nộp CCCD & Bằng lái xe để mở khoá tính năng đặt thuê xe';
         buttonText = 'Xác minh ngay';
         break;
       case VerificationStatus.pending:
-        cardColor = const Color(0xFF1E293B);
-        borderColor = const Color(0xFF1976D2);
+        borderColor = AppColors.getPrimary(context);
         icon = Icons.access_time_rounded;
         title = 'Hồ sơ đang được xét duyệt';
         final timeStr = data.submittedAt != null
@@ -1553,8 +1743,7 @@ class _VerificationCard extends StatelessWidget {
         buttonText = 'Xem hồ sơ';
         break;
       case VerificationStatus.verified:
-        cardColor = const Color(0xFF0F291E);
-        borderColor = const Color(0xFF388E3C);
+        borderColor = AppColors.getSuccess(context);
         icon = Icons.verified_user_rounded;
         title = 'Đã xác minh danh tính';
         final expiryStr = data.licenseExpiryDate?.isNotEmpty == true
@@ -1565,8 +1754,7 @@ class _VerificationCard extends StatelessWidget {
         buttonText = 'Xem thông tin';
         break;
       case VerificationStatus.rejected:
-        cardColor = const Color(0xFF2D1619);
-        borderColor = const Color(0xFFD32F2F);
+        borderColor = AppColors.getDanger(context);
         icon = Icons.cancel_rounded;
         title = 'Hồ sơ bị từ chối';
         subtitle =
@@ -1575,8 +1763,7 @@ class _VerificationCard extends StatelessWidget {
         buttonText = 'Xem & Nộp lại';
         break;
       case VerificationStatus.expired:
-        cardColor = const Color(0xFF2E1C0C);
-        borderColor = const Color(0xFFE65100);
+        borderColor = AppColors.getWarning(context);
         icon = Icons.running_with_errors_rounded;
         title = 'Giấy phép lái xe hết hạn';
         subtitle = 'Cần cập nhật GPLX mới để tiếp tục sử dụng dịch vụ thuê xe.';
@@ -1589,13 +1776,13 @@ class _VerificationCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: surfaceColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: borderColor.withValues(alpha: 0.4),
+            color: borderColor.withValues(alpha: isDark ? 0.6 : 0.4),
             width: 1.2,
           ),
-          boxShadow: AppColors.shadowSm,
+          boxShadow: isDark ? null : AppColors.shadowSm,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1605,7 +1792,7 @@ class _VerificationCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: borderColor.withValues(alpha: 0.12),
+                    color: borderColor.withValues(alpha: isDark ? 0.20 : 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: borderColor, size: 22),
@@ -1618,7 +1805,7 @@ class _VerificationCard extends StatelessWidget {
                       Text(
                         title,
                         style: AppTypography.titleSmall.copyWith(
-                          color: AppColors.textPrimary,
+                          color: textPrimary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1626,7 +1813,7 @@ class _VerificationCard extends StatelessWidget {
                       Text(
                         subtitle,
                         style: AppTypography.caption.copyWith(
-                          color: AppColors.textSecondary,
+                          color: textSecondary,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -1637,7 +1824,7 @@ class _VerificationCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(height: 1, color: AppColors.divider),
+            Divider(height: 1, color: dividerColor),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1705,7 +1892,11 @@ class _ThemeOptionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = isDark ? AppColors.darkPrimary : AppColors.primary;
+    final activeColor = AppColors.getPrimary(context);
+    final surfaceColor = AppColors.getSurface(context);
+    final borderColor = AppColors.getBorder(context);
+    final textPrimary = AppColors.getTextPrimary(context);
+    final textSecondary = AppColors.getTextSecondary(context);
 
     return TapScale(
       onTap: onTap,
@@ -1714,12 +1905,10 @@ class _ThemeOptionTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? activeColor.withValues(alpha: 0.10)
-              : (isDark ? AppColors.darkSurface : Colors.white),
+              : surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? activeColor
-                : (isDark ? AppColors.darkBorder : AppColors.border),
+            color: isSelected ? activeColor : borderColor,
             width: isSelected ? 1.5 : 1.0,
           ),
         ),
@@ -1728,19 +1917,13 @@ class _ThemeOptionTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? activeColor
-                    : (isDark ? AppColors.darkSurface : Colors.white),
+                color: isSelected ? activeColor : surfaceColor,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
                 size: 20,
-                color: isSelected
-                    ? Colors.white
-                    : (isDark
-                          ? AppColors.darkTextPrimary
-                          : AppColors.textPrimary),
+                color: isSelected ? Colors.white : textPrimary,
               ),
             ),
             const SizedBox(width: 12),
@@ -1752,20 +1935,14 @@ class _ThemeOptionTile extends StatelessWidget {
                     title,
                     style: AppTypography.titleSmall.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: isSelected
-                          ? activeColor
-                          : (isDark
-                                ? AppColors.darkTextPrimary
-                                : AppColors.textPrimary),
+                      color: isSelected ? activeColor : textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
                     style: AppTypography.caption.copyWith(
-                      color: isDark
-                          ? AppColors.darkTextSecondary
-                          : AppColors.textSecondary,
+                      color: textSecondary,
                     ),
                   ),
                 ],

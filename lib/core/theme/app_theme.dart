@@ -4,8 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 abstract class AppTheme {
+  static final ThemeData _lightTheme = _buildLight();
+  static final ThemeData _darkTheme = _buildDark();
+
+  static ThemeData light() => _lightTheme;
+  static ThemeData dark() => _darkTheme;
+
   // ── 1. LIGHT THEME (Elegant Ivory & Forest Green) ────────────────────────
-  static ThemeData light() {
+  static ThemeData _buildLight() {
     final baseFontTheme = GoogleFonts.interTextTheme();
 
     return ThemeData(
@@ -172,11 +178,12 @@ abstract class AppTheme {
           borderRadius: BorderRadius.circular(24),
         ),
       ),
+      extensions: const [CarNowThemeColors.light],
     );
   }
 
   // ── 2. DARK THEME (Deep Forest Night) ────────────────────────────────────
-  static ThemeData dark() {
+  static ThemeData _buildDark() {
     final baseFontTheme = GoogleFonts.interTextTheme(ThemeData.dark().textTheme);
 
     return ThemeData(
@@ -349,6 +356,7 @@ abstract class AppTheme {
           borderRadius: BorderRadius.circular(24),
         ),
       ),
+      extensions: const [CarNowThemeColors.dark],
     );
   }
 }

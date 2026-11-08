@@ -320,8 +320,12 @@ class _RentalScreenState extends State<RentalScreen> {
     final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
     final primaryColor = isDark ? AppColors.darkPrimary : AppColors.primary;
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -361,26 +365,27 @@ class _RentalScreenState extends State<RentalScreen> {
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? primaryColor
-                            : surfaceColor,
+                        color: isSelected ? primaryColor : surfaceColor,
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
-                          color: isSelected
-                              ? primaryColor
-                              : borderColor,
+                          color: isSelected ? primaryColor : borderColor,
                         ),
-                        boxShadow: isSelected && !isDark ? AppColors.shadowSm : null,
+                        boxShadow: isSelected && !isDark
+                            ? AppColors.shadowSm
+                            : null,
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         filter.label,
                         style: AppTypography.caption.copyWith(
                           color: isSelected
-                              ? (isDark ? AppColors.darkBackground : Colors.white)
+                              ? (isDark
+                                    ? AppColors.darkBackground
+                                    : Colors.white)
                               : textSecondary,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                       ),
                     ),
@@ -399,11 +404,12 @@ class _RentalScreenState extends State<RentalScreen> {
                   children: [
                     if (_refreshing) ...[
                       ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(999)),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(999),
+                        ),
                         child: LinearProgressIndicator(
                           minHeight: 2.5,
-                          valueColor:
-                              AlwaysStoppedAnimation(primaryColor),
+                          valueColor: AlwaysStoppedAnimation(primaryColor),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -459,7 +465,9 @@ class _RentalScreenState extends State<RentalScreen> {
                                     color: surfaceColor,
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(color: borderColor),
-                                    boxShadow: isDark ? null : AppColors.shadowSm,
+                                    boxShadow: isDark
+                                        ? null
+                                        : AppColors.shadowSm,
                                   ),
                                   child: Column(
                                     crossAxisAlignment:
@@ -470,16 +478,19 @@ class _RentalScreenState extends State<RentalScreen> {
                                             MainAxisAlignment.spaceBetween,
                                         children: [
                                           AppStatusBadge.fromStatus(
-                                              booking.status),
+                                            booking.status,
+                                          ),
                                           Text(
                                             booking.bookingCode.isNotEmpty
                                                 ? booking.bookingCode
                                                 : '#${booking.id}',
                                             style: AppTypography.dataLabel
                                                 .copyWith(
-                                              color: isDark ? AppColors.darkTextMuted : AppColors.textMuted,
-                                              fontSize: 12,
-                                            ),
+                                                  color: isDark
+                                                      ? AppColors.darkTextMuted
+                                                      : AppColors.textMuted,
+                                                  fontSize: 12,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -490,16 +501,18 @@ class _RentalScreenState extends State<RentalScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: AppTypography.titleMedium
                                             .copyWith(
-                                          fontWeight: FontWeight.w700,
-                                          color: textPrimary,
-                                        ),
+                                              fontWeight: FontWeight.w700,
+                                              color: textPrimary,
+                                            ),
                                       ),
                                       const SizedBox(height: 4),
                                       Text(
                                         _vehicleSubtitle(booking),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: AppTypography.caption.copyWith(color: textSecondary),
+                                        style: AppTypography.caption.copyWith(
+                                          color: textSecondary,
+                                        ),
                                       ),
                                       Divider(height: 22, color: borderColor),
                                       Row(
@@ -519,12 +532,12 @@ class _RentalScreenState extends State<RentalScreen> {
                                                   booking.startDate,
                                                   booking.endDate,
                                                 ),
-                                                style: AppTypography
-                                                    .bodySmall
+                                                style: AppTypography.bodySmall
                                                     .copyWith(
-                                                  color: textPrimary,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
+                                                      color: textPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
                                               ),
                                             ],
                                           ),
@@ -532,10 +545,10 @@ class _RentalScreenState extends State<RentalScreen> {
                                             '${_formatCurrency(booking.totalAmount)}đ',
                                             style: AppTypography.priceMedium
                                                 .copyWith(
-                                              color: AppColors.primary,
-                                              fontSize: 15.5,
-                                              fontWeight: FontWeight.w800,
-                                            ),
+                                                  color: AppColors.primary,
+                                                  fontSize: 15.5,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -839,7 +852,9 @@ class _BookingDetailSheet extends StatelessWidget {
           return Container(
             decoration: BoxDecoration(
               color: surfaceColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
             ),
             child: ListView(
               controller: controller,
@@ -1331,9 +1346,15 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final rowBg = isDark ? AppColors.darkSurfaceSecondary : AppColors.surfaceSecondary;
-    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final rowBg = isDark
+        ? AppColors.darkSurfaceSecondary
+        : AppColors.surfaceSecondary;
+    final textSecondary = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
+    final textPrimary = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -1347,10 +1368,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: TextStyle(
-                color: textSecondary,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: textSecondary, fontSize: 13),
             ),
           ),
           Flexible(
@@ -1476,7 +1494,9 @@ class _RentalHeroCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: (isDark ? Colors.black : AppColors.primary).withValues(alpha: 0.28),
+            color: (isDark ? Colors.black : AppColors.primary).withValues(
+              alpha: 0.28,
+            ),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -1491,10 +1511,12 @@ class _RentalHeroCard extends StatelessWidget {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: (isDark ? AppColors.darkAccent : AppColors.accent).withValues(alpha: 0.2),
+                  color: (isDark ? AppColors.darkAccent : AppColors.accent)
+                      .withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: (isDark ? AppColors.darkAccent : AppColors.accent).withValues(alpha: 0.4),
+                    color: (isDark ? AppColors.darkAccent : AppColors.accent)
+                        .withValues(alpha: 0.4),
                   ),
                 ),
                 child: Icon(
@@ -1592,7 +1614,7 @@ class _HeroStatChip extends StatelessWidget {
         border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(

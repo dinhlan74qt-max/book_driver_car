@@ -10,12 +10,15 @@ enum LocationSearchMode { none, currentLocation, province, address }
 
 class CarSearchFilter {
   final LocationSearchMode locationMode;
-  final String? locationLabel; // tên tỉnh, địa chỉ nhập tay, hoặc "Vị trí hiện tại"
+  final String?
+  locationLabel; // tên tỉnh, địa chỉ nhập tay, hoặc "Vị trí hiện tại"
   final double? latitude;
   final double? longitude;
   final String? vehicleType;
   final String? brand;
   final String? model;
+  final int? minPrice;
+  final int? maxPrice;
 
   const CarSearchFilter({
     this.locationMode = LocationSearchMode.none,
@@ -25,16 +28,51 @@ class CarSearchFilter {
     this.vehicleType,
     this.brand,
     this.model,
+    this.minPrice,
+    this.maxPrice,
   });
+
+  int get activeFilterCount {
+    int count = 0;
+    if (locationLabel != null && locationLabel!.trim().isNotEmpty) count++;
+    if (vehicleType != null && vehicleType != kAllOption) count++;
+    if (brand != null && brand != kAllOption) count++;
+    if (model != null && model != kAllOption) count++;
+    if (minPrice != null || maxPrice != null) count++;
+    return count;
+  }
+
+  CarSearchFilter copyWith({
+    LocationSearchMode? locationMode,
+    String? locationLabel,
+    double? latitude,
+    double? longitude,
+    String? vehicleType,
+    String? brand,
+    String? model,
+    int? minPrice,
+    int? maxPrice,
+  }) {
+    return CarSearchFilter(
+      locationMode: locationMode ?? this.locationMode,
+      locationLabel: locationLabel ?? this.locationLabel,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      vehicleType: vehicleType ?? this.vehicleType,
+      brand: brand ?? this.brand,
+      model: model ?? this.model,
+      minPrice: minPrice ?? this.minPrice,
+      maxPrice: maxPrice ?? this.maxPrice,
+    );
+  }
 }
 
-/// Một gợi ý vị trí trả về từ API tìm kiếm (tỉnh/thành hoặc địa chỉ cụ thể).
 class LocationSuggestion {
   final String label;
   final String? subtitle;
   final double? latitude;
   final double? longitude;
-  final bool isAddress; // true = địa chỉ cụ thể, false = tỉnh/thành
+  final bool isAddress;
 
   const LocationSuggestion({
     required this.label,
@@ -45,9 +83,6 @@ class LocationSuggestion {
   });
 }
 
-/// Giá trị đại diện cho lựa chọn "Tất cả" trong danh sách loại xe / hãng xe.
-/// Khi loại xe hoặc hãng xe đang được chọn là "Tất cả", _selectedType /
-/// _selectedBrand sẽ là null (nghĩa là không lọc theo tiêu chí đó).
 const String kAllOption = 'Tất cả';
 
 class CarSearchSheet extends StatefulWidget {
@@ -66,6 +101,7 @@ class CarSearchSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (_) => CarSearchSheet(initialFilter: initialFilter),
     );
   }
@@ -75,17 +111,35 @@ class CarSearchSheet extends StatefulWidget {
 }
 
 class _CarSearchSheetState extends State<CarSearchSheet> {
-  static const _debounceDuration = Duration(seconds: 1);
+  static const _debounceDuration = Duration(milliseconds: 300);
 
   final _locationController = TextEditingController();
   final _locationFocusNode = FocusNode();
   Timer? _debounce;
-
-  // Tăng dần mỗi lần gọi API để bỏ qua kết quả trả về trễ (out-of-order).
   int _searchRequestId = 0;
 
-  // "Tất cả" luôn nằm đầu danh sách và mặc định được chọn (khi
-  // _selectedType / _selectedBrand đang là null).
+  // Danh sách các tỉnh / thành phố nổi bật
+  static const List<String> _popularCities = [
+    'Hà Nội',
+    'Hồ Chí Minh',
+    'Đà Nẵng',
+    'Bình Dương',
+    'Hải Phòng',
+    'Cần Thơ',
+    'Lâm Đồng',
+    'Khánh Hòa',
+    'Bà Rịa - Vũng Tàu',
+  ];
+
+  // Danh sách khoảng giá gợi ý nhanh (min, max, label)
+  static const List<_PricePreset> _pricePresets = [
+    _PricePreset(label: 'Tất cả', minPrice: null, maxPrice: null),
+    _PricePreset(label: '< 800k', minPrice: null, maxPrice: 800000),
+    _PricePreset(label: '800k - 1.5tr', minPrice: 800000, maxPrice: 1500000),
+    _PricePreset(label: '1.5tr - 2.5tr', minPrice: 1500000, maxPrice: 2500000),
+    _PricePreset(label: '> 2.5tr', minPrice: 2500000, maxPrice: null),
+  ];
+
   final List<String> _vehicleTypes = const [
     kAllOption,
     'Xe 4 chỗ mini',
@@ -107,10 +161,6 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
     'Suzuki',
   ];
 
-  String? _selectedType;
-  String? _selectedBrand;
-  String? _selectedModel;
-
   static const Map<String, List<String>> _modelsByBrand = {
     'VinFast': ['VF 3', 'VF 5', 'VF 6', 'VF 7', 'VF 8', 'VF 9'],
     'Toyota': ['Vios', 'Camry', 'Corolla Cross', 'Fortuner', 'Innova'],
@@ -123,6 +173,10 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
     'Suzuki': ['Swift', 'XL7', 'Ciaz', 'Ertiga'],
   };
 
+  String? _selectedType;
+  String? _selectedBrand;
+  String? _selectedModel;
+
   LocationSearchMode _locationMode = LocationSearchMode.none;
   double? _latitude;
   double? _longitude;
@@ -132,6 +186,11 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
   List<LocationSuggestion> _suggestions = [];
   bool _isSearching = false;
   String? _searchError;
+
+  // Lọc theo giá
+  int? _minPrice;
+  int? _maxPrice;
+  RangeValues _priceRangeValues = const RangeValues(300000, 5000000);
 
   @override
   void initState() {
@@ -144,9 +203,17 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
     _longitude = widget.initialFilter.longitude;
     _locationController.text = widget.initialFilter.locationLabel ?? '';
 
-    // Khi focus vào ô tìm kiếm hoặc rời khỏi, cần rebuild để ẩn/hiện
-    // danh sách gợi ý bên dưới thanh tìm kiếm.
+    _minPrice = widget.initialFilter.minPrice;
+    _maxPrice = widget.initialFilter.maxPrice;
+    _initPriceRange();
+
     _locationFocusNode.addListener(_handleFocusChange);
+  }
+
+  void _initPriceRange() {
+    final start = (_minPrice ?? 300000).toDouble().clamp(300000.0, 5000000.0);
+    final end = (_maxPrice ?? 5000000).toDouble().clamp(300000.0, 5000000.0);
+    _priceRangeValues = RangeValues(start, end < start ? start : end);
   }
 
   void _handleFocusChange() {
@@ -163,7 +230,19 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
   }
 
   bool get _shouldShowSuggestions =>
-      _locationFocusNode.hasFocus && _locationMode != LocationSearchMode.currentLocation;
+      _locationFocusNode.hasFocus &&
+      _locationMode != LocationSearchMode.currentLocation &&
+      _locationController.text.trim().isNotEmpty;
+
+  int get _activeCount {
+    int count = 0;
+    if (_locationController.text.trim().isNotEmpty) count++;
+    if (_selectedType != null && _selectedType != kAllOption) count++;
+    if (_selectedBrand != null && _selectedBrand != kAllOption) count++;
+    if (_selectedModel != null && _selectedModel != kAllOption) count++;
+    if (_minPrice != null || _maxPrice != null) count++;
+    return count;
+  }
 
   Future<void> _useCurrentLocation() async {
     setState(() {
@@ -185,11 +264,13 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
         }
       }
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Quyền vị trí bị chặn vĩnh viễn. Hãy bật lại trong Cài đặt.');
+        throw Exception('Quyền vị trí bị chặn. Hãy cấp quyền trong Cài đặt.');
       }
 
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       setState(() {
@@ -212,27 +293,32 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
   void _selectSuggestion(LocationSuggestion suggestion) {
     _debounce?.cancel();
     setState(() {
-      _locationMode = suggestion.isAddress ? LocationSearchMode.address : LocationSearchMode.province;
+      _locationMode = suggestion.isAddress
+          ? LocationSearchMode.address
+          : LocationSearchMode.province;
       _latitude = suggestion.latitude;
       _longitude = suggestion.longitude;
       _locationController.text = suggestion.label;
       _locationError = null;
+      _suggestions = [];
     });
     _locationFocusNode.unfocus();
   }
 
-  // Xác nhận tìm theo đúng từ khoá người dùng đã gõ (khi không chọn gợi ý nào
-  // từ danh sách trả về từ API, ví dụ nhấn nút search trên bàn phím).
-  void _confirmTypedAddress() {
-    final text = _locationController.text.trim();
-    if (text.isEmpty) return;
+  void _selectPopularCity(String city) {
+    if (_locationController.text.trim() == city) {
+      // Nhấn lại thì bỏ chọn
+      _clearLocation();
+      return;
+    }
     _debounce?.cancel();
     setState(() {
-      _locationMode = LocationSearchMode.address;
+      _locationMode = LocationSearchMode.province;
       _latitude = null;
       _longitude = null;
-      _locationController.text = text;
+      _locationController.text = city;
       _locationError = null;
+      _suggestions = [];
     });
     _locationFocusNode.unfocus();
   }
@@ -254,77 +340,45 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
         return;
       }
 
-      // Tạm coi là địa chỉ tự do cho tới khi người dùng chọn một gợi ý cụ thể
-      // hoặc kết quả API xác định đây là tỉnh/thành.
       _locationMode = LocationSearchMode.address;
       _isSearching = true;
     });
 
     if (text.isEmpty) return;
 
-    // Chờ người dùng ngừng gõ 1 giây rồi mới gọi API tìm gợi ý.
-    _debounce = Timer(_debounceDuration, () => _fetchSuggestions(text));
-  }
+    _debounce = Timer(_debounceDuration, () {
+      final results = filterCitySuggestions(text)
+          .map(
+            (city) => LocationSuggestion(
+              label: city,
+              subtitle: 'Tỉnh / Thành phố',
+              isAddress: false,
+            ),
+          )
+          .take(8)
+          .toList();
 
-  Future<void> _fetchSuggestions(String keyword) async {
-    final requestId = ++_searchRequestId;
-
-    try {
-      final results = await _searchLocations(keyword);
-      if (!mounted || requestId != _searchRequestId) return; // có yêu cầu mới hơn, bỏ qua kết quả này
+      if (!mounted) return;
       setState(() {
         _suggestions = results;
         _isSearching = false;
       });
-    } catch (_) {
-      if (!mounted || requestId != _searchRequestId) return;
-      setState(() {
-        _suggestions = [];
-        _isSearching = false;
-        _searchError = 'Không thể tải gợi ý. Vui lòng thử lại.';
-      });
-    }
+    });
   }
 
-  /// TODO: thay thế bằng lời gọi API gợi ý vị trí thực tế, ví dụ:
-  ///
-  /// final response = await locationRepository.search(keyword);
-  /// return response
-  ///     .map((e) => LocationSuggestion(
-  ///           label: e.name,
-  ///           subtitle: e.address,
-  ///           latitude: e.lat,
-  ///           longitude: e.lng,
-  ///           isAddress: e.type == 'address',
-  ///         ))
-  ///     .toList();
-  Future<List<LocationSuggestion>> _searchLocations(String keyword) async {
-    await Future.delayed(const Duration(milliseconds: 120));
-    return filterCitySuggestions(keyword)
-        .map(
-          (city) => LocationSuggestion(
-            label: city,
-            subtitle: 'Thành phố',
-            isAddress: false,
-          ),
-        )
-        .toList();
-  }
-
-  List<String> _modelOptions() {
-    if (_selectedBrand != null && _selectedBrand != kAllOption) {
-      return [kAllOption, ...(_modelsByBrand[_selectedBrand!] ?? const [])];
-    }
-
-    return const [
-      kAllOption,
-      'Sedan',
-      'SUV',
-      'Hatchback',
-      'MPV',
-      'Pickup',
-      'Coupe',
-    ];
+  void _confirmTypedAddress() {
+    final text = _locationController.text.trim();
+    if (text.isEmpty) return;
+    _debounce?.cancel();
+    setState(() {
+      _locationMode = LocationSearchMode.address;
+      _latitude = null;
+      _longitude = null;
+      _locationController.text = text;
+      _locationError = null;
+      _suggestions = [];
+    });
+    _locationFocusNode.unfocus();
   }
 
   void _clearLocation() {
@@ -339,425 +393,41 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
       _suggestions = [];
       _isSearching = false;
     });
-    _locationFocusNode.requestFocus();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.92,
-        minChildSize: 0.55,
-        maxChildSize: 0.97,
-        builder: (context, controller) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  width: 46,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: controller,
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Tìm xe theo vị trí',
-                              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-                            ),
-                            TextButton(
-                              onPressed: _resetAll,
-                              child: const Text('Đặt lại'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Nhập tên tỉnh/thành hoặc địa chỉ để xem gợi ý, hoặc dùng vị trí hiện tại để tìm xe gần bạn.',
-                          style: TextStyle(color: AppColors.textSecondary, height: 1.5),
-                        ),
-                        const SizedBox(height: 18),
-                        _buildLocationBar(),
-                        if (_locationError != null) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.error_outline_rounded, size: 16, color: AppColors.danger),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  _locationError!,
-                                  style: const TextStyle(color: AppColors.danger, fontSize: 12.5),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        if (_shouldShowSuggestions) _buildSuggestionsList(),
-                        const SizedBox(height: 22),
-                        _SectionTitle(
-                          icon: Icons.directions_car_rounded,
-                          title: 'Loại xe',
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: _vehicleTypes
-                              .map(
-                                (type) => FilterChip(
-                                  label: Text(type),
-                                  selected: type == kAllOption
-                                      ? _selectedType == null
-                                      : _selectedType == type,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      _selectedType = type == kAllOption ? null : type;
-                                    });
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                        const SizedBox(height: 20),
-                        _SectionTitle(
-                          icon: Icons.apartment_rounded,
-                          title: 'Hãng xe',
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: _brands
-                              .map(
-                                (brand) => FilterChip(
-                                  label: Text(brand),
-                                selected: brand == kAllOption
-                                      ? _selectedBrand == null
-                                      : _selectedBrand == brand,
-                                  onSelected: (_) {
-                                    setState(() {
-                                      _selectedBrand = brand == kAllOption ? null : brand;
-                                      _selectedModel = null;
-                                    });
-                                  },
-                                ),
-                              )
-                              .toList(),
-                        ),
-                        const SizedBox(height: 20),
-                        _SectionTitle(
-                          icon: Icons.route_rounded,
-                          title: 'Dòng xe',
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _selectedBrand == null || _selectedBrand == kAllOption
-                              ? 'Chọn hãng xe trước, hoặc tạm dùng nhóm dòng xe chung.'
-                              : 'Đang lọc theo ${_selectedBrand!}. Bạn có thể chọn dòng xe phù hợp bên dưới.',
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12.5,
-                            height: 1.4,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: _modelOptions().map((model) {
-                            final isSelected = _selectedModel == model ||
-                                (_selectedModel == null && model == kAllOption);
-                            return FilterChip(
-                              label: Text(model),
-                              selected: isSelected,
-                              onSelected: (_) {
-                                setState(() {
-                                  _selectedModel = model == kAllOption ? null : model;
-                                });
-                              },
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.of(context).pop(
-                                CarSearchFilter(
-                                  locationMode: _locationMode,
-                                  locationLabel: _locationController.text.trim().isEmpty
-                                      ? null
-                                      : _locationController.text.trim(),
-                                  latitude: _latitude,
-                                  longitude: _longitude,
-                                  vehicleType: _selectedType,
-                                  brand: _selectedBrand,
-                                  model: _selectedModel,
-                                ),
-                              );
-                            },
-                            child: const Text('Áp dụng'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+  void _selectPricePreset(_PricePreset preset) {
+    setState(() {
+      _minPrice = preset.minPrice;
+      _maxPrice = preset.maxPrice;
+      _initPriceRange();
+    });
   }
 
-  Widget _buildLocationBar() {
-    final isFocused = _locationFocusNode.hasFocus;
-    final isCurrentLocation = _locationMode == LocationSearchMode.currentLocation;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isFocused ? AppColors.primary : AppColors.border,
-          width: isFocused ? 1.4 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isFocused
-                ? AppColors.primary.withOpacity(0.14)
-                : const Color(0xFF0F172A).withOpacity(0.04),
-            blurRadius: isFocused ? 18 : 10,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            margin: const EdgeInsets.only(left: 4),
-            decoration: BoxDecoration(
-              color: isFocused ? AppColors.primary.withOpacity(0.1) : AppColors.background,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.search_rounded,
-              size: 19,
-              color: isFocused ? AppColors.primary : AppColors.textSecondary,
-            ),
-          ),
-          Expanded(
-            child: TextField(
-              controller: _locationController,
-              focusNode: _locationFocusNode,
-              onChanged: _onLocationTextChanged,
-              onSubmitted: (_) => _confirmTypedAddress(),
-              textInputAction: TextInputAction.search,
-              readOnly: isCurrentLocation,
-              style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
-              decoration: const InputDecoration(
-                isDense: true,
-                hintText: 'Nhập tỉnh/thành hoặc địa chỉ cụ thể...',
-                hintStyle: TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textMuted,
-                ),
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-              ),
-            ),
-          ),
-          if (_locationController.text.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 2),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: _clearLocation,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.close_rounded,
-                      size: 16,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          TapScale(
-            onTap: _isLocating ? null : _useCurrentLocation,
-            child: Container(
-              width: 40,
-              height: 40,
-              margin: const EdgeInsets.only(left: 2),
-              decoration: BoxDecoration(
-                color: isCurrentLocation ? AppColors.primary : AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Center(
-                child: _isLocating
-                    ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: isCurrentLocation ? Colors.white : AppColors.primary,
-                        ),
-                      )
-                    : Icon(
-                        Icons.my_location_rounded,
-                        size: 19,
-                        color: isCurrentLocation ? Colors.white : AppColors.primary,
-                      ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  bool _isPresetSelected(_PricePreset preset) {
+    return _minPrice == preset.minPrice && _maxPrice == preset.maxPrice;
   }
 
-  // Danh sách gợi ý hiển thị ngay dưới thanh tìm kiếm:
-  // - "Vị trí hiện tại" luôn nằm đầu danh sách để chọn nhanh.
-  // - Sau 1 giây kể từ lần gõ cuối, gọi API và hiện kết quả gợi ý bên dưới.
-  Widget _buildSuggestionsList() {
-    final text = _locationController.text.trim();
+  void _onPriceSliderChanged(RangeValues values) {
+    setState(() {
+      _priceRangeValues = values;
+      _minPrice = values.start <= 300000 ? null : values.start.round();
+      _maxPrice = values.end >= 5000000 ? null : values.end.round();
+    });
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      constraints: const BoxConstraints(maxHeight: 320),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.06),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.white,
-        child: ListView(
-          shrinkWrap: true,
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          children: [
-            ListTile(
-              dense: true,
-              leading: Icon(Icons.my_location_rounded, size: 20, color: AppColors.primary),
-              title: const Text(
-                'Vị trí hiện tại',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5),
-              ),
-              trailing: _isLocating
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : null,
-              onTap: _isLocating ? null : _useCurrentLocation,
-            ),
-            if (text.isNotEmpty) ...[
-              const Divider(height: 1),
-              if (_isSearching)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 10),
-                      Text(
-                        'Đang tìm kiếm...',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                )
-              else if (_searchError != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  child: Text(
-                    _searchError!,
-                    style: const TextStyle(color: AppColors.danger, fontSize: 13),
-                  ),
-                )
-              else if (_suggestions.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                  child: Text(
-                    'Không tìm thấy kết quả cho "$text". Nhấn tìm kiếm để dùng địa chỉ này.',
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
-                )
-              else
-                for (final suggestion in _suggestions)
-                  ListTile(
-                    dense: true,
-                    leading: Icon(
-                      suggestion.isAddress ? Icons.place_rounded : Icons.location_city_rounded,
-                      size: 20,
-                      color: AppColors.textSecondary,
-                    ),
-                    title: Text(suggestion.label, style: const TextStyle(fontSize: 13.5)),
-                    subtitle: suggestion.subtitle != null
-                        ? Text(
-                            suggestion.subtitle!,
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            overflow: TextOverflow.ellipsis,
-                          )
-                        : null,
-                    onTap: () => _selectSuggestion(suggestion),
-                  ),
-            ],
-          ],
-        ),
-      ),
-    );
+  List<String> _modelOptions() {
+    if (_selectedBrand != null && _selectedBrand != kAllOption) {
+      return [kAllOption, ...(_modelsByBrand[_selectedBrand!] ?? const [])];
+    }
+    return const [
+      kAllOption,
+      'Sedan',
+      'SUV',
+      'Hatchback',
+      'MPV',
+      'Pickup',
+      'Coupe',
+    ];
   }
 
   void _resetAll() {
@@ -774,28 +444,960 @@ class _CarSearchSheetState extends State<CarSearchSheet> {
       _suggestions = [];
       _isSearching = false;
       _locationController.clear();
+      _minPrice = null;
+      _maxPrice = null;
+      _priceRangeValues = const RangeValues(300000, 5000000);
     });
   }
-}
 
-class _SectionTitle extends StatelessWidget {
-  final IconData icon;
-  final String title;
+  void _applyFilter() {
+    final text = _locationController.text.trim();
+    Navigator.of(context).pop(
+      CarSearchFilter(
+        locationMode: _locationMode,
+        locationLabel: text.isEmpty ? null : text,
+        latitude: _latitude,
+        longitude: _longitude,
+        vehicleType: _selectedType,
+        brand: _selectedBrand,
+        model: _selectedModel,
+        minPrice: _minPrice,
+        maxPrice: _maxPrice,
+      ),
+    );
+  }
 
-  const _SectionTitle({required this.icon, required this.title});
+  String _formatPriceTag(int amount) {
+    if (amount >= 1000000) {
+      final millions = amount / 1000000;
+      if (millions == millions.roundToDouble()) {
+        return '${millions.toInt()}tr';
+      }
+      return '${millions.toStringAsFixed(1)}tr';
+    }
+    return '${amount ~/ 1000}k';
+  }
+
+  String get _priceSummaryText {
+    if (_minPrice == null && _maxPrice == null) {
+      return 'Tất cả mức giá';
+    }
+    if (_minPrice == null && _maxPrice != null) {
+      return '< ${_formatPriceTag(_maxPrice!)}/ngày';
+    }
+    if (_minPrice != null && _maxPrice == null) {
+      return '≥ ${_formatPriceTag(_minPrice!)}/ngày';
+    }
+    return '${_formatPriceTag(_minPrice!)} - ${_formatPriceTag(_maxPrice!)}/ngày';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.90,
+        minChildSize: 0.50,
+        maxChildSize: 0.96,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              children: [
+                _buildSheetHeader(),
+                Expanded(
+                  child: ListView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                    children: [
+                      // 1. VỊ TRÍ & TỈNH THÀNH
+                      _buildSectionHeader(
+                        icon: Icons.location_on_rounded,
+                        title: 'Vị trí & Tỉnh thành',
+                        subtitle:
+                            'Chọn nhanh thành phố hoặc nhập địa chỉ muốn nhận xe',
+                      ),
+                      const SizedBox(height: 12),
+                      _buildLocationInput(),
+                      if (_locationError != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.error_outline_rounded,
+                              size: 16,
+                              color: AppColors.danger,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                _locationError!,
+                                style: const TextStyle(
+                                  color: AppColors.danger,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      if (_shouldShowSuggestions) _buildSuggestionsList(),
+                      const SizedBox(height: 14),
+                      _buildPopularCitiesSection(),
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      const SizedBox(height: 20),
+
+                      // 2. MỨC GIÁ THUÊ
+                      _buildPriceSection(),
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      const SizedBox(height: 20),
+
+                      // 3. GỢI Ý TÌM KIẾM NHANH
+                      _buildQuickPresetsSection(),
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      const SizedBox(height: 20),
+
+                      // 4. LOẠI XE
+                      _buildSectionHeader(
+                        icon: Icons.directions_car_rounded,
+                        title: 'Loại xe',
+                        subtitle: 'Chọn số chỗ ngồi và kiểu dáng phù hợp',
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _vehicleTypes.map((type) {
+                          final isSelected = type == kAllOption
+                              ? _selectedType == null
+                              : _selectedType == type;
+                          return _ModernChip(
+                            label: type,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setState(() {
+                                _selectedType = type == kAllOption
+                                    ? null
+                                    : type;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      const SizedBox(height: 20),
+
+                      // 5. HÃNG XE
+                      _buildSectionHeader(
+                        icon: Icons.apartment_rounded,
+                        title: 'Hãng xe',
+                        subtitle: 'Lọc theo thương hiệu ưa thích',
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _brands.map((brand) {
+                          final isSelected = brand == kAllOption
+                              ? _selectedBrand == null
+                              : _selectedBrand == brand;
+                          return _ModernChip(
+                            label: brand,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setState(() {
+                                _selectedBrand = brand == kAllOption
+                                    ? null
+                                    : brand;
+                                _selectedModel = null;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+
+                      const SizedBox(height: 24),
+                      const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                      const SizedBox(height: 20),
+
+                      // 6. DÒNG XE
+                      _buildSectionHeader(
+                        icon: Icons.route_rounded,
+                        title: 'Dòng xe',
+                        subtitle:
+                            _selectedBrand != null &&
+                                _selectedBrand != kAllOption
+                            ? 'Các mẫu xe nổi bật của ${_selectedBrand!}'
+                            : 'Các dòng xe phổ biến',
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _modelOptions().map((model) {
+                          final isSelected =
+                              _selectedModel == model ||
+                              (_selectedModel == null && model == kAllOption);
+                          return _ModernChip(
+                            label: model,
+                            isSelected: isSelected,
+                            onTap: () {
+                              setState(() {
+                                _selectedModel = model == kAllOption
+                                    ? null
+                                    : model;
+                              });
+                            },
+                          );
+                        }).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+                _buildBottomDock(),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSheetHeader() {
+    final activeCount = _activeCount;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 10, 14, 12),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+      ),
+      child: Column(
+        children: [
+          Center(
+            child: Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBD5E1),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Text(
+                      'Tìm kiếm & Bộ lọc',
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    if (activeCount > 0) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$activeCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (activeCount > 0)
+                TextButton.icon(
+                  onPressed: _resetAll,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    foregroundColor: const Color(0xFFE86000),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text(
+                    'Đặt lại',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(
+                  Icons.close_rounded,
+                  size: 22,
+                  color: Color(0xFF64748B),
+                ),
+                splashRadius: 20,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 16, color: AppColors.primary),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              fontSize: 12.5,
+              color: Color(0xFF64748B),
+              height: 1.4,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLocationInput() {
+    final isFocused = _locationFocusNode.hasFocus;
+    final isCurrentLocation =
+        _locationMode == LocationSearchMode.currentLocation;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isFocused ? AppColors.primary : const Color(0xFFE2E8F0),
+          width: isFocused ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: isFocused ? AppColors.primary : const Color(0xFF94A3B8),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              controller: _locationController,
+              focusNode: _locationFocusNode,
+              onChanged: _onLocationTextChanged,
+              onSubmitted: (_) => _confirmTypedAddress(),
+              textInputAction: TextInputAction.search,
+              readOnly: isCurrentLocation,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF0F172A),
+              ),
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Nhập tỉnh/thành hoặc địa chỉ...',
+                hintStyle: TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w400,
+                  color: Color(0xFF94A3B8),
+                ),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 12,
+                ),
+              ),
+            ),
+          ),
+          TapScale(
+            onTap: _isLocating ? null : _useCurrentLocation,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: isCurrentLocation
+                    ? AppColors.primary
+                    : AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_isLocating)
+                    SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: isCurrentLocation
+                            ? Colors.white
+                            : AppColors.primary,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.my_location_rounded,
+                      size: 15,
+                      color: isCurrentLocation
+                          ? Colors.white
+                          : AppColors.primary,
+                    ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Gần tôi',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isCurrentLocation
+                          ? Colors.white
+                          : AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSuggestionsList() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      constraints: const BoxConstraints(maxHeight: 240),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: _isSearching
+            ? const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            : _suggestions.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(14),
+                child: Text(
+                  'Không tìm thấy tỉnh/thành phù hợp',
+                  style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                ),
+              )
+            : ListView.separated(
+                shrinkWrap: true,
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                itemCount: _suggestions.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                itemBuilder: (context, index) {
+                  final item = _suggestions[index];
+                  return ListTile(
+                    dense: true,
+                    visualDensity: VisualDensity.compact,
+                    leading: const Icon(
+                      Icons.location_city_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    title: Text(
+                      item.label,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    subtitle: item.subtitle != null
+                        ? Text(
+                            item.subtitle!,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFF64748B),
+                            ),
+                          )
+                        : null,
+                    onTap: () => _selectSuggestion(item),
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  Widget _buildPopularCitiesSection() {
+    final currentText = _locationController.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tỉnh / Thành phố nổi bật:',
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF475569),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _popularCities.map((city) {
+            final isSelected = currentText.toLowerCase() == city.toLowerCase();
+            return _ModernChip(
+              label: city,
+              icon: Icons.place_rounded,
+              isSelected: isSelected,
+              onTap: () => _selectPopularCity(city),
+            );
+          }).toList(),
         ),
       ],
     );
   }
+
+  Widget _buildPriceSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _buildSectionHeader(
+                icon: Icons.payments_rounded,
+                title: 'Mức giá / ngày',
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7ED),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFFFEDD5)),
+                ),
+                child: Text(
+                  _priceSummaryText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFE86000),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _pricePresets.map((preset) {
+            final isSelected = _isPresetSelected(preset);
+            return _ModernChip(
+              label: preset.label,
+              isSelected: isSelected,
+              onTap: () => _selectPricePreset(preset),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 14),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppColors.primary,
+            inactiveTrackColor: const Color(0xFFE2E8F0),
+            trackHeight: 4,
+            thumbColor: AppColors.primary,
+            overlayColor: AppColors.primary.withValues(alpha: 0.12),
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+            rangeThumbShape: const RoundRangeSliderThumbShape(
+              enabledThumbRadius: 9,
+            ),
+          ),
+          child: RangeSlider(
+            values: _priceRangeValues,
+            min: 300000,
+            max: 5000000,
+            divisions: 47,
+            onChanged: _onPriceSliderChanged,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text(
+                '300k',
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+              ),
+              Text(
+                '1.5 triệu',
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+              ),
+              Text(
+                '3 triệu',
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+              ),
+              Text(
+                '5 triệu+',
+                style: TextStyle(fontSize: 11.5, color: Color(0xFF94A3B8)),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickPresetsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          icon: Icons.auto_awesome_rounded,
+          title: 'Gợi ý tìm kiếm phổ biến',
+          subtitle: 'Lựa chọn nhanh các gói tìm xe được nhiều người sử dụng',
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _QuickPresetButton(
+              icon: Icons.bolt_rounded,
+              iconColor: const Color(0xFF0284C7),
+              label: 'Xe điện VinFast',
+              isSelected: _selectedBrand == 'VinFast',
+              onTap: () {
+                setState(() {
+                  _selectedBrand = _selectedBrand == 'VinFast'
+                      ? null
+                      : 'VinFast';
+                  _selectedModel = null;
+                });
+              },
+            ),
+            _QuickPresetButton(
+              icon: Icons.family_restroom_rounded,
+              iconColor: const Color(0xFF16A34A),
+              label: 'Xe 7 chỗ gia đình',
+              isSelected: _selectedType == 'Xe 7 chỗ SUV gầm cao',
+              onTap: () {
+                setState(() {
+                  _selectedType = _selectedType == 'Xe 7 chỗ SUV gầm cao'
+                      ? null
+                      : 'Xe 7 chỗ SUV gầm cao';
+                });
+              },
+            ),
+            _QuickPresetButton(
+              icon: Icons.savings_rounded,
+              iconColor: const Color(0xFFE86000),
+              label: 'Xe tiết kiệm (< 800k)',
+              isSelected: _maxPrice == 800000 && _minPrice == null,
+              onTap: () {
+                setState(() {
+                  if (_maxPrice == 800000 && _minPrice == null) {
+                    _maxPrice = null;
+                  } else {
+                    _minPrice = null;
+                    _maxPrice = 800000;
+                  }
+                  _initPriceRange();
+                });
+              },
+            ),
+            _QuickPresetButton(
+              icon: Icons.terrain_rounded,
+              iconColor: const Color(0xFF7C3AED),
+              label: 'Gầm cao 5 chỗ CUV',
+              isSelected: _selectedType == 'Xe 5 chỗ CUV gầm cao',
+              onTap: () {
+                setState(() {
+                  _selectedType = _selectedType == 'Xe 5 chỗ CUV gầm cao'
+                      ? null
+                      : 'Xe 5 chỗ CUV gầm cao';
+                });
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomDock() {
+    final activeCount = _activeCount;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            offset: const Offset(0, -4),
+            blurRadius: 14,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: _applyFilter,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.search_rounded, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    activeCount > 0
+                        ? 'Áp dụng bộ lọc ($activeCount tiêu chí)'
+                        : 'Tìm kiếm tất cả xe',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
+class _PricePreset {
+  final String label;
+  final int? minPrice;
+  final int? maxPrice;
+
+  const _PricePreset({
+    required this.label,
+    required this.minPrice,
+    required this.maxPrice,
+  });
+}
+
+class _ModernChip extends StatelessWidget {
+  final String label;
+  final IconData? icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ModernChip({
+    required this.label,
+    this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TapScale(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8.5),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+            width: 1.2,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : const Color(0xFF64748B),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? Colors.white : const Color(0xFF334155),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickPresetButton extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _QuickPresetButton({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TapScale(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isSelected ? 0.08 : 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.white : iconColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                color: isSelected ? Colors.white : const Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

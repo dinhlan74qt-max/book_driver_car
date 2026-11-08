@@ -83,7 +83,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final vehicle = widget.vehicle;
-    final status = vehicle.status.trim().isEmpty ? 'UNKNOWN' : vehicle.status;
+    final rawStatus = vehicle.status.trim();
+    final status = (rawStatus.isEmpty || rawStatus.toUpperCase() == 'NULL')
+        ? 'PENDING'
+        : vehicle.status;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -294,7 +297,6 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     AppButton(
                       text: 'Quay lại danh sách',
                       variant: AppButtonVariant.outline,
-                      icon: const Icon(Icons.arrow_back_rounded),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(height: 20),
@@ -767,16 +769,149 @@ class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
 
   Color _color() {
-    switch (status.toUpperCase()) {
+    switch (status.toUpperCase().trim()) {
       case 'AVAILABLE':
-        return AppColors.success;
+      case 'APPROVED':
+      case 'VERIFIED':
+      case 'ACTIVE':
+      case 'SẴN SÀNG':
+      case 'ĐÃ DUYỆT':
+      case 'DA_DUYET':
+        return const Color(0xFF4ADE80);
       case 'PENDING':
-        return AppColors.accent;
+      case 'WAITING':
+      case 'IN_REVIEW':
+      case 'CHỜ DUYỆT':
+      case 'ĐANG CHỜ DUYỆT':
+      case 'CHO_DUYET':
+        return const Color(0xFFFBBF24);
       case 'REJECTED':
+      case 'DENIED':
+      case 'UNAPPROVED':
+      case 'NOT_APPROVED':
+      case 'CHƯA DUYỆT':
+      case 'CHƯA ĐƯỢC DUYỆT':
+      case 'TỪ CHỐI':
+      case 'TU_CHOI':
+        return const Color(0xFFF87171);
+      case 'RENTING':
+      case 'RENTED':
+      case 'BUSY':
+      case 'ONGOING':
+      case 'ĐANG CHO THUÊ':
+      case 'ĐANG THUÊ':
+        return const Color(0xFF38BDF8);
       case 'UNAVAILABLE':
-        return AppColors.danger;
+      case 'BLOCKED':
+      case 'LOCKED':
+      case 'INACTIVE':
+      case 'TẠM ẨN':
+      case 'TAM_AN':
+        return const Color(0xFF94A3B8);
       default:
-        return Colors.white;
+        final s = status.toUpperCase().trim();
+        if (s.isEmpty || s == 'NULL' || s == 'UNKNOWN') {
+          return const Color(0xFFFBBF24);
+        }
+        return Colors.white70;
+    }
+  }
+
+  String _label() {
+    switch (status.toUpperCase().trim()) {
+      case 'AVAILABLE':
+      case 'APPROVED':
+      case 'VERIFIED':
+      case 'ACTIVE':
+      case 'SẴN SÀNG':
+      case 'ĐÃ DUYỆT':
+      case 'DA_DUYET':
+        return 'Đã duyệt';
+      case 'PENDING':
+      case 'WAITING':
+      case 'IN_REVIEW':
+      case 'CHỜ DUYỆT':
+      case 'ĐANG CHỜ DUYỆT':
+      case 'CHO_DUYET':
+        return 'Đang chờ duyệt';
+      case 'REJECTED':
+      case 'DENIED':
+      case 'UNAPPROVED':
+      case 'NOT_APPROVED':
+      case 'CHƯA DUYỆT':
+      case 'CHƯA ĐƯỢC DUYỆT':
+      case 'TỪ CHỐI':
+      case 'TU_CHOI':
+        return 'Chưa được duyệt';
+      case 'RENTING':
+      case 'RENTED':
+      case 'BUSY':
+      case 'ONGOING':
+      case 'ĐANG CHO THUÊ':
+      case 'ĐANG THUÊ':
+        return 'Đang cho thuê';
+      case 'UNAVAILABLE':
+      case 'BLOCKED':
+      case 'LOCKED':
+      case 'INACTIVE':
+      case 'TẠM ẨN':
+      case 'TAM_AN':
+        return 'Tạm ẩn';
+      default:
+        final s = status.toUpperCase().trim();
+        if (s.isEmpty || s == 'NULL' || s == 'UNKNOWN') {
+          return 'Đang chờ duyệt';
+        }
+        return status;
+    }
+  }
+
+  IconData _icon() {
+    switch (status.toUpperCase().trim()) {
+      case 'AVAILABLE':
+      case 'APPROVED':
+      case 'VERIFIED':
+      case 'ACTIVE':
+      case 'SẴN SÀNG':
+      case 'ĐÃ DUYỆT':
+      case 'DA_DUYET':
+        return Icons.check_circle_rounded;
+      case 'PENDING':
+      case 'WAITING':
+      case 'IN_REVIEW':
+      case 'CHỜ DUYỆT':
+      case 'ĐANG CHỜ DUYỆT':
+      case 'CHO_DUYET':
+        return Icons.hourglass_top_rounded;
+      case 'REJECTED':
+      case 'DENIED':
+      case 'UNAPPROVED':
+      case 'NOT_APPROVED':
+      case 'CHƯA DUYỆT':
+      case 'CHƯA ĐƯỢC DUYỆT':
+      case 'TỪ CHỐI':
+      case 'TU_CHOI':
+        return Icons.cancel_rounded;
+      case 'RENTING':
+      case 'RENTED':
+      case 'BUSY':
+      case 'ONGOING':
+      case 'ĐANG CHO THUÊ':
+      case 'ĐANG THUÊ':
+        return Icons.directions_car_rounded;
+      case 'UNAVAILABLE':
+      case 'BLOCKED':
+      case 'LOCKED':
+      case 'INACTIVE':
+      case 'TẠM ẨN':
+      case 'TAM_AN':
+        return Icons.visibility_off_rounded;
+      default:
+        final s = status.toUpperCase().trim();
+        if (s.isEmpty || s == 'NULL' || s == 'UNKNOWN') {
+          return Icons.hourglass_top_rounded;
+        }
+        return Icons.info_outline_rounded;
     }
   }
 
@@ -784,19 +919,27 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _color();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
+        color: color.withValues(alpha: 0.16),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.24)),
+        border: Border.all(color: color.withValues(alpha: 0.36), width: 0.9),
       ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_icon(), size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            _label(),
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
