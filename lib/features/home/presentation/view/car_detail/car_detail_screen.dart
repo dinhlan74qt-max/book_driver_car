@@ -695,6 +695,7 @@ class _CarDetailScreenState extends State<CarDetailScreen> {
                               ),
                             ],
                           ),
+                          
                         ),
                       ),
                       const SizedBox(height: 24),

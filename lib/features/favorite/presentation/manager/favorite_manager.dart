@@ -171,4 +171,14 @@ class FavoriteManager extends ChangeNotifier {
         })
         .catchError((_) {});
   }
+
+  @visibleForTesting
+  void resetForTesting({FavoriteRemoteDataSource? dataSource}) {
+    _remoteDataSource = dataSource;
+    _favoriteIds.clear();
+    _favorites.clear();
+    _isLoading = false;
+    _errorMessage = null;
+    _hasInitialLoaded = false;
+  }
 }
