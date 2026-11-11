@@ -216,20 +216,23 @@ class OwnerBookingOrderCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Tổng tiền thu về', style: TextStyle(fontSize: 11, color: textMuted)),
-                    Text(
-                      '${formatPrice(booking.totalPrice)} đ',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: primaryColor,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Tổng tiền thu về (70%)', style: TextStyle(fontSize: 11, color: textMuted)),
+                      Text(
+                        '${formatPrice((booking.totalPrice * 0.7).round())} đ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: primaryColor,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Row(
                   children: [
                     if (status == BookingStatus.pending)
