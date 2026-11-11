@@ -525,7 +525,8 @@ class _WalletScreenState extends State<WalletScreen>
                                 child: StaggeredFadeIn(
                                   index: 3 + index,
                                   child: _TransactionCard(
-                                    title: tx.description,
+                                    title: tx.displayTitle,
+                                    typeLabel: tx.typeDisplayName,
                                     dateText: createdAtText,
                                     amountText:
                                         '${isPositive ? '+' : '-'}${priceFormat.format(tx.amount.abs())}đ',
@@ -753,6 +754,7 @@ class _WalletActionTile extends StatelessWidget {
 
 class _TransactionCard extends StatelessWidget {
   final String title;
+  final String typeLabel;
   final String dateText;
   final String amountText;
   final bool isPositive;
@@ -760,6 +762,7 @@ class _TransactionCard extends StatelessWidget {
 
   const _TransactionCard({
     required this.title,
+    required this.typeLabel,
     required this.dateText,
     required this.amountText,
     required this.isPositive,
@@ -816,10 +819,34 @@ class _TransactionCard extends StatelessWidget {
                       color: textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    dateText,
-                    style: AppTypography.caption.copyWith(color: textSecondary),
+                  const SizedBox(height: 5),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: isDark ? 0.2 : 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          typeLabel,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          dateText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.caption.copyWith(color: textSecondary),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -861,20 +888,30 @@ class _TransactionDetailSheet extends StatelessWidget {
   }
 
   String _typeLabel(String type) {
-    switch (type.toUpperCase()) {
+    switch (type.toUpperCase().trim()) {
       case 'DEPOSIT':
       case 'TOPUP':
-        return 'Nạp tiền vào ví (VietQR)';
+        return 'Nạp tiền vào ví';
       case 'WITHDRAW':
-        return 'Rút tiền về tài khoản';
+        return 'Rút tiền về tài khoản ngân hàng';
+      case 'RENT_PAYMENT':
       case 'PAYMENT':
-        return 'Thanh toán thuê xe';
+        return 'Thanh toán tiền thuê';
+      case 'RENT_RECEIVE':
+        return 'Nhận tiền thuê';
       case 'REFUND':
-        return 'Hoàn tiền giao dịch';
+        return 'Hoàn tiền';
       case 'PENALTY':
       case 'FEE':
         return 'Khấu trừ phí';
       default:
+        if (type.toUpperCase().contains('RECEIVE')) return 'Nhận tiền thuê';
+        if (type.toUpperCase().contains('PAYMENT')) return 'Thanh toán tiền thuê';
+        if (type.toUpperCase().contains('WITHDRAW')) return 'Rút tiền';
+        if (type.toUpperCase().contains('DEPOSIT') || type.toUpperCase().contains('TOPUP')) {
+          return 'Nạp tiền vào ví';
+        }
+        if (type.toUpperCase().contains('REFUND')) return 'Hoàn tiền';
         return type.isEmpty ? 'Giao dịch ví' : type;
     }
   }

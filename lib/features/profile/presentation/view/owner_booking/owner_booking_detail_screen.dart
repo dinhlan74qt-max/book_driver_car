@@ -304,6 +304,7 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
     final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.border;
     final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -609,16 +610,46 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
                     label: 'Số ngày thuê',
                     value: 'x ${_currentBooking.totalDays} ngày',
                   ),
+                  const SizedBox(height: 10),
+                  _PriceRow(
+                    label: 'Tổng tiền đơn thuê',
+                    value: '${_formatPrice(_currentBooking.totalPrice)} đ',
+                  ),
+                  const SizedBox(height: 10),
+                  _PriceRow(
+                    label: 'Phí dịch vụ nền tảng (30%)',
+                    value: '- ${_formatPrice((_currentBooking.totalPrice * 0.3).round())} đ',
+                  ),
                   const Divider(height: 22, color: AppColors.divider),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        'Tổng doanh thu dự kiến',
-                        style: AppTypography.titleSmall.copyWith(fontWeight: FontWeight.w800),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Tổng doanh thu dự kiến',
+                              style: AppTypography.titleSmall.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Thực nhận 70% sau trừ phí sàn',
+                              style: AppTypography.caption.copyWith(
+                                fontSize: 11,
+                                color: textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        '${_formatPrice(_currentBooking.totalPrice)} đ',
+                        '${_formatPrice((_currentBooking.totalPrice * 0.7).round())} đ',
                         style: AppTypography.priceLarge.copyWith(
                           fontSize: 18,
                           color: AppColors.primary,
@@ -710,7 +741,6 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
               height: 48,
               isLoading: _isProcessing,
               onPressed: _isProcessing || !_canMarkReceived ? null : _handleMarkReceived,
-              icon: const Icon(Icons.directions_car_rounded, size: 18),
             ),
             if (!_canMarkReceived) ...[
               const SizedBox(height: 6),
@@ -747,7 +777,6 @@ class _OwnerBookingDetailScreenState extends State<OwnerBookingDetailScreen> {
               height: 48,
               isLoading: _isProcessing,
               onPressed: _isProcessing || !_canMarkReturned ? null : _handleMarkReturned,
-              icon: const Icon(Icons.done_all_rounded, size: 18),
             ),
             if (!_canMarkReturned) ...[
               const SizedBox(height: 6),
@@ -898,10 +927,13 @@ class _PriceRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(color: textSecondary),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTypography.bodySmall.copyWith(color: textSecondary),
+          ),
         ),
+        const SizedBox(width: 8),
         Text(
           value,
           style: AppTypography.bodyMedium.copyWith(

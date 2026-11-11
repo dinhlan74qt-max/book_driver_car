@@ -81,4 +81,66 @@ void main() {
 
     walletBloc.add(WalletRequested());
   });
+
+  group('WalletTransactionEntity type and credit tests', () {
+    test('RENT_RECEIVE (Chủ xe nhận tiền thuê) phải là isCredit = true (Cộng tiền)', () {
+      const tx = WalletTransactionEntity(
+        id: 1,
+        amount: 700000,
+        description: 'Nhận tiền thuê xe',
+        transactionType: 'RENT_RECEIVE',
+        createdAt: null,
+      );
+      expect(tx.isCredit, isTrue);
+      expect(tx.typeDisplayName, 'Nhận tiền thuê');
+    });
+
+    test('RENT_PAYMENT (Khách thanh toán tiền thuê) phải là isCredit = false (Trừ tiền)', () {
+      const tx = WalletTransactionEntity(
+        id: 2,
+        amount: 1000000,
+        description: 'Thanh toán đơn thuê',
+        transactionType: 'RENT_PAYMENT',
+        createdAt: null,
+      );
+      expect(tx.isCredit, isFalse);
+      expect(tx.typeDisplayName, 'Thanh toán tiền thuê');
+    });
+
+    test('DEPOSIT (Nạp tiền) phải là isCredit = true (Cộng tiền)', () {
+      const tx = WalletTransactionEntity(
+        id: 3,
+        amount: 500000,
+        description: 'Nạp tiền VietQR',
+        transactionType: 'DEPOSIT',
+        createdAt: null,
+      );
+      expect(tx.isCredit, isTrue);
+      expect(tx.typeDisplayName, 'Nạp tiền');
+    });
+
+    test('WITHDRAW (Rút tiền) phải là isCredit = false (Trừ tiền)', () {
+      const tx = WalletTransactionEntity(
+        id: 4,
+        amount: 200000,
+        description: 'Rút về MBBank',
+        transactionType: 'WITHDRAW',
+        createdAt: null,
+      );
+      expect(tx.isCredit, isFalse);
+      expect(tx.typeDisplayName, 'Rút tiền');
+    });
+
+    test('REFUND (Hoàn tiền) phải là isCredit = true (Cộng tiền)', () {
+      const tx = WalletTransactionEntity(
+        id: 5,
+        amount: 300000,
+        description: 'Hoàn tiền chuyến hủy',
+        transactionType: 'REFUND',
+        createdAt: null,
+      );
+      expect(tx.isCredit, isTrue);
+      expect(tx.typeDisplayName, 'Hoàn tiền');
+    });
+  });
 }

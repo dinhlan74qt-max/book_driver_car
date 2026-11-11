@@ -154,7 +154,7 @@ class _OwnerBookingListContentState extends State<_OwnerBookingListContent> {
                     e.status == BookingStatus.completed ||
                     e.status == BookingStatus.renting ||
                     e.status == BookingStatus.approved)
-                .fold(0, (sum, item) => sum + item.totalPrice);
+                .fold(0, (sum, item) => sum + (item.totalPrice * 0.7).round());
 
             return Column(
               children: [
